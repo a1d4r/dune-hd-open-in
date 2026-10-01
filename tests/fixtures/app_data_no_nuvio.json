@@ -1,0 +1,17 @@
+{
+  "applications": [
+    {
+      "caption": "Настройки",
+      "package_name": "com.android.tv.settings",
+      "version": "1.0",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_com.android.tv.settings.png",
+      "activity": "com.android.tv.settings.MainSettings",
+      "source_dir": "\/system_ext\/priv-app\/DroidTvSettings\/DroidTvSettings.apk",
+      "first_install_time": "2009-01-01T03:00:00.000+0300",
+      "first_install_timestamp": 1230768000,
+      "last_modified_time": "2009-01-01T03:00:00.000+0300",
+      "last_modified_timestamp": 1230768000
+    }
+  ],
+  "generation_date": "2026-10-01T19:04:46.033+0300"
+}

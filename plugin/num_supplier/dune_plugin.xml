@@ -1,0 +1,18 @@
+<dune_plugin>
+  <name>num_supplier</name>
+  <caption>%tr%plugin_caption</caption>
+  <type>plain</type>
+  <params>
+    <movie_suppliers>num</movie_suppliers>
+  </params>
+  <global_actions>
+    <uninstall>
+      <type>plugin_system</type>
+      <data>
+        <run_string>bin/uninstall.sh</run_string>
+      </data>
+    </uninstall>
+  </global_actions>
+  <version>0.1.0</version>
+  <version_index>1</version_index>
+</dune_plugin>

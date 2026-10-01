@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags: ['20*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y dash mksh shellcheck zip
+      - name: Build all plugins
+        run: for p in plugin/*/; do sh build.sh "$(basename "$p")"; done
+      - name: Release notes
+        run: |
+          base="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME"
+          {
+            echo "Скачайте zip нужного плагина ниже, в Assets. Установка — в [README]($base/README.md)."
+            echo
+            for p in plugin/*/; do
+              n=$(basename "$p")
+              v=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$p/dune_plugin.xml")
+              echo "- \`$n\` $v — [CHANGELOG]($base/plugin/$n/CHANGELOG.md)"
+            done
+          } > notes.md
+          cat notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "$GITHUB_REF_NAME" --notes-file notes.md

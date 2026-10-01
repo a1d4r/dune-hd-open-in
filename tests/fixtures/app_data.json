@@ -1,0 +1,53 @@
+{
+  "applications": [
+    {
+      "caption": "Настройки",
+      "package_name": "com.android.tv.settings",
+      "version": "1.0",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_com.android.tv.settings.png",
+      "activity": "com.android.tv.settings.MainSettings",
+      "source_dir": "\/system_ext\/priv-app\/DroidTvSettings\/DroidTvSettings.apk",
+      "first_install_time": "2009-01-01T03:00:00.000+0300",
+      "first_install_timestamp": 1230768000,
+      "last_modified_time": "2009-01-01T03:00:00.000+0300",
+      "last_modified_timestamp": 1230768000
+    },
+    {
+      "caption": "Nuvio",
+      "package_name": "com.nuvio.tv",
+      "version": "1.0.0",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_com.nuvio.tv.png",
+      "activity": "com.nuvio.tv.launcher.AppIconDefault",
+      "source_dir": "\/data\/app\/~~5x07fybWw50Ew3pHUp-68g==\/com.nuvio.tv-1-jC8X_F1zYfXxdQMrS7Rg==\/base.apk",
+      "first_install_time": "2026-09-09T00:21:56.110+0300",
+      "first_install_timestamp": 1788902516,
+      "last_modified_time": "2026-09-21T11:42:46.000+0300",
+      "last_modified_timestamp": 1789980166
+    },
+    {
+      "caption": "Stremio",
+      "package_name": "com.stremio.one",
+      "version": "1.11.2",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_com.stremio.one.png",
+      "activity": "com.stremio.tv.MainActivity",
+      "source_dir": "\/data\/app\/~~8pX2hKHjoqgqnlxHW8ryag==\/com.stremio.one-BcGmmQSFmonuddHQdGbhJQ==\/base.apk",
+      "first_install_time": "2026-09-04T17:50:26.637+0300",
+      "first_install_timestamp": 1788533426,
+      "last_modified_time": "2026-10-01T00:59:07.000+0300",
+      "last_modified_timestamp": 1790805547
+    },
+    {
+      "caption": "NUM",
+      "package_name": "ru.yourok.num",
+      "version": "1.0.150",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_ru.yourok.num.png",
+      "activity": "ru.yourok.num.activity.collections.CollectionsActivity",
+      "source_dir": "\/data\/app\/~~Dm4D7RCMDYqvexAm_wzqSw==\/ru.yourok.num-19ThxgFM_DNrBkZMm3IjbQ==\/base.apk",
+      "first_install_time": "2025-11-07T18:16:30.329+0300",
+      "first_install_timestamp": 1762528590,
+      "last_modified_time": "2026-04-16T16:49:18.000+0300",
+      "last_modified_timestamp": 1776347358
+    }
+  ],
+  "generation_date": "2026-10-01T19:04:46.033+0300"
+}

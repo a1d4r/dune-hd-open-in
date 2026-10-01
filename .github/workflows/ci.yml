@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y dash mksh shellcheck zip
+      - name: Shellcheck, tests (dash, mksh), build
+        run: for p in plugin/*/; do sh build.sh "$(basename "$p")"; done
+      - name: No private IPs or UUIDs
+        run: |
+          if git grep -n -I -E '192\.168\.|(^|[^0-9.])10\.[0-9]+\.[0-9]+\.[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' -- ':!.github'; then
+            echo "::error::private IP or UUID in tracked files"
+            exit 1
+          fi
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
