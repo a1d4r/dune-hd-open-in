@@ -15,6 +15,7 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and Lampa 1.13.1 (`top.r
 - The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`). Lampa cannot reliably open a title from outside by IMDb ID or by name, so a card without a TMDB ID cannot be opened.
 - Series open on the series page: Dune does not pass a season or episode.
 - Each launch replaces what was open in Lampa, so screens from earlier launches do not pile up. Lampa reloads for about a second.
+- Back in Lampa starts working only after you press any arrow key once — Lampa behaves like this on every start, from the Apps menu too. To return to the Dune card right away, long-press Back → "Quit the Application".
 - If Lampa is not installed or the title has no TMDB ID, Dune shows a message.
 - If Lampa does not know the TMDB ID (Dune has a wrong ID), Lampa shows an endless loading spinner instead of a message.
 - Tested with the `http://lampa.mx` server. A self-hosted Lampa server (such as Lampac) has not been tested.
