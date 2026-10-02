@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds **Open in NUM** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in NUM, the torrent catalog and search app for Android TV by YouROK, where you can find torrents and send them to a torrent client such as TorrServe.
+A Dune HD plugin that adds **NUM** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in NUM, the torrent catalog and search app for Android TV by YouROK, where you can find torrents and send them to a torrent client such as TorrServe.
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and NUM 1.0.150 (`ru.yourok.num`).
 

@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds **Open in Nuvio** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in [Nuvio TV](https://github.com/NuvioMedia/NuvioTV), with streams from your Nuvio addons.
+A Dune HD plugin that adds **Nuvio** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in [Nuvio TV](https://github.com/NuvioMedia/NuvioTV), with streams from your Nuvio addons.
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and Nuvio TV 1.0.0 (`com.nuvio.tv`).
 

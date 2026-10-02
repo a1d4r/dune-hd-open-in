@@ -8,9 +8,9 @@ Dune HD plugins that add items to the **Play...** menu of a movie or series card
 
 | Plugin | Menu item | Opens the title by | Details |
 |---|---|---|---|
-| `nuvio_supplier` | Open in Nuvio | IMDb ID, else TMDB ID | [README](plugin/nuvio_supplier/README.en.md) |
-| `stremio_supplier` | Open in Stremio | IMDb ID, else TMDB ID | [README](plugin/stremio_supplier/README.en.md) |
-| `num_supplier` | Open in NUM | TMDB ID | [README](plugin/num_supplier/README.en.md) |
+| `nuvio_supplier` | Nuvio | IMDb ID, else TMDB ID | [README](plugin/nuvio_supplier/README.en.md) |
+| `stremio_supplier` | Stremio | IMDb ID, else TMDB ID | [README](plugin/stremio_supplier/README.en.md) |
+| `num_supplier` | NUM | TMDB ID | [README](plugin/num_supplier/README.en.md) |
 
 Each plugin is independent: install only the ones you need. The app itself must be installed and set up (addons, accounts) separately.
 

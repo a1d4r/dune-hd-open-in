@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.2.1
+- The menu item is now called just "Nuvio", like Kinopoisk and other apps in the "Play..." menu. The plugin keeps its name "Open in Nuvio".
+
 ## 0.2.0
 - The menu item shows the Nuvio icon (taken from the icon cache Dune builds for installed apps).
 
@@ -16,6 +19,9 @@
 ---
 
 **Russian version**
+
+## 0.2.1
+- Пункт меню теперь называется просто «Nuvio», как «Kinopoisk» и другие приложения в меню «Смотреть…». Название плагина осталось «Открыть в Nuvio».
 
 ## 0.2.0
 - У пункта меню иконка Nuvio (из кэша иконок, который Дюна строит для установленных приложений).

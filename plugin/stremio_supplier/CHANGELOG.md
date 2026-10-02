@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.1.1
+- The menu item is now called just "Stremio", like Kinopoisk and other apps in the "Play..." menu. The plugin keeps its name "Open in Stremio".
+
 ## 0.1.0
 - First version: "Open in Stremio" item with the Stremio icon in the "Play..." menu of the Movies catalog card.
 - Opens the title by IMDb ID; without IMDb, by TMDB ID (needs a Stremio addon that understands TMDB IDs).
@@ -10,6 +13,9 @@
 ---
 
 **Russian version**
+
+## 0.1.1
+- Пункт меню теперь называется просто «Stremio», как «Kinopoisk» и другие приложения в меню «Смотреть…». Название плагина осталось «Открыть в Stremio».
 
 ## 0.1.0
 - Первая версия: пункт «Открыть в Stremio» с иконкой Stremio в меню «Смотреть…» карточки каталога «Фильмы».

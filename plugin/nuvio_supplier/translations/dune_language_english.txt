@@ -1,5 +1,5 @@
 plugin_caption = Open in Nuvio
-supplier_caption = Open in Nuvio
+supplier_caption = Nuvio
 err_not_installed = Nuvio is not installed
 err_no_id = This title has no IMDb or TMDB ID, Nuvio cannot open it
 err_unsupported = Open in Nuvio: unsupported request

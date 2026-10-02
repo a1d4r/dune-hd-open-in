@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds **Open in Stremio** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in [Stremio](https://www.stremio.com/), with streams from your Stremio addons.
+A Dune HD plugin that adds **Stremio** to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Selecting it opens the same title in [Stremio](https://www.stremio.com/), with streams from your Stremio addons.
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and Stremio for Android TV 1.11.2 (`com.stremio.one`, Google Play).
 

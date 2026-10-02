@@ -8,9 +8,9 @@
 
 | Плагин | Пункт меню | По какому ID открывает | Подробнее |
 |---|---|---|---|
-| `nuvio_supplier` | Открыть в Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |
-| `stremio_supplier` | Открыть в Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
-| `num_supplier` | Открыть в NUM | TMDB | [README](plugin/num_supplier/README.md) |
+| `nuvio_supplier` | Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |
+| `stremio_supplier` | Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
+| `num_supplier` | NUM | TMDB | [README](plugin/num_supplier/README.md) |
 
 Плагины независимы: ставьте только нужные. Само приложение нужно установить и настроить (аддоны, аккаунты) отдельно.
 
