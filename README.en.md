@@ -1,4 +1,4 @@
-# Open in Nuvio / Stremio / NUM for Dune HD
+# Open in Nuvio / Stremio / NUM / VoKino for Dune HD
 
 [Русский](README.md) | **English**
 
@@ -11,6 +11,7 @@ Dune HD plugins that add items to the **Play...** menu of a movie or series card
 | `nuvio_supplier` | Nuvio | IMDb ID, else TMDB ID | [README](plugin/nuvio_supplier/README.en.md) |
 | `stremio_supplier` | Stremio | IMDb ID, else TMDB ID | [README](plugin/stremio_supplier/README.en.md) |
 | `num_supplier` | NUM | TMDB ID | [README](plugin/num_supplier/README.en.md) |
+| `vokino_supplier` | VoKino | IMDb ID, else search by title | [README](plugin/vokino_supplier/README.en.md) |
 
 Each plugin is independent: install only the ones you need. The app itself must be installed and set up (addons, accounts) separately.
 

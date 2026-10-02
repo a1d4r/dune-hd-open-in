@@ -1,4 +1,4 @@
-# «Открыть в Nuvio / Stremio / NUM» для Dune HD
+# «Открыть в Nuvio / Stremio / NUM / VoKino» для Dune HD
 
 **Русский** | [English](README.en.md)
 
@@ -11,6 +11,7 @@
 | `nuvio_supplier` | Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |
 | `stremio_supplier` | Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
 | `num_supplier` | NUM | TMDB | [README](plugin/num_supplier/README.md) |
+| `vokino_supplier` | VoKino | IMDb, если нет — поиск по названию | [README](plugin/vokino_supplier/README.md) |
 
 Плагины независимы: ставьте только нужные. Само приложение нужно установить и настроить (аддоны, аккаунты) отдельно.
 

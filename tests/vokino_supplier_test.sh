@@ -1,0 +1,245 @@
+#!/bin/sh
+# Tests for plugin/vokino_supplier. Run: dash tests/vokino_supplier_test.sh
+# TEST_SH selects the shell used to run plugin scripts (default: dash).
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+src="$root/plugin/vokino_supplier"
+fx="$root/tests/fixtures"
+sh_bin=${TEST_SH:-dash}
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+# Plugin copy at a device-like path; FS_PREFIX and VOKINO_TMP point into $work.
+FS_PREFIX="$work/fs"
+VOKINO_TMP="$work/tmp"
+export FS_PREFIX VOKINO_TMP
+plugin="$FS_PREFIX/flashdata/plugins/vokino_supplier"
+mkdir -p "$FS_PREFIX/flashdata/plugins" "$VOKINO_TMP/applications" "$VOKINO_TMP/movie_suppliers"
+cp -R "$src" "$plugin"
+bin="$plugin/bin"
+reg="$FS_PREFIX/flashdata/plugins_data/vokino_supplier/movie_suppliers"
+apps="$VOKINO_TMP/applications/app_data.json"
+
+failed=0
+check() {
+    desc=$1
+    shift
+    if "$@" >/dev/null 2>&1; then
+        echo "PASS: $desc"
+    else
+        echo "FAIL: $desc"
+        failed=1
+    fi
+}
+
+o="$work/out"
+
+# run <script> [args...]: stdin passes through; stdout/stderr/rc into $o*.
+run() {
+    script=$1
+    shift
+    "$sh_bin" "$bin/$script" "$@" >"$o" 2>"$o.err"
+    echo "$?" >"$o.rc"
+}
+
+rc_is() { [ "$(cat "$o.rc")" = "$1" ]; }
+no_file() { [ ! -e "$1" ]; }
+dir_empty() { [ -z "$(ls -A "$1")" ]; }
+
+# one_json: stdout is exactly one line holding one JSON object.
+one_json() {
+    [ "$(wc -l <"$o" | tr -d ' ')" = 1 ] &&
+        python3 -c 'import json,sys; assert isinstance(json.load(open(sys.argv[1])), dict)' "$o"
+}
+
+# launch_is <uri>: launch reply for this URI, nothing else.
+launch_is() {
+    python3 - "$o" "$1" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+want = {
+    "bin": "am start --activity-clear-task -a android.intent.action.VIEW -d '%s' -p ru.vokino.web" % sys.argv[2],
+    "package": "ru.vokino.web",
+    "title": "VoKino",
+    "wait_app_start_delay": 10,
+}
+sys.exit(d != want)
+EOF
+}
+
+# error_is <key>: error dialog with this plugin's translation key.
+error_is() {
+    python3 - "$o" "$1" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+want = {"error": {"message": "%%ext%%<key_global>vokino_supplier_plugin_%s</key_global>" % sys.argv[2]}}
+sys.exit(d != want)
+EOF
+}
+
+# supplier <stdin file> <check> <arg>: run supplier, check exit 0, one JSON, reply.
+supplier() {
+    run supplier.sh start_playback_app <"$1"
+    check "$2 $3 ($(basename "$1")): exit 0" rc_is 0
+    check "$2 $3 ($(basename "$1")): one line of JSON" one_json
+    check "$2 $3 ($(basename "$1")): reply" "$2" "$3"
+}
+
+# search_is <title>: launch reply that searches VoKino for this title.
+search_is() {
+    launch_is "vokino://ru.vokino.web/search?name=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1")"
+}
+
+# --- supplier.sh: real inputs and inputs derived from them
+cp "$fx/app_data.json" "$apps"
+v=vokino://ru.vokino.web/view
+supplier "$fx/movie.json" launch_is "$v/tt9218128"
+supplier "$fx/series.json" launch_is "$v/tt11198330"
+check "supplier writes uri to stderr" grep -q "uri: $v/tt11198330" "$o.err"
+# No IMDb: search by the Russian title.
+supplier "$fx/movie_tmdb_only.json" search_is 'Гладиатор 2'
+supplier "$fx/series_tmdbtv_only.json" search_is 'Дом Дракона'
+supplier "$fx/series_movie_tmdb_only.json" search_is 'Дом Дракона'
+supplier "$fx/movie_no_ids.json" search_is 'Гладиатор 2'
+supplier "$fx/series_no_ids.json" search_is 'Мастера меча онлайн: Алисизация '
+check "supplier writes search uri to stderr" grep -q 'uri: vokino://ru.vokino.web/search?name=%D0%9C' "$o.err"
+
+# --- VoKino not installed (Nuvio, Stremio and NUM are)
+cp "$fx/app_data_no_vokino.json" "$apps"
+supplier "$fx/movie.json" error_is err_not_installed
+rm -f "$apps"
+supplier "$fx/movie.json" error_is err_not_installed
+cp "$fx/app_data.json" "$apps"
+
+# --- garbage and hostile inputs
+hostile() {
+    printf '%s\n' "$1" >"$work/in.json"
+    supplier "$work/in.json" "$2" "$3"
+}
+: >"$work/empty"
+supplier "$work/empty" error_is err_no_id
+head -c 20000 /dev/urandom >"$work/random"
+supplier "$work/random" error_is err_no_id
+hostile 'not json at all' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"imdb:tt123'"'"';reboot;'"'"'","type":"single"}}' error_is err_no_id
+# shellcheck disable=SC2016 # literal $(...) on purpose
+hostile '{"movieInfo":{"movieExtId":"imdb:tt123 x,imdb:tt1$(reboot)","type":"single"}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"ximdb:tt123,imdb:tt12345678901,imdb:123","type":"single"}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"imdb:tt1,imdb:tt2","type":"single"}}' launch_is "$v/tt1"
+hostile '{"movieInfo":{"movieExtId":"dunemdb:x,kinopoisk:1,tmdb:278,imdb:tt0111161","type":"single"}}' launch_is "$v/tt0111161"
+# Type does not matter: VoKino opens movies and series by the same path.
+hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot"}}' launch_is "$v/tt1"
+hostile '{"movieInfo":{"movieExtId":"imdb:tt1","title":{"ru":"x"}}}' launch_is "$v/tt1"
+# Title text that looks like keys must not win over the real fields.
+hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"movieExtId\":\"imdb:tt2\"","ru":"\"title\":{\"ru\":\"evil\"}"}}}' search_is '"title":{"ru":"evil"}'
+hostile '{"movieInfo":{"movieExtId":"","title":{"en":"a}b \"ru\":\"evil\"","ru":"good"}}}' search_is good
+
+# --- titles: JSON escapes, raw UTF-8, percent-encoding, fallback to English
+hostile '{"movieInfo":{"title":{"ru":"Дом Дракона"}}}' search_is 'Дом Дракона'
+hostile '{"movieInfo":{"title":{"ru":"\u041F\u043f"}}}' search_is 'Пп'
+hostile '{"movieInfo":{"title":{"ru":"Ocean\u0027s 11 & co \"x\" \\ \/\n\u00e9\u20AC?#%+=;"}}}' search_is "Ocean's 11 & co \"x\" \\ / é€?#%+=;"
+# shellcheck disable=SC2016 # literal $(...) on purpose
+hostile '{"movieInfo":{"title":{"ru":"$(reboot) `id` '"'"'q'"'"'"}}}' search_is '$(reboot) `id` '"'"'q'"'"
+hostile '{"movieInfo":{"title":{"ru":"","en":"Gladiator II"}}}' search_is 'Gladiator II'
+hostile '{"movieInfo":{"title":{"en":"Gladiator II"}}}' search_is 'Gladiator II'
+hostile '{"movieInfo":{"title":{"ru":"~a-b_c.d"}}}' launch_is 'vokino://ru.vokino.web/search?name=~a-b_c.d'
+hostile '{"movieInfo":{"title":{"ru":"a😀b"}}}' search_is 'a😀b'
+# Escaped emoji (surrogate pairs) are dropped; broken escapes do not stop the rest.
+hostile '{"movieInfo":{"title":{"ru":"a\ud83d\ude00b"}}}' search_is ab
+hostile '{"movieInfo":{"title":{"ru":"a\u04Zz\q"}}}' search_is aZz
+hostile '{"movieInfo":{"title":{"ru":"\ud83d\ude00"}}}' error_is err_no_id
+hostile '{"movieInfo":{"title":{"ru":"\ud83d\ude00","en":"Fallback"}}}' search_is Fallback
+hostile '{"movieInfo":{"title":{"ru":"unterminated\"}}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"ru":"","en":""}}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":"Gladiator"}}' error_is err_no_id
+long=$(python3 -c 'print("\\u0416" * 300)')
+hostile '{"movieInfo":{"title":{"ru":"'"$long"'"}}}' search_is "$(python3 -c 'print("Ж" * 100)')"
+
+# --- unexpected command line
+for args in '' get_stream_url; do
+    # shellcheck disable=SC2086 # split on purpose
+    run supplier.sh $args <"$fx/movie.json"
+    check "supplier args '$args': exit 0" rc_is 0
+    check "supplier args '$args': err_unsupported" error_is err_unsupported
+done
+
+# --- movie_suppliers_update.sh
+run movie_suppliers_update.sh vokino vokino
+check "update: exit 0" rc_is 0
+check "update: only the supplier file, no temp left" test "$(ls -A "$reg")" = vokino
+check "update: supplier JSON" python3 - "$reg/vokino" "$bin" "$FS_PREFIX" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+want = {
+    "plugin": "vokino_supplier",
+    "caption": "%tr%supplier_caption",
+    "langs": "any",
+    "supported_video_types": "video",
+    "bin": "sh %s/supplier.sh" % sys.argv[2],
+    "playback_type": "app",
+    "icon_url": "file://%s/tmp/applications/icon_cache/icon_ru.vokino.web.png" % sys.argv[3],
+}
+sys.exit(d != want)
+EOF
+
+# The shell runs "<bin> start_playback_app" via /bin/sh -c from cwd /.
+cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$reg/vokino")
+(cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/series.json" >"$o" 2>"$o.err")
+check "registered bin opens series" launch_is vokino://ru.vokino.web/view/tt11198330
+
+rm -rf "$reg"
+run movie_suppliers_update.sh other other '../evil' x
+check "update ignores args, writes only own id" test "$(ls -A "$reg")" = vokino
+
+mkdir -p "$work/cwd"
+for fp in "" relative '/data/x"y' '/data/x y'; do
+    (cd "$work/cwd" && FS_PREFIX="$fp" "$sh_bin" "$bin/movie_suppliers_update.sh" vokino vokino >"$o" 2>&1)
+    check "update FS_PREFIX='$fp': nothing written" dir_empty "$work/cwd"
+done
+
+unsafe="$work/bad dir"
+mkdir -p "$unsafe"
+cp -R "$src" "$unsafe/vokino_supplier"
+rm -rf "$reg"
+"$sh_bin" "$unsafe/vokino_supplier/bin/movie_suppliers_update.sh" vokino vokino >"$o" 2>&1
+check "update from unsafe path: nothing written" no_file "$reg/vokino"
+
+# --- uninstall.sh
+: >"$VOKINO_TMP/movie_suppliers/vokino"
+: >"$VOKINO_TMP/movie_suppliers/YouTube"
+run uninstall.sh
+check "uninstall: exit 0" rc_is 0
+check "uninstall: supplier removed" no_file "$VOKINO_TMP/movie_suppliers/vokino"
+check "uninstall: other suppliers kept" test -e "$VOKINO_TMP/movie_suppliers/YouTube"
+run uninstall.sh
+check "uninstall twice: exit 0" rc_is 0
+
+# --- manifest and translations
+check "manifest: supplier id and uninstall action" python3 - "$src/dune_plugin.xml" <<'EOF'
+import re, sys, xml.etree.ElementTree as ET
+r = ET.parse(sys.argv[1]).getroot()
+ok = (r.findtext("name") == "vokino_supplier"
+      and r.findtext("type") == "plain"
+      and r.findtext("params/movie_suppliers") == "vokino"
+      and r.findtext("global_actions/uninstall/data/run_string") == "bin/uninstall.sh"
+      and re.fullmatch(r"\d+\.\d+\.\d+", r.findtext("version") or "")
+      and re.fullmatch(r"\d+", r.findtext("version_index") or ""))
+sys.exit(not ok)
+EOF
+version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$src/dune_plugin.xml")
+check "CHANGELOG has the manifest version" grep -q "^## $version" "$src/CHANGELOG.md"
+
+keys=$(grep -ho 'err_[a-z_]*' "$src/bin/supplier.sh" | sort -u)
+for lang in english russian; do
+    tr_file="$src/translations/dune_language_$lang.txt"
+    for key in plugin_caption supplier_caption $keys; do
+        check "translation $lang: $key" grep -q "^$key = ." "$tr_file"
+    done
+done
+
+if [ "$failed" -ne 0 ]; then
+    echo "SOME TESTS FAILED"
+    exit 1
+fi
+echo "ALL PASSED"

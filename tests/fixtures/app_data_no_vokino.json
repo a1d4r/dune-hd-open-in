@@ -47,18 +47,6 @@
       "first_install_timestamp": 1762528590,
       "last_modified_time": "2026-04-16T16:49:18.000+0300",
       "last_modified_timestamp": 1776347358
-    },
-    {
-      "caption": "VoKino",
-      "package_name": "ru.vokino.web",
-      "version": "1.1.1-android",
-      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_ru.vokino.web.png",
-      "activity": "ru.vokino.web.ui.MainActivity",
-      "source_dir": "\/data\/app\/~~hPXPC5vyBnnIxCxp5sbrrg==\/ru.vokino.web-_q03SFhlaEa_YjmjlXhcaQ==\/base.apk",
-      "first_install_time": "2026-07-25T23:39:41.511+0300",
-      "first_install_timestamp": 1785011981,
-      "last_modified_time": "2026-07-25T23:39:38.000+0300",
-      "last_modified_timestamp": 1785011978
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"
