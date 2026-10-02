@@ -17,6 +17,7 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and VoKino 1.1.1 (`ru.vo
 - Rarely VoKino has a title but does not know its IMDb ID (for example, House of the Dragon): VoKino then shows "Failed to load data". Find the title with VoKino's own search.
 - Series open on the series page: Dune does not pass a season or episode.
 - Each launch replaces what was open in VoKino, so screens from earlier launches do not pile up.
+- To return to the Dune card, press Back: VoKino opens its own menu. Then go down to "Exit the app" ("Выйти из приложения") and press ENTER. This is how VoKino itself works.
 - If VoKino is not installed, Dune shows a message.
 - The plugin makes no network requests and runs nothing in the background.
 
