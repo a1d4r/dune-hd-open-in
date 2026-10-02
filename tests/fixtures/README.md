@@ -11,10 +11,11 @@
 | `series_tmdbtv_only.json` | `series.json` без `imdb:` |
 | `movie_no_ids.json` | `movie.json` только с `dunemdb:` |
 | `series_movie_tmdb_only.json` | `series.json` без `imdb:`, `tmdbtv:` → `tmdb:` |
-| `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM и VoKino (запись NUM — 02.10.2026, VoKino — 03.10.2026) |
+| `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM, VoKino и Lampa (запись NUM — 02.10.2026, VoKino и Lampa — 03.10.2026) |
 | `app_data_no_nuvio.json` | только «Настройки» |
 | `app_data_no_stremio.json` | «Настройки» и Nuvio |
 | `app_data_no_num.json` | «Настройки», Nuvio и Stremio |
 | `app_data_no_vokino.json` | «Настройки», Nuvio, Stremio и NUM |
+| `app_data_no_lampa.json` | «Настройки», Nuvio, Stremio, NUM и VoKino |
 
 Пустой stdin, мусор и враждебные входы генерирует сам тест.
