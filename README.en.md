@@ -1,8 +1,8 @@
-# Open in NUM / Lampa / Prisma / VoKino / Stremio / Nuvio for Dune HD
+# Open in NUM / Lampa / Prisma / VoKino / LazyMedia / Stremio / Nuvio for Dune HD
 
 [Русский](README.md) | **English**
 
-Dune HD plugins that add items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title in an Android TV app.
+Dune HD plugins that add items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app.
 
 ![Play... menu with the plugin items](screenshots/play-menu.png)
 
@@ -12,6 +12,7 @@ Dune HD plugins that add items to the **Play...** menu of a movie or series card
 | `lampa_supplier` | Lampa | TMDB ID | [README](plugin/lampa_supplier/README.en.md) |
 | `prisma_supplier` | Prisma | TMDB ID | [README](plugin/prisma_supplier/README.en.md) |
 | `vokino_supplier` | VoKino | IMDb ID, else search by title | [README](plugin/vokino_supplier/README.en.md) |
+| `lazymedia_supplier` | LazyMedia | no ID, search by title only | [README](plugin/lazymedia_supplier/README.en.md) |
 | `stremio_supplier` | Stremio | IMDb ID, else TMDB ID | [README](plugin/stremio_supplier/README.en.md) |
 | `nuvio_supplier` | Nuvio | IMDb ID, else TMDB ID | [README](plugin/nuvio_supplier/README.en.md) |
 

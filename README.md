@@ -1,8 +1,8 @@
-# «Открыть в NUM / Lampa / Prisma / VoKino / Stremio / Nuvio» для Dune HD
+# «Открыть в NUM / Lampa / Prisma / VoKino / LazyMedia / Stremio / Nuvio» для Dune HD
 
 **Русский** | [English](README.en.md)
 
-Плагины для Dune HD: добавляют пункты в меню **«Смотреть…»** карточки фильма или сериала в каталоге **«Фильмы»** Дюны. Каждый пункт открывает тот же фильм или сериал в приложении для Android TV.
+Плагины для Dune HD: добавляют пункты в меню **«Смотреть…»** карточки фильма или сериала в каталоге **«Фильмы»** Дюны. Каждый пункт открывает тот же фильм или сериал (или его поиск) в приложении для Android TV.
 
 ![Меню «Смотреть…» с пунктами плагинов](screenshots/play-menu.png)
 
@@ -12,6 +12,7 @@
 | `lampa_supplier` | Lampa | TMDB | [README](plugin/lampa_supplier/README.md) |
 | `prisma_supplier` | Prisma | TMDB | [README](plugin/prisma_supplier/README.md) |
 | `vokino_supplier` | VoKino | IMDb, если нет — поиск по названию | [README](plugin/vokino_supplier/README.md) |
+| `lazymedia_supplier` | LazyMedia | не открывает по ID, только поиск по названию | [README](plugin/lazymedia_supplier/README.md) |
 | `stremio_supplier` | Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
 | `nuvio_supplier` | Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |
 

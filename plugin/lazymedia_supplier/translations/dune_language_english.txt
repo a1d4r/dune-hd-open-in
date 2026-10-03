@@ -1,0 +1,5 @@
+plugin_caption = Open in LazyMedia
+supplier_caption = LazyMedia
+err_not_installed = LazyMedia Deluxe is not installed
+err_no_title = This title has no name, LazyMedia cannot search for it
+err_unsupported = Open in LazyMedia: unsupported request

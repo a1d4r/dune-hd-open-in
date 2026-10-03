@@ -83,18 +83,6 @@
       "first_install_timestamp": 1791016720,
       "last_modified_time": "2026-10-03T11:38:38.000+0300",
       "last_modified_timestamp": 1791016718
-    },
-    {
-      "caption": "LazyMedia Deluxe",
-      "package_name": "com.lazycatsoftware.lmd",
-      "version": "3.467",
-      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_com.lazycatsoftware.lmd.png",
-      "activity": "com.lazycatsoftware.lazymediadeluxe.ActivityStart",
-      "source_dir": "\/data\/app\/~~8pxp_mQN01EQUbO64YxSiw==\/com.lazycatsoftware.lmd-d1S8wqbmWzJ-Dcw7vGQOjA==\/base.apk",
-      "first_install_time": "2026-10-03T11:55:10.042+0300",
-      "first_install_timestamp": 1791017710,
-      "last_modified_time": "2026-10-03T11:55:06.000+0300",
-      "last_modified_timestamp": 1791017706
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"
