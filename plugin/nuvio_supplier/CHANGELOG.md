@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.2.4
+- App icon now shows on Dune HD Media Center installed as an app on Android TV (e.g. Homatics).
+
 ## 0.2.3
 - Fixed "Nuvio is not installed" on Dune HD Media Center installed as an app on Android TV devices (e.g. Homatics).
 
@@ -25,6 +28,9 @@
 ---
 
 **Russian version**
+
+## 0.2.4
+- Иконка приложения теперь показывается в Dune HD Media Center, установленном приложением на Android TV (например, Homatics).
 
 ## 0.2.3
 - Исправлено «Nuvio не установлен» на Dune HD Media Center, установленном приложением на Android TV (например, Homatics).

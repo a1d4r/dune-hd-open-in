@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.1.3
+- App icon now shows on Dune HD Media Center installed as an app on Android TV (e.g. Homatics).
+
 ## 0.1.2
 - Fixed "LazyMedia Deluxe is not installed" on Dune HD Media Center installed as an app on Android TV devices (e.g. Homatics).
 
@@ -16,6 +19,9 @@
 ---
 
 **Russian version**
+
+## 0.1.3
+- Иконка приложения теперь показывается в Dune HD Media Center, установленном приложением на Android TV (например, Homatics).
 
 ## 0.1.2
 - Исправлено «LazyMedia Deluxe не установлен» на Dune HD Media Center, установленном приложением на Android TV (например, Homatics).

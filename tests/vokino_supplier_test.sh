@@ -176,7 +176,8 @@ done
 run movie_suppliers_update.sh vokino vokino
 check "update: exit 0" rc_is 0
 check "update: only the supplier file, no temp left" test "$(ls -A "$reg")" = vokino
-check "update: supplier JSON" python3 - "$reg/vokino" "$bin" "$FS_PREFIX" <<'EOF'
+# The icon is the "icon" field of the fixture app_data.json.
+check "update: supplier JSON" python3 - "$reg/vokino" "$bin" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 want = {
@@ -186,7 +187,7 @@ want = {
     "supported_video_types": "video",
     "bin": "sh %s/supplier.sh" % sys.argv[2],
     "playback_type": "app",
-    "icon_url": "file://%s/tmp/applications/icon_cache/icon_ru.vokino.web.png" % sys.argv[3],
+    "icon_url": "file:///data/data/com.dunehd.app/tmp/applications/icon_cache/icon_ru.vokino.web.png",
 }
 sys.exit(d != want)
 EOF
@@ -200,6 +201,49 @@ rm -rf "$reg"
 run movie_suppliers_update.sh other other '../evil' x
 check "update ignores args, writes only own id" test "$(ls -A "$reg")" = vokino
 
+# --- update: icon_url is "file://" + VoKino's "icon" from app_data.json
+# icon_is <icon_url>: update writes a valid supplier JSON with this icon_url.
+icon_is() {
+    rm -rf "$reg"
+    run movie_suppliers_update.sh vokino vokino
+    rc_is 0 && python3 - "$reg/vokino" "$1" <<'EOF'
+import json, sys
+sys.exit(json.load(open(sys.argv[1]))["icon_url"] != sys.argv[2])
+EOF
+}
+# apps_icon <icon> [flat]: app_data.json with VoKino's "icon" set, "/" escaped as
+# on the device; "flat": one line, "icon" before "package_name".
+apps_icon() {
+    python3 - "$fx/app_data.json" "$apps" "$@" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+for a in d["applications"]:
+    if a["package_name"] == "ru.vokino.web":
+        a["icon"] = sys.argv[3]
+if sys.argv[4:] == ["flat"]:
+    d["applications"] = [{"icon": a.pop("icon"), **a} for a in d["applications"]]
+    out = json.dumps(d, ensure_ascii=False)
+else:
+    out = json.dumps(d, indent=2, ensure_ascii=False).replace("/", "\\/")
+open(sys.argv[2], "w").write(out)
+EOF
+}
+old="file://$FS_PREFIX/tmp/applications/icon_cache/icon_ru.vokino.web.png"
+# Dune HD Media Center installed as an app on Android TV keeps icons in flashdata.
+atv=/data/data/com.dunehd.app/flashdata/applications/icon_cache/icon_ru.vokino.web.png
+apps_icon "$atv"
+check "update: icon from app_data.json (Android TV)" icon_is "file://$atv"
+apps_icon "$atv" flat
+check "update: icon from app_data.json, other field order, one line" icon_is "file://$atv"
+cp "$fx/app_data_no_vokino.json" "$apps"
+check "update: VoKino not in app_data.json, icon_cache path" icon_is "$old"
+for bad in '/data/x"y.png' '/data/x y.png' 'data/x.png' ''; do
+    apps_icon "$bad"
+    check "update: unsafe icon '$bad', icon_cache path" icon_is "$old"
+done
+rm -f "$apps"
+check "update: no app_data.json, icon_cache path" icon_is "$old"
+
 mkdir -p "$work/cwd"
 for fp in relative '/data/x"y' '/data/x y'; do
     (cd "$work/cwd" && FS_PREFIX="$fp" "$sh_bin" "$bin/movie_suppliers_update.sh" vokino vokino >"$o" 2>&1)
@@ -207,7 +251,8 @@ for fp in relative '/data/x"y' '/data/x y'; do
 done
 
 # Older Android models leave FS_PREFIX unset: paths start at the root.
-# VOKINO_FLASHDATA keeps the write inside $work instead of /flashdata.
+# VOKINO_FLASHDATA keeps the write inside $work instead of /flashdata. No
+# app_data.json: the fallback icon path starts at the root too.
 for fp in unset empty; do
     rm -rf "$reg"
     (
