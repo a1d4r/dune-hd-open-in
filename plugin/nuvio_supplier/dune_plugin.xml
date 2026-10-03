@@ -13,6 +13,6 @@
       </data>
     </uninstall>
   </global_actions>
-  <version>0.2.2</version>
-  <version_index>5</version_index>
+  <version>0.2.3</version>
+  <version_index>6</version_index>
 </dune_plugin>

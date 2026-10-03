@@ -3,11 +3,11 @@
 # Replies with a launch command that the shell runs itself (it needs "package"
 # to be a known app), or with an error shown as a dialog.
 # stdout: exactly one JSON object. Diagnostics go to stderr, which the shell
-# appends to /tmp/run/prisma__supplier.log.
+# appends to $FS_PREFIX/tmp/run/prisma__supplier.log.
 
 name=prisma_supplier
 pkg=top.rootu.prisma
-tmp=${PRISMA_TMP:-/tmp}
+tmp=${PRISMA_TMP:-$FS_PREFIX/tmp}
 
 log() {
     printf '%s %s\n' "$(date '+%F %T')" "$*" >&2

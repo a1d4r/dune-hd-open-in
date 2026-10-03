@@ -3,11 +3,11 @@
 # Replies with a launch command that the shell runs itself (it needs "package"
 # to be a known app), or with an error shown as a dialog.
 # stdout: exactly one JSON object. Diagnostics go to stderr, which the shell
-# appends to /tmp/run/lazymedia__supplier.log.
+# appends to $FS_PREFIX/tmp/run/lazymedia__supplier.log.
 
 name=lazymedia_supplier
 pkg=com.lazycatsoftware.lmd
-tmp=${LAZYMEDIA_TMP:-/tmp}
+tmp=${LAZYMEDIA_TMP:-$FS_PREFIX/tmp}
 
 log() {
     printf '%s %s\n' "$(date '+%F %T')" "$*" >&2

@@ -3,11 +3,11 @@
 # Replies with a launch command that the shell runs itself (it needs "package"
 # to be a known app), or with an error shown as a dialog.
 # stdout: exactly one JSON object. Diagnostics go to stderr, which the shell
-# appends to /tmp/run/stremio__supplier.log.
+# appends to $FS_PREFIX/tmp/run/stremio__supplier.log.
 
 name=stremio_supplier
 pkg=com.stremio.one
-tmp=${STREMIO_TMP:-/tmp}
+tmp=${STREMIO_TMP:-$FS_PREFIX/tmp}
 
 log() {
     printf '%s %s\n' "$(date '+%F %T')" "$*" >&2

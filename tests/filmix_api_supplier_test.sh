@@ -314,6 +314,11 @@ check "uninstall: supplier removed" no_file "$FILMIX_API_TMP/movie_suppliers/fil
 check "uninstall: other suppliers kept" test -e "$FILMIX_API_TMP/movie_suppliers/YouTube"
 run uninstall.sh
 check "uninstall twice: exit 0" rc_is 0
+# FILMIX_API_TMP unset: the supplier copy is under $FS_PREFIX/tmp (no /tmp root on Android TV).
+mkdir -p "$work/atv/tmp/movie_suppliers"
+: >"$work/atv/tmp/movie_suppliers/filmix_api"
+env -u FILMIX_API_TMP FS_PREFIX="$work/atv" "$sh_bin" "$bin/uninstall.sh" >"$o" 2>"$o.err"
+check "uninstall FILMIX_API_TMP unset: supplier removed from \$FS_PREFIX/tmp" no_file "$work/atv/tmp/movie_suppliers/filmix_api"
 
 # --- manifest and translations
 check "manifest: php program, supplier id and uninstall action" python3 - "$src/dune_plugin.xml" <<'EOF'

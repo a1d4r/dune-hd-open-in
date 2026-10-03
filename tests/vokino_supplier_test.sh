@@ -112,6 +112,14 @@ rm -f "$apps"
 supplier "$fx/movie.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
 
+# --- VOKINO_TMP unset: app_data.json is under $FS_PREFIX/tmp (no /tmp root on Android TV)
+mkdir -p "$work/atv/tmp/applications" "$work/atv_none/tmp"
+cp "$fx/app_data.json" "$work/atv/tmp/applications/app_data.json"
+env -u VOKINO_TMP FS_PREFIX="$work/atv" "$sh_bin" "$bin/supplier.sh" start_playback_app <"$fx/movie.json" >"$o" 2>"$o.err"
+check "VOKINO_TMP unset: app_data.json from \$FS_PREFIX/tmp" launch_is "$v/tt9218128"
+env -u VOKINO_TMP FS_PREFIX="$work/atv_none" "$sh_bin" "$bin/supplier.sh" start_playback_app <"$fx/movie.json" >"$o" 2>"$o.err"
+check "VOKINO_TMP unset, no \$FS_PREFIX/tmp/applications: err_not_installed" error_is err_not_installed
+
 # --- garbage and hostile inputs
 hostile() {
     printf '%s\n' "$1" >"$work/in.json"
@@ -235,6 +243,11 @@ check "uninstall: supplier removed" no_file "$VOKINO_TMP/movie_suppliers/vokino"
 check "uninstall: other suppliers kept" test -e "$VOKINO_TMP/movie_suppliers/YouTube"
 run uninstall.sh
 check "uninstall twice: exit 0" rc_is 0
+# VOKINO_TMP unset: the supplier copy is under $FS_PREFIX/tmp (no /tmp root on Android TV).
+mkdir -p "$work/atv/tmp/movie_suppliers"
+: >"$work/atv/tmp/movie_suppliers/vokino"
+env -u VOKINO_TMP FS_PREFIX="$work/atv" "$sh_bin" "$bin/uninstall.sh" >"$o" 2>"$o.err"
+check "uninstall VOKINO_TMP unset: supplier removed from \$FS_PREFIX/tmp" no_file "$work/atv/tmp/movie_suppliers/vokino"
 
 # --- manifest and translations
 check "manifest: supplier id and uninstall action" python3 - "$src/dune_plugin.xml" <<'EOF'

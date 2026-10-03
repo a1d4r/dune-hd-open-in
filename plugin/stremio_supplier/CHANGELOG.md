@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.1.3
+- Fixed "Stremio is not installed" on Dune HD Media Center installed as an app on Android TV devices (e.g. Homatics).
+
 ## 0.1.2
 - The menu item did not appear on older Android-based Dune models (Realtek RTD1619/RTD1395/RTD1295, Amlogic S905X3 and others, where FS_PREFIX is not set). Fixed: install the new version over the old one.
 
@@ -16,6 +19,9 @@
 ---
 
 **Russian version**
+
+## 0.1.3
+- Исправлено «Stremio не установлен» на Dune HD Media Center, установленном приложением на Android TV (например, Homatics).
 
 ## 0.1.2
 - Пункт меню не появлялся на старых Android-моделях Дюны (Realtek RTD1619/RTD1395/RTD1295, Amlogic S905X3 и др., где не задан FS_PREFIX). Исправлено: установите новую версию поверх старой.
