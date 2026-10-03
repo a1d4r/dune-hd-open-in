@@ -15,6 +15,7 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24, and Prisma 1.3.4 (`top.r
 - The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`). The plugin does not open a card without a TMDB ID: in Lampa, which Prisma is based on, opening by IMDb ID or by name is unreliable.
 - Series open on the series page: Dune does not pass a season or episode.
 - Each launch replaces what was open in Prisma, so screens from earlier launches do not pile up. Prisma reloads for about a second.
+- Back in Prisma starts working only after you press any arrow key once — this is how the app behaves, Lampa does the same. To return to the Dune card right away, long-press Back → "Quit the Application".
 - If Prisma is not installed or the title has no TMDB ID, Dune shows a message.
 - If Prisma does not know the TMDB ID (Dune has a wrong ID), Prisma shows an empty placeholder card (grey blocks) instead of a message.
 - Tested with the `http://prisma.ws` server that Prisma suggests on first start. Other server addresses have not been tested.
