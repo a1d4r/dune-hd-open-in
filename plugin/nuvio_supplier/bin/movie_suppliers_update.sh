@@ -9,10 +9,11 @@
 name=nuvio_supplier
 id=nuvio
 
-# FS_PREFIX goes into JSON (icon path).
+# FS_PREFIX goes into JSON (icon path). It is unset on older Android models,
+# where paths start at the root.
 case "$FS_PREFIX" in
-    /*[!A-Za-z0-9/._-]* | [!/]* | '')
-        echo "$name: FS_PREFIX is empty, relative or unsafe, nothing written"
+    /*[!A-Za-z0-9/._-]* | [!/]*)
+        echo "$name: FS_PREFIX is relative or unsafe, nothing written"
         exit 1
         ;;
 esac
@@ -26,7 +27,7 @@ case "$mydir" in
         ;;
 esac
 
-dir="$FS_PREFIX/flashdata/plugins_data/$name/movie_suppliers"
+dir="${NUVIO_FLASHDATA:-$FS_PREFIX/flashdata}/plugins_data/$name/movie_suppliers"
 tmp="$dir/.$id.tmp"
 
 if mkdir -p "$dir" &&

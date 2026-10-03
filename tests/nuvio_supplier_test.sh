@@ -164,9 +164,30 @@ run movie_suppliers_update.sh other other '../evil' x
 check "update ignores args, writes only own id" test "$(ls -A "$reg")" = nuvio
 
 mkdir -p "$work/cwd"
-for fp in "" relative '/data/x"y' '/data/x y'; do
+for fp in relative '/data/x"y' '/data/x y'; do
     (cd "$work/cwd" && FS_PREFIX="$fp" "$sh_bin" "$bin/movie_suppliers_update.sh" nuvio nuvio >"$o" 2>&1)
     check "update FS_PREFIX='$fp': nothing written" dir_empty "$work/cwd"
+done
+
+# Older Android models leave FS_PREFIX unset: paths start at the root.
+# NUVIO_FLASHDATA keeps the write inside $work instead of /flashdata.
+for fp in unset empty; do
+    rm -rf "$reg"
+    (
+        cd "$work/cwd" || exit 1
+        if [ "$fp" = unset ]; then unset FS_PREFIX; else FS_PREFIX=; fi
+        NUVIO_FLASHDATA="$work/fs/flashdata" "$sh_bin" "$bin/movie_suppliers_update.sh" nuvio nuvio >"$o" 2>"$o.err"
+        echo "$?" >"$o.rc"
+    )
+    check "update FS_PREFIX $fp: exit 0" rc_is 0
+    check "update FS_PREFIX $fp: only the supplier file" test "$(ls -A "$reg")" = nuvio
+    check "update FS_PREFIX $fp: supplier JSON, icon from /tmp" python3 - "$reg/nuvio" "$bin" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+sys.exit(not (d["plugin"] == "nuvio_supplier" and d["bin"] == "sh %s/supplier.sh" % sys.argv[2]
+              and d["icon_url"] == "file:///tmp/applications/icon_cache/icon_com.nuvio.tv.png"))
+EOF
+    check "update FS_PREFIX $fp: nothing in cwd" dir_empty "$work/cwd"
 done
 
 unsafe="$work/bad dir"
