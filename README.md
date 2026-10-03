@@ -1,4 +1,4 @@
-# «Открыть в NUM / Lampa / VoKino / Stremio / Nuvio» для Dune HD
+# «Открыть в NUM / Lampa / Prisma / VoKino / Stremio / Nuvio» для Dune HD
 
 **Русский** | [English](README.en.md)
 
@@ -10,6 +10,7 @@
 |---|---|---|---|
 | `num_supplier` | NUM | TMDB | [README](plugin/num_supplier/README.md) |
 | `lampa_supplier` | Lampa | TMDB | [README](plugin/lampa_supplier/README.md) |
+| `prisma_supplier` | Prisma | TMDB | [README](plugin/prisma_supplier/README.md) |
 | `vokino_supplier` | VoKino | IMDb, если нет — поиск по названию | [README](plugin/vokino_supplier/README.md) |
 | `stremio_supplier` | Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
 | `nuvio_supplier` | Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |

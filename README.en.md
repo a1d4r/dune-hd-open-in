@@ -1,4 +1,4 @@
-# Open in NUM / Lampa / VoKino / Stremio / Nuvio for Dune HD
+# Open in NUM / Lampa / Prisma / VoKino / Stremio / Nuvio for Dune HD
 
 [Русский](README.md) | **English**
 
@@ -10,6 +10,7 @@ Dune HD plugins that add items to the **Play...** menu of a movie or series card
 |---|---|---|---|
 | `num_supplier` | NUM | TMDB ID | [README](plugin/num_supplier/README.en.md) |
 | `lampa_supplier` | Lampa | TMDB ID | [README](plugin/lampa_supplier/README.en.md) |
+| `prisma_supplier` | Prisma | TMDB ID | [README](plugin/prisma_supplier/README.en.md) |
 | `vokino_supplier` | VoKino | IMDb ID, else search by title | [README](plugin/vokino_supplier/README.en.md) |
 | `stremio_supplier` | Stremio | IMDb ID, else TMDB ID | [README](plugin/stremio_supplier/README.en.md) |
 | `nuvio_supplier` | Nuvio | IMDb ID, else TMDB ID | [README](plugin/nuvio_supplier/README.en.md) |
