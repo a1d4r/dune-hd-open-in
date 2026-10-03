@@ -1,6 +1,6 @@
 # Фикстуры
 
-Общие для всех плагинов. Входы bin поставщика (`start_playback_app`, stdin) и список приложений оболочки.
+Общие для всех плагинов. Входы bin поставщика (`start_playback_app`, stdin) и список приложений оболочки; для `filmix_api_supplier` — `user_input` обработчика `play_action`.
 
 | Файл | Откуда |
 |---|---|
@@ -19,5 +19,7 @@
 | `app_data_no_lampa.json` | «Настройки», Nuvio, Stremio, NUM и VoKino |
 | `app_data_no_prisma.json` | «Настройки», Nuvio, Stremio, NUM, VoKino и Lampa |
 | `app_data_no_lazymedia.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa и Prisma |
+| `play_action_movie.json` | `user_input` обработчика `play_action` («Прошлой ночью в Сохо»): ключи и поля фильма — из лога пробника на устройстве 03.10.2026; значения полей, которые лог не писал, — `null` |
+| `play_action_series.json` | то же для сериала («Дом Дракона», нет `kp_id`/`tmdb_id`) |
 
 Пустой stdin, мусор и враждебные входы генерирует сам тест.

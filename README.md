@@ -1,8 +1,8 @@
-# «Открыть в NUM / Lampa / Prisma / VoKino / LazyMedia / Stremio / Nuvio» для Dune HD
+# «Открыть в NUM / Lampa / Prisma / VoKino / LazyMedia / Filmix / Stremio / Nuvio» для Dune HD
 
 **Русский** | [English](README.en.md)
 
-Плагины для Dune HD: добавляют пункты в меню **«Смотреть…»** карточки фильма или сериала в каталоге **«Фильмы»** Дюны. Каждый пункт открывает тот же фильм или сериал (или его поиск) в приложении для Android TV.
+Плагины для Dune HD: добавляют пункты в меню **«Смотреть…»** карточки фильма или сериала в каталоге **«Фильмы»** Дюны. Каждый пункт открывает тот же фильм или сериал (или его поиск) в приложении для Android TV, а пункт Filmix — в плагине Дюны Filmix_API.
 
 ![Меню «Смотреть…» с пунктами плагинов](screenshots/play-menu.png)
 
@@ -13,10 +13,11 @@
 | `prisma_supplier` | Prisma | TMDB | [README](plugin/prisma_supplier/README.md) |
 | `vokino_supplier` | VoKino | IMDb, если нет — поиск по названию | [README](plugin/vokino_supplier/README.md) |
 | `lazymedia_supplier` | LazyMedia | не открывает по ID, только поиск по названию | [README](plugin/lazymedia_supplier/README.md) |
+| `filmix_api_supplier` | Filmix | не открывает по ID, поиск по названию в плагине Дюны Filmix_API | [README](plugin/filmix_api_supplier/README.md) |
 | `stremio_supplier` | Stremio | IMDb, если нет — TMDB | [README](plugin/stremio_supplier/README.md) |
 | `nuvio_supplier` | Nuvio | IMDb, если нет — TMDB | [README](plugin/nuvio_supplier/README.md) |
 
-Плагины независимы: ставьте только нужные. Само приложение нужно установить и настроить (аддоны, аккаунты) отдельно.
+Плагины независимы: ставьте только нужные. Само приложение (для Filmix — плагин Filmix_API) нужно установить и настроить (аддоны, аккаунты) отдельно.
 
 Проверено только на Dune HD Pro 8K Plus, прошивка 260827_0003_r24. На других Android-моделях Дюны с прошивкой r24 может работать, но не проверялось.
 
@@ -31,7 +32,7 @@
 Плагины не ходят в сеть и ничего не запускают в фоне.
 
 ## Сборка из исходников
-`sh build.sh <имя>` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_<имя>_<версия>.zip`. Нужны `shellcheck`, `dash` и `zip`; `mksh`, если установлен, используется для второго прогона тестов. Zip в Releases собирает GitHub Actions тем же скриптом.
+`sh build.sh <имя>` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_<имя>_<версия>.zip`. Нужны `shellcheck`, `dash`, `zip` и `python3`, для `filmix_api_supplier` — ещё `php` (`PHP=…` — другой путь; на Дюне PHP 5.6); `mksh`, если установлен, используется для второго прогона тестов. Zip в Releases собирает GitHub Actions тем же скриптом.
 
 ## Обратная связь
 Сделано для своей Дюны и выложено как есть. Об ошибках пишите в [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); исправления — по возможности.
