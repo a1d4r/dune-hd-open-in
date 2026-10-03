@@ -222,6 +222,16 @@ done
 rm -f "$apps"
 check "update: no app_data.json, icon_cache path" icon_is "$old"
 
+# LAMPA_TMP unset: app_data.json under $FS_PREFIX/tmp (no /tmp root on Android TV).
+mkdir -p "$FS_PREFIX/tmp/applications"
+apps_icon "$atv"
+mv "$apps" "$FS_PREFIX/tmp/applications/app_data.json"
+rm -rf "$reg"
+env -u LAMPA_TMP "$sh_bin" "$bin/movie_suppliers_update.sh" lampa lampa >"$o" 2>"$o.err"
+check "update LAMPA_TMP unset: icon from \$FS_PREFIX/tmp app_data.json" python3 -c \
+    'import json, sys; sys.exit(json.load(open(sys.argv[1]))["icon_url"] != sys.argv[2])' "$reg/lampa" "file://$atv"
+rm -rf "$FS_PREFIX/tmp"
+
 mkdir -p "$work/cwd"
 for fp in relative '/data/x"y' '/data/x y'; do
     (cd "$work/cwd" && FS_PREFIX="$fp" "$sh_bin" "$bin/movie_suppliers_update.sh" lampa lampa >"$o" 2>&1)
