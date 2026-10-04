@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.2.0
+- FreeZona item: opens the movie or series in FreeZona (`free.zona`) by Kinopoisk ID.
+
 ## 0.1.1
 - The "Play in apps" screen moved from Applications to Settings → Applications.
 - Own icon for the plugin screen.
@@ -14,6 +17,9 @@
 ---
 
 **Russian version**
+
+## 0.2.0
+- Пункт FreeZona: открывает фильм или сериал в FreeZona (`free.zona`) по ID Кинопоиска.
 
 ## 0.1.1
 - Экран «Смотреть в приложениях» перенесён из «Приложений» в «Настройки» → «Приложения».
