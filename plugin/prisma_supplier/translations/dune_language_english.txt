@@ -1,5 +1,0 @@
-plugin_caption = Open in Prisma
-supplier_caption = Prisma
-err_not_installed = Prisma is not installed
-err_no_id = This title has no TMDB ID, Prisma cannot open it
-err_unsupported = Open in Prisma: unsupported request

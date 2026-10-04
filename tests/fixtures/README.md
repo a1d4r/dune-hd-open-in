@@ -1,6 +1,6 @@
 # Фикстуры
 
-Общие для всех плагинов. Входы bin поставщика (`start_playback_app`, stdin) и список приложений оболочки; для `filmix_api_supplier` — `user_input` обработчика `play_action`.
+Входы скриптов пунктов (`start_playback_app`, stdin) и список приложений оболочки; для пункта Filmix — `user_input` обработчика `play_action`.
 
 | Файл | Откуда |
 |---|---|

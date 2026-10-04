@@ -1,5 +1,0 @@
-plugin_caption = Открыть в LazyMedia
-supplier_caption = LazyMedia
-err_not_installed = LazyMedia Deluxe не установлен
-err_no_title = У этой карточки нет названия, LazyMedia не сможет её найти
-err_unsupported = Открыть в LazyMedia: неподдерживаемый запрос

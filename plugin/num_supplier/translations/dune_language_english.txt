@@ -1,5 +1,0 @@
-plugin_caption = Open in NUM
-supplier_caption = NUM
-err_not_installed = NUM is not installed
-err_no_id = This title has no TMDB ID, NUM cannot open it
-err_unsupported = Open in NUM: unsupported request

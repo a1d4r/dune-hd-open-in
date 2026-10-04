@@ -1,5 +1,0 @@
-plugin_caption = Открыть в Filmix
-supplier_caption = Filmix
-err_not_installed = Плагин Filmix_API не установлен
-err_no_title = У этой карточки нет названия, Filmix не сможет её найти
-err_unsupported = Открыть в Filmix: неподдерживаемый запрос

@@ -1,5 +1,0 @@
-plugin_caption = Открыть в Nuvio
-supplier_caption = Nuvio
-err_not_installed = Nuvio не установлен
-err_no_id = Для этой карточки нет IMDb или TMDB ID, Nuvio не сможет её открыть
-err_unsupported = Открыть в Nuvio: неподдерживаемый запрос

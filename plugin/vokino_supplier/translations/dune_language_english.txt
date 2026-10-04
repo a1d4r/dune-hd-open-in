@@ -1,5 +1,0 @@
-plugin_caption = Open in VoKino
-supplier_caption = VoKino
-err_not_installed = VoKino is not installed
-err_no_id = This title has neither an IMDb ID nor a name, VoKino cannot open it
-err_unsupported = Open in VoKino: unsupported request

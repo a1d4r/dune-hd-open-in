@@ -1,5 +1,0 @@
-plugin_caption = Открыть в NUM
-supplier_caption = NUM
-err_not_installed = NUM не установлен
-err_no_id = Для этой карточки нет TMDB ID, NUM не сможет её открыть
-err_unsupported = Открыть в NUM: неподдерживаемый запрос

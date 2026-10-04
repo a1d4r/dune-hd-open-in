@@ -1,5 +1,0 @@
-plugin_caption = Открыть в Stremio
-supplier_caption = Stremio
-err_not_installed = Stremio не установлен
-err_no_id = Для этой карточки нет IMDb или TMDB ID, Stremio не сможет её открыть
-err_unsupported = Открыть в Stremio: неподдерживаемый запрос
