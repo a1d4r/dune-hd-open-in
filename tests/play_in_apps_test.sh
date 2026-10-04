@@ -840,9 +840,9 @@ if [ "$php_ok" = 1 ]; then
     # --- the screen: get_folder_view
 
     # screen_is <installed ids> <hidden ids> <ids with an old plugin>: view_controls
-    # with a hint label, one warning label listing the apps whose separate
-    # "Open in <app>" plugin is there (if any), then a combobox per app in the
-    # manifest order. The screen does not scroll on r24: one warning line only.
+    # with a hint label, two warning labels if a separate "Open in <app>" plugin
+    # is there (the caption, then the app names), then a combobox per app in
+    # the manifest order. The screen does not scroll on r24: two lines at most.
     screen_is() {
         python3 - "$o" "$@" <<'EOF'
 import json, sys
@@ -852,9 +852,8 @@ names = [("num", "NUM"), ("lampa", "Lampa"), ("prisma", "Prisma"), ("vokino", "V
          ("lazymedia", "LazyMedia"), ("filmix_api", "Filmix"), ("stremio", "Stremio"), ("nuvio", "Nuvio")]
 defs = [{"name": "", "title": None, "kind": "label", "specific_def": {"caption": "%tr%screen_hint"}}]
 if old:
-    defs.append({"name": "", "title": None, "kind": "label", "specific_def": {
-        "caption": "%%ext%%<key_global>play_in_apps_plugin_old_plugins__1<p>%s</p></key_global>"
-                   % ", ".join(cap for i, cap in names if i in old)}})
+    for caption in ("%tr%old_plugins", ", ".join(cap for i, cap in names if i in old)):
+        defs.append({"name": "", "title": None, "kind": "label", "specific_def": {"caption": caption}})
 for i, cap in names:
     defs.append({
         "name": i, "title": cap, "kind": "combobox",
@@ -885,6 +884,8 @@ EOF
     check "screen: exit 0" rc_is 0
     check "screen: stderr has only own log lines" only_own_log
     check "screen: all installed and shown" screen_is "$all" "" ""
+    check "screen without old plugins: 9 controls, no warning" python3 -c \
+        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 9)' "$o"
     # shellcheck disable=SC2086 # one word per id
     check "screen opening runs sync" shown $all
 
@@ -909,10 +910,10 @@ EOF
         : >"$plugins/${i}_supplier/dune_plugin.xml"
     done
     folder_view
-    check "screen all 8 old plugins: one warning line, 8 comboboxes" \
+    check "screen all 8 old plugins: two warning lines, 8 comboboxes" \
         screen_is "" "nuvio prisma" "$all"
-    check "screen all 8 old plugins: 10 controls" python3 -c \
-        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 10)' "$o"
+    check "screen all 8 old plugins: 11 controls" python3 -c \
+        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 11)' "$o"
     for i in $all; do rm -rf "$plugins/${i}_supplier"; done
     cp "$fx/app_data.json" "$apps"
     : >"$plugins/Filmix_api/dune_plugin.xml"

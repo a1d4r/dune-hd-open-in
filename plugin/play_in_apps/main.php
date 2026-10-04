@@ -157,7 +157,7 @@ function pia_control_defs()
         GuiControlDef::specific_def => array(GuiLabelDef::caption => '%tr%screen_hint')));
 
     // A separate "Open in <app>" plugin registers the same id and the shell
-    // copies its file back on every boot, so hiding would not stick. One line
+    // copies its file back on every boot, so hiding would not stick. One warning
     // for all of them: the controls screen does not scroll on r24.
     $old = array();
     foreach (PlayInApps::$apps as $id => $app)
@@ -165,15 +165,18 @@ function pia_control_defs()
         if (is_file(pia_plugins_dir() . "/{$id}_supplier/dune_plugin.xml"))
             $old[] = $app[0];
     }
+    // Two lines: the "Open in …" caption, then the app names, so the real
+    // Filmix_API plugin is not taken for one to remove.
     if ($old)
     {
-        $defs[] = array(
-            GuiControlDef::name => '',
-            GuiControlDef::title => null,
-            GuiControlDef::kind => GUI_CONTROL_LABEL,
-            GuiControlDef::specific_def => array(GuiLabelDef::caption =>
-                '%ext%<key_global>play_in_apps_plugin_old_plugins__1<p>' .
-                implode(', ', $old) . '</p></key_global>'));
+        foreach (array('%tr%old_plugins', implode(', ', $old)) as $caption)
+        {
+            $defs[] = array(
+                GuiControlDef::name => '',
+                GuiControlDef::title => null,
+                GuiControlDef::kind => GUI_CONTROL_LABEL,
+                GuiControlDef::specific_def => array(GuiLabelDef::caption => $caption));
+        }
     }
 
     foreach (PlayInApps::$apps as $id => $app)
