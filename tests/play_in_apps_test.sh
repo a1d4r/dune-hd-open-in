@@ -1002,9 +1002,10 @@ fi
 
 # --- manifest and translations
 check "manifest: php, suppliers, entry point, global actions" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
-import re, sys, xml.etree.ElementTree as ET
+import os, re, sys, xml.etree.ElementTree as ET
 r = ET.parse(sys.argv[1]).getroot()
 e = r.find("entry_points/entry_point")
+icon = e.findtext("icon_url") or ""
 ok = (r.findtext("name") == "play_in_apps"
       and r.findtext("type") == "php"
       and r.findtext("params/program") == "main.php"
@@ -1013,6 +1014,8 @@ ok = (r.findtext("name") == "play_in_apps"
       and r.findtext("global_actions/early_gui_start/data/run_string") == "bin/sync.sh"
       and e.findtext("parent_media_url") == "setup://applications"
       and e.findtext("actions/key_enter/type") == "plugin_open_folder"
+      and icon.startswith("plugin_file://")
+      and os.path.isfile(os.path.join(os.path.dirname(sys.argv[1]), icon[len("plugin_file://"):]))
       and re.fullmatch(r"\d+\.\d+\.\d+", r.findtext("version") or "")
       and re.fullmatch(r"\d+", r.findtext("version_index") or ""))
 sys.exit(not ok)

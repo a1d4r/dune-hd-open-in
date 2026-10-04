@@ -40,5 +40,5 @@ rm -f "$out"
 # PHP plugins also ship their top-level *.php (names are plain words).
 php_files=$(cd "$src" && find . -maxdepth 1 -name '*.php' | sed 's:^\./::')
 # shellcheck disable=SC2086 # one word per file
-(cd "$src" && zip -q -X -r "$out" dune_plugin.xml bin translations LICENSE $php_files -x '*.DS_Store' '*/._*')
+(cd "$src" && zip -q -X -r "$out" dune_plugin.xml bin icons translations LICENSE $php_files -x '*.DS_Store' '*/._*')
 unzip -l "$out"
