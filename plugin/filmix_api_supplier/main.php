@@ -2,7 +2,7 @@
 // Handler of the supplier's play_action: the shell calls it when "Filmix" is
 // chosen in the "Play..." menu and passes the whole movie in user_input.movie_str.
 // Replies with a GUI action that opens Filmix_API's search results for the
-// title. Only the firmware PHP API is used (/firmware_ext/php/), PHP 5.6.
+// title. Only the firmware PHP API is used (/firmware_ext/php/), PHP 5.3.6.
 
 // Filmix_API's own media_url after its search dialog:
 // SmartVodListScreen::get_media_url_str('search', <text>).
@@ -37,10 +37,11 @@ function filmix_play($user_input, $plugins_dir)
             is_scalar($movie->$k))
             $title = trim(strval($movie->$k));
     }
-    // json_encode fails on invalid UTF-8 (PHP 5.6 decodes a lone \ud800 into it).
+    // json_decode turns a lone \ud800 into invalid UTF-8; json_encode then
+    // fails: false on PHP 5.5+, null in place of the string on PHP 5.3.
     $media_url = $title === '' ? false : json_encode(array(
         'screen_id' => 'vod_list', 'category_id' => 'search', 'genre_id' => $title));
-    if ($media_url === false)
+    if ($media_url === false || json_last_error() !== JSON_ERROR_NONE)
         return filmix_error_action('err_no_title');
 
     hd_print("filmix_api_supplier: search: $title");

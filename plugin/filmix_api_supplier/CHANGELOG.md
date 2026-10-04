@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.1.3
+- A title with a broken character (a lone UTF-16 surrogate) opened the Filmix_API search with an empty query on Dune HD (PHP 5.3). Now it shows the "no title" error, as on newer PHP.
+
 ## 0.1.2
 - On Dune HD Media Center installed as an app on Android TV devices (e.g. Homatics), the menu item stayed after uninstalling the plugin until reboot. Fixed.
 
@@ -16,6 +19,9 @@
 ---
 
 **Russian version**
+
+## 0.1.3
+- Название с битым символом (одиночный суррогат UTF-16) открывало поиск Filmix_API с пустым запросом на Dune HD (PHP 5.3). Теперь — ошибка «нет названия», как на новых PHP.
 
 ## 0.1.2
 - На Dune HD Media Center, установленном приложением на Android TV (например, Homatics), пункт меню оставался после удаления плагина до перезагрузки. Исправлено.
