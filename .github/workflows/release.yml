@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['20*']
+    tags: ['v*']
 
 permissions:
   contents: write
@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Tag matches the plugin version
+        run: |
+          v=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' plugin/play_in_apps/dune_plugin.xml)
+          test "$GITHUB_REF_NAME" = "v$v" || { echo "tag $GITHUB_REF_NAME != v$v"; exit 1; }
       - name: Build all plugins under PHP 5.3.6, the Dune's version
         run: |
           docker build -t dune-php53 tests/php53
