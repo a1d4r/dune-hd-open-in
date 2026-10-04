@@ -37,3 +37,7 @@ nuvio_caption = Nuvio
 nuvio_err_not_installed = Nuvio is not installed
 nuvio_err_no_id = This title has no IMDb or TMDB ID, Nuvio cannot open it
 nuvio_err_unsupported = Open in Nuvio: unsupported request
+freezona_caption = FreeZona
+freezona_err_not_installed = FreeZona is not installed
+freezona_err_no_id = This title has no Kinopoisk ID, FreeZona cannot open it
+freezona_err_unsupported = Open in FreeZona: unsupported request

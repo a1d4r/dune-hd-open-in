@@ -15,7 +15,8 @@ class PlayInApps
         'lazymedia' => array('LazyMedia', 'com.lazycatsoftware.lmd'),
         'filmix_api' => array('Filmix', null),
         'stremio' => array('Stremio', 'com.stremio.one'),
-        'nuvio' => array('Nuvio', 'com.nuvio.tv'));
+        'nuvio' => array('Nuvio', 'com.nuvio.tv'),
+        'freezona' => array('FreeZona', 'free.zona'));
 }
 
 function pia_log($msg)

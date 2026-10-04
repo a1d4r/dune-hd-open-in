@@ -95,18 +95,6 @@
       "first_install_timestamp": 1791017710,
       "last_modified_time": "2026-10-03T11:55:06.000+0300",
       "last_modified_timestamp": 1791017706
-    },
-    {
-      "caption": "FreeZona",
-      "package_name": "free.zona",
-      "version": "3.0.74",
-      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_free.zona.png",
-      "activity": "ru.zona.app.android.MainActivity",
-      "source_dir": "\/data\/app\/~~free.zona\/base.apk",
-      "first_install_time": "2026-10-04T19:02:00.000+0300",
-      "first_install_timestamp": 1791129720,
-      "last_modified_time": "2026-10-04T19:02:00.000+0300",
-      "last_modified_timestamp": 1791129720
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"

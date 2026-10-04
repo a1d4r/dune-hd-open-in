@@ -27,8 +27,10 @@ reg="$data/movie_suppliers"
 menu="$PLAY_IN_APPS_TMP/movie_suppliers"
 apps="$PLAY_IN_APPS_TMP/applications/app_data.json"
 
-android="num lampa prisma vokino lazymedia stremio nuvio"
-all="num lampa prisma vokino lazymedia filmix_api stremio nuvio"
+android="num lampa prisma vokino lazymedia stremio nuvio freezona"
+all="num lampa prisma vokino lazymedia filmix_api stremio nuvio freezona"
+# Ids that had a separate "Open in <app>" plugin (<id>_supplier) before.
+old_ids="num lampa prisma vokino lazymedia filmix_api stremio nuvio"
 
 failed=0
 check() {
@@ -86,6 +88,7 @@ pkg, title, flags = {
     "prisma": ("top.rootu.prisma", "Prisma", "--activity-clear-task "),
     "vokino": ("ru.vokino.web", "VoKino", "--activity-clear-task "),
     "lazymedia": ("com.lazycatsoftware.lmd", "LazyMedia", "--activity-clear-task "),
+    "freezona": ("free.zona", "FreeZona", "--activity-clear-task "),
 }[app]
 if app == "lazymedia":
     cmd = ("am start --activity-clear-task 'intent:#Intent;component=com.lazycatsoftware.lmd/"
@@ -242,6 +245,35 @@ for id in num lampa prisma; do
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"type\":\"series\" \"movieExtId\":\"tmdbtv:2\""},"type":"single"}}' launch_is "$t/movie/1"
 done
 
+# --- freezona: Kinopoisk only, movies and series by the same link
+id=freezona
+k=https://www.kinopoisk.ru/film
+supplier "$fx/movie_kinopoisk.json" launch_is "$k/61249"
+supplier "$fx/series_kinopoisk.json" launch_is "$k/404900"
+check "freezona writes uri to stderr" grep -q "uri: $k/404900" "$o.err"
+# No Kinopoisk ID: IMDb and TMDB are not enough.
+for f in movie series movie_tmdb_only series_tmdbtv_only series_movie_tmdb_only movie_no_ids series_no_ids; do
+    supplier "$fx/$f.json" error_is err_no_id
+done
+common error_is err_no_id err_no_id
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:123'"'"';reboot;'"'"'","type":"single"}}' error_is err_no_id
+# shellcheck disable=SC2016 # literal $(...) on purpose
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:123 x,kinopoisk:1$(reboot)","type":"single"}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"xxkinopoisk:123,kp:5,kinopoisk:tt1","type":"single"}}' error_is err_no_id
+# Ten digits: not a Kinopoisk ID.
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:1234567890","type":"single"}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:123456789","type":"single"}}' launch_is "$k/123456789"
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:1,kinopoisk:2","type":"single"}}' launch_is "$k/1"
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:1234567890,kinopoisk:2","type":"single"}}' launch_is "$k/2"
+# Type does not matter.
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:5","type":"movie"}}' launch_is "$k/5"
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:5","type":"single;reboot"}}' launch_is "$k/5"
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:5","type":""}}' launch_is "$k/5"
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:5"}}' launch_is "$k/5"
+# Title text that looks like keys must not win over the real fields.
+hostile '{"movieInfo":{"movieExtId":"kinopoisk:1","title":{"en":"\"movieExtId\":\"kinopoisk:2\""},"type":"single"}}' launch_is "$k/1"
+hostile '{"movieInfo":{"title":{"en":"\"movieExtId\":\"kinopoisk:2\""},"type":"single"}}' error_is err_no_id
+
 # titles <no-title error key> <launch_is prefix>: title parsing shared by VoKino
 # and LazyMedia:
 # JSON escapes, raw UTF-8, percent-encoding, fallback to English.
@@ -338,7 +370,7 @@ d = json.load(open(sys.argv[1]))
 app, bindir = sys.argv[2], sys.argv[3]
 pkg = {"nuvio": "com.nuvio.tv", "stremio": "com.stremio.one", "num": "ru.yourok.num",
        "lampa": "top.rootu.lampa", "prisma": "top.rootu.prisma", "vokino": "ru.vokino.web",
-       "lazymedia": "com.lazycatsoftware.lmd"}.get(app)
+       "lazymedia": "com.lazycatsoftware.lmd", "freezona": "free.zona"}.get(app)
 want = {
     "plugin": "play_in_apps",
     "caption": "%%tr%%%s_caption" % app,
@@ -391,6 +423,8 @@ opens_series lampa launch_is "$t/tv/94997"
 opens_series prisma launch_is "$t/tv/94997"
 opens_series vokino launch_is "$v/tt11198330"
 opens_series lazymedia search_is 'Дом Дракона'
+# series.json has no Kinopoisk ID; the error key shows bin/freezona.sh ran.
+opens_series freezona error_is err_no_id
 
 mkdir -p "$plugins/Filmix_api"
 run sync.sh
@@ -410,7 +444,10 @@ check "registered bin of filmix_api: err_unsupported" error_is err_unsupported
 printf 'nuvio\nfilmix_api\n' >"$data/hidden"
 run sync.sh
 check "sync hidden: exit 0" rc_is 0
-check "sync hidden: nuvio and filmix_api removed" shown num lampa prisma vokino lazymedia stremio
+check "sync hidden: nuvio and filmix_api removed" shown num lampa prisma vokino lazymedia stremio freezona
+printf 'freezona\n' >"$data/hidden"
+run sync.sh
+check "sync hidden: freezona removed" shown num lampa prisma vokino lazymedia filmix_api stremio nuvio
 rm -f "$data/hidden"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
@@ -436,7 +473,7 @@ run sync.sh
 } >"$data/hidden"
 run sync.sh
 check "sync garbage in hidden: exit 0" rc_is 0
-check "sync garbage in hidden: only prisma hidden" shown num lampa vokino lazymedia filmix_api stremio nuvio
+check "sync garbage in hidden: only prisma hidden" shown num lampa vokino lazymedia filmix_api stremio nuvio freezona
 check "sync garbage in hidden: no stray files" listing_is "$data" hidden movie_suppliers
 rm -f "$data/hidden"
 
@@ -444,6 +481,9 @@ rm -f "$data/hidden"
 cp "$fx/app_data_no_lazymedia.json" "$apps"
 run sync.sh
 check "sync LazyMedia not installed: item removed" shown num lampa prisma vokino filmix_api stremio nuvio
+cp "$fx/app_data_no_freezona.json" "$apps"
+run sync.sh
+check "sync FreeZona not installed: item removed" shown num lampa prisma vokino lazymedia filmix_api stremio nuvio
 cp "$fx/app_data_no_nuvio.json" "$apps"
 run sync.sh
 check "sync only Settings installed: only Filmix" shown filmix_api
@@ -460,16 +500,16 @@ printf 'lazymedia\nnuvio\n' >"$data/hidden"
 rm -f "$plugins/Filmix_api/dune_plugin.xml"
 run sync.sh
 check "sync no app_data.json: exit 0" rc_is 0
-check "sync no app_data.json: Android items unchanged, Filmix removed" shown num lampa prisma vokino stremio nuvio
+check "sync no app_data.json: Android items unchanged, Filmix removed" shown num lampa prisma vokino stremio nuvio freezona
 for content in '' '{}' 'garbage' '{"applications":['; do
     printf '%s' "$content" >"$apps"
     run sync.sh
-    check "sync app_data.json '$content': Android items unchanged" shown num lampa prisma vokino stremio nuvio
+    check "sync app_data.json '$content': Android items unchanged" shown num lampa prisma vokino stremio nuvio freezona
 done
 # Read while the shell rewrites it: cut short, most apps missing.
 head -c 1500 "$fx/app_data.json" >"$apps"
 run sync.sh
-check "sync app_data.json cut short: Android items unchanged" shown num lampa prisma vokino stremio nuvio
+check "sync app_data.json cut short: Android items unchanged" shown num lampa prisma vokino stremio nuvio freezona
 cp "$fx/app_data.json" "$apps"
 : >"$plugins/Filmix_api/dune_plugin.xml"
 rm -f "$data/hidden"
@@ -512,7 +552,7 @@ icons_are() {
 import json, sys
 pkg = {"nuvio": "com.nuvio.tv", "stremio": "com.stremio.one", "num": "ru.yourok.num",
        "lampa": "top.rootu.lampa", "prisma": "top.rootu.prisma", "vokino": "ru.vokino.web",
-       "lazymedia": "com.lazycatsoftware.lmd"}
+       "lazymedia": "com.lazycatsoftware.lmd", "freezona": "free.zona"}
 for app in sys.argv[3:]:
     want = sys.argv[2].replace("{pkg}", pkg[app])
     if json.load(open("%s/%s" % (sys.argv[1], app)))["icon_url"] != want:
@@ -849,7 +889,8 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 installed, hidden, old = (set(a.split()) for a in sys.argv[2:5])
 names = [("num", "NUM"), ("lampa", "Lampa"), ("prisma", "Prisma"), ("vokino", "VoKino"),
-         ("lazymedia", "LazyMedia"), ("filmix_api", "Filmix"), ("stremio", "Stremio"), ("nuvio", "Nuvio")]
+         ("lazymedia", "LazyMedia"), ("filmix_api", "Filmix"), ("stremio", "Stremio"), ("nuvio", "Nuvio"),
+         ("freezona", "FreeZona")]
 defs = [{"name": "", "title": None, "kind": "label", "specific_def": {"caption": "%tr%screen_hint"}}]
 if old:
     for caption in ("%tr%old_plugins", ", ".join(cap for i, cap in names if i in old)):
@@ -884,8 +925,8 @@ EOF
     check "screen: exit 0" rc_is 0
     check "screen: stderr has only own log lines" only_own_log
     check "screen: all installed and shown" screen_is "$all" "" ""
-    check "screen without old plugins: 9 controls, no warning" python3 -c \
-        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 9)' "$o"
+    check "screen without old plugins: 10 controls, no warning" python3 -c \
+        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 10)' "$o"
     # shellcheck disable=SC2086 # one word per id
     check "screen opening runs sync" shown $all
 
@@ -905,16 +946,16 @@ EOF
     folder_view
     check "screen no app_data.json: Android apps marked not installed" \
         screen_is "" "nuvio prisma" "num nuvio"
-    for i in $all; do
+    for i in $old_ids; do
         mkdir -p "$plugins/${i}_supplier"
         : >"$plugins/${i}_supplier/dune_plugin.xml"
     done
     folder_view
-    check "screen all 8 old plugins: two warning lines, 8 comboboxes" \
-        screen_is "" "nuvio prisma" "$all"
-    check "screen all 8 old plugins: 11 controls" python3 -c \
-        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 11)' "$o"
-    for i in $all; do rm -rf "$plugins/${i}_supplier"; done
+    check "screen all 8 old plugins: two warning lines, 9 comboboxes" \
+        screen_is "" "nuvio prisma" "$old_ids"
+    check "screen all 8 old plugins: 12 controls" python3 -c \
+        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 12)' "$o"
+    for i in $old_ids; do rm -rf "$plugins/${i}_supplier"; done
     cp "$fx/app_data.json" "$apps"
     : >"$plugins/Filmix_api/dune_plugin.xml"
     rm -rf "$plugins/nuvio_supplier" "$plugins/num_supplier" "$plugins/stremio_supplier"
@@ -937,20 +978,20 @@ EOF
     set_shown '"stremio"' '"hide"'
     handler "$work/ui.json" "hide stremio" none
     check "hide stremio: hidden file" hidden_is stremio
-    check "hide stremio: item removed" shown num lampa prisma vokino lazymedia filmix_api nuvio
+    check "hide stremio: item removed" shown num lampa prisma vokino lazymedia filmix_api nuvio freezona
     set_shown '"num"' '"hide"'
     handler "$work/ui.json" "hide num" none
     check "hide num: hidden file in manifest order" hidden_is "$(printf 'num\nstremio')"
-    check "hide num: item removed" shown lampa prisma vokino lazymedia filmix_api nuvio
+    check "hide num: item removed" shown lampa prisma vokino lazymedia filmix_api nuvio freezona
     set_shown '"filmix_api"' '"hide"'
     handler "$work/ui.json" "hide filmix_api" none
-    check "hide filmix_api: item removed" shown lampa prisma vokino lazymedia nuvio
+    check "hide filmix_api: item removed" shown lampa prisma vokino lazymedia nuvio freezona
     folder_view
     check "screen shows hidden items" screen_is "$all" "num filmix_api stremio" ""
     set_shown '"stremio"' '"show"'
     handler "$work/ui.json" "show stremio" none
     check "show stremio: hidden file" hidden_is "$(printf 'num\nfilmix_api')"
-    check "show stremio: item back" shown lampa prisma vokino lazymedia stremio nuvio
+    check "show stremio: item back" shown lampa prisma vokino lazymedia stremio nuvio freezona
     set_shown '"stremio"' '"show"'
     handler "$work/ui.json" "show stremio again" none
     check "show stremio again: hidden file unchanged" hidden_is "$(printf 'num\nfilmix_api')"
@@ -967,7 +1008,7 @@ EOF
     set_shown '"num"' '"show"'
     handler "$work/ui.json" "show num, garbage in hidden" none
     check "show num: garbage dropped" hidden_is "$(printf 'lampa\nlazymedia\nfilmix_api')"
-    check "show num: items" shown num prisma vokino stremio nuvio
+    check "show num: items" shown num prisma vokino stremio nuvio freezona
 
     # Hostile or foreign input: nothing changes.
     cp "$data/hidden" "$work/hidden.before"
@@ -985,6 +1026,13 @@ EOF
     handler "$work/ui.json" "no handler_id" none
     check "hostile input: hidden file unchanged" cmp -s "$data/hidden" "$work/hidden.before"
     check "hostile input: no temp files" listing_is "$data" hidden movie_suppliers
+
+    set_shown '"freezona"' '"hide"'
+    handler "$work/ui.json" "hide freezona" none
+    check "hide freezona: hidden file in manifest order" hidden_is "$(printf 'lampa\nlazymedia\nfilmix_api\nfreezona')"
+    check "hide freezona: item removed" shown num prisma vokino stremio nuvio
+    folder_view
+    check "screen shows freezona hidden" screen_is "$all" "lampa lazymedia filmix_api freezona" ""
 
     # The data dir is created if missing; the choice cannot be saved: error.
     rm -rf "$data"

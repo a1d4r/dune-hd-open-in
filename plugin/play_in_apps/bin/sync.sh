@@ -83,7 +83,7 @@ hide() {
 # id:package; Filmix is the Filmix_API Dune plugin, not an Android app.
 for app in num:ru.yourok.num lampa:top.rootu.lampa prisma:top.rootu.prisma \
     vokino:ru.vokino.web lazymedia:com.lazycatsoftware.lmd filmix_api: \
-    stremio:com.stremio.one nuvio:com.nuvio.tv; do
+    stremio:com.stremio.one nuvio:com.nuvio.tv freezona:free.zona; do
     id=${app%%:*}
     pkg=${app#*:}
 

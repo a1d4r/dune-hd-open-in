@@ -11,7 +11,9 @@
 | `series_tmdbtv_only.json` | `series.json` без `imdb:` |
 | `movie_no_ids.json` | `movie.json` только с `dunemdb:` |
 | `series_movie_tmdb_only.json` | `series.json` без `imdb:`, `tmdbtv:` → `tmdb:` |
-| `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma и LazyMedia Deluxe (запись NUM — 02.10.2026, VoKino, Lampa, Prisma и LazyMedia Deluxe — 03.10.2026) |
+| `movie_kinopoisk.json` | `movieExtId` (есть `kinopoisk:`), название и год — из реального входа с устройства, `shell_ext.log` 04.10.2026 («Тачки»); остальные поля — по формату `movie.json` |
+| `series_kinopoisk.json` | `series.json` с добавленным вручную `kinopoisk:404900` (ID «Во все тяжкие», не «Дома Дракона»; сериала с `kinopoisk:` во входах с устройства пока нет) |
+| `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe и FreeZona (запись NUM — 02.10.2026, VoKino, Lampa, Prisma и LazyMedia Deluxe — 03.10.2026; FreeZona — поля с устройства 04.10.2026, `source_dir` и время установки условные) |
 | `app_data_no_nuvio.json` | только «Настройки» |
 | `app_data_no_stremio.json` | «Настройки» и Nuvio |
 | `app_data_no_num.json` | «Настройки», Nuvio и Stremio |
@@ -19,6 +21,7 @@
 | `app_data_no_lampa.json` | «Настройки», Nuvio, Stremio, NUM и VoKino |
 | `app_data_no_prisma.json` | «Настройки», Nuvio, Stremio, NUM, VoKino и Lampa |
 | `app_data_no_lazymedia.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa и Prisma |
+| `app_data_no_freezona.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma и LazyMedia Deluxe |
 | `play_action_movie.json` | `user_input` обработчика `play_action` («Прошлой ночью в Сохо»): ключи и поля фильма — из лога пробника на устройстве 03.10.2026; значения полей, которые лог не писал, — `null` |
 | `play_action_series.json` | то же для сериала («Дом Дракона», нет `kp_id`/`tmdb_id`) |
 

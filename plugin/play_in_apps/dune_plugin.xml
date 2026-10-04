@@ -4,7 +4,7 @@
   <type>php</type>
   <params>
     <program>main.php</program>
-    <movie_suppliers>num-lampa-prisma-vokino-lazymedia-filmix_api-stremio-nuvio</movie_suppliers>
+    <movie_suppliers>num-lampa-prisma-vokino-lazymedia-filmix_api-stremio-nuvio-freezona</movie_suppliers>
   </params>
   <entry_points>
     <entry_point>
