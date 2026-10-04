@@ -656,6 +656,7 @@ define('PLUGIN_OP_HANDLE_USER_INPUT', 'handle_user_input');
 define('PLUGIN_OUT_DATA_PLUGIN_FOLDER_VIEW', 'plugin_folder_view');
 define('PLUGIN_OUT_DATA_GUI_ACTION', 'gui_action');
 define('PLUGIN_OPEN_FOLDER_ACTION_ID', 'plugin_open_folder');
+define('COMPOSITE_ACTION_ID', 'composite');
 define('PLUGIN_SHOW_ERROR_ACTION_ID', 'plugin_show_error');
 define('PLUGIN_HANDLE_USER_INPUT_ACTION_ID', 'plugin_handle_user_input');
 define('PLUGIN_FOLDER_VIEW_CONTROLS', 'view_controls');
@@ -754,7 +755,11 @@ out_is() {
 import json, sys
 d = json.load(open(sys.argv[1]))
 try:
-    d["data"]["data"]["media_url"] = json.loads(d["data"]["data"]["media_url"])
+    a = d["data"]["data"]["actions"][-1]
+except (KeyError, TypeError, IndexError):
+    a = d.get("data")
+try:
+    a["data"]["media_url"] = json.loads(a["data"]["media_url"])
 except (KeyError, TypeError):
     pass
 want = {"has_data": False, "plugin_cookies": {"k": "v"},
@@ -765,11 +770,15 @@ sys.exit(d != want)
 EOF
 }
 
+# Composite: load Filmix_API's token in its main menu handler, then open the search.
 search_json() {
     python3 -c 'import json, sys
-print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Filmix_api",
-    "data": {"media_url": {"screen_id": "vod_list", "category_id": "search",
-        "genre_id": sys.argv[1]}, "caption": sys.argv[1]}}))' "$1"
+print(json.dumps({"handler_string_id": "composite", "data": {"actions": [
+    {"handler_string_id": "plugin_handle_user_input", "plugin_name": "Filmix_api",
+        "params": {"handler_id": "main_menu", "control_id": "fx_token"}},
+    {"handler_string_id": "plugin_open_folder", "plugin_name": "Filmix_api",
+        "data": {"media_url": {"screen_id": "vod_list", "category_id": "search",
+            "genre_id": sys.argv[1]}, "caption": sys.argv[1]}}]}}))' "$1"
 }
 
 error_json() {

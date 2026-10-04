@@ -52,10 +52,20 @@ function pia_error_action($key)
 // SmartVodListScreen::get_media_url_str('search', <text>).
 function filmix_search_action($title, $media_url)
 {
-    return array(
+    // Filmix_API loads its account token only in its main menu handler, on
+    // any control_id but login ones; an unknown one then returns null. Without
+    // this step a fresh Filmix_API process searches without the token.
+    $load_token = array(
+        'handler_string_id' => PLUGIN_HANDLE_USER_INPUT_ACTION_ID,
+        'plugin_name' => 'Filmix_api',
+        'params' => array('handler_id' => 'main_menu', 'control_id' => 'fx_token'));
+    $open = array(
         'handler_string_id' => PLUGIN_OPEN_FOLDER_ACTION_ID,
         'plugin_name' => 'Filmix_api',
         'data' => array('media_url' => $media_url, 'caption' => $title));
+    return array(
+        'handler_string_id' => COMPOSITE_ACTION_ID,
+        'data' => array('actions' => array($load_token, $open)));
 }
 
 function filmix_play($user_input)

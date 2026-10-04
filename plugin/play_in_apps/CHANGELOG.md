@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.2.1
+- Filmix: the item first makes Filmix_API load its account token, then opens the search. Before, right after power-on or standby Filmix_API searched without the token until one entered a section of its main menu, and a PRO account was treated as none.
+
 ## 0.2.0
 - FreeZona item: opens the movie or series in FreeZona (`free.zona`) by Kinopoisk ID.
 
@@ -17,6 +20,9 @@
 ---
 
 **Russian version**
+
+## 0.2.1
+- Filmix: пункт сначала даёт Filmix_API подгрузить токен аккаунта, потом открывает поиск. Раньше сразу после включения или сна Filmix_API искал без токена, пока не войдёшь в какой-нибудь раздел его главного меню, и PRO-аккаунт не учитывался.
 
 ## 0.2.0
 - Пункт FreeZona: открывает фильм или сериал в FreeZona (`free.zona`) по ID Кинопоиска.
