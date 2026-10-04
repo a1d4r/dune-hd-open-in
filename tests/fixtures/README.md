@@ -12,7 +12,7 @@
 | `movie_no_ids.json` | `movie.json` только с `dunemdb:` |
 | `series_movie_tmdb_only.json` | `series.json` без `imdb:`, `tmdbtv:` → `tmdb:` |
 | `movie_kinopoisk.json` | `movieExtId` (есть `kinopoisk:`), название и год — из реального входа с устройства, `shell_ext.log` 04.10.2026 («Тачки»); остальные поля — по формату `movie.json` |
-| `series_kinopoisk.json` | `series.json` с добавленным вручную `kinopoisk:404900` (ID «Во все тяжкие», не «Дома Дракона»; сериала с `kinopoisk:` во входах с устройства пока нет) |
+| `series_kinopoisk.json` | реальный вход с устройства, вход поставщика YouTube 04.10.2026 («Игра престолов»): `movieExtId` (есть `kinopoisk:`), название, год, тип; `supplierId` подставлен `freezona`, `videoType` и остальные поля — по формату `series.json` |
 | `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe и FreeZona (запись NUM — 02.10.2026, VoKino, Lampa, Prisma и LazyMedia Deluxe — 03.10.2026; FreeZona — поля с устройства 04.10.2026, `source_dir` и время установки условные) |
 | `app_data_no_nuvio.json` | только «Настройки» |
 | `app_data_no_stremio.json` | «Настройки» и Nuvio |

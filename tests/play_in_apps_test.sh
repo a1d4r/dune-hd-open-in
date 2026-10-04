@@ -249,8 +249,8 @@ done
 id=freezona
 k=https://www.kinopoisk.ru/film
 supplier "$fx/movie_kinopoisk.json" launch_is "$k/61249"
-supplier "$fx/series_kinopoisk.json" launch_is "$k/404900"
-check "freezona writes uri to stderr" grep -q "uri: $k/404900" "$o.err"
+supplier "$fx/series_kinopoisk.json" launch_is "$k/464963"
+check "freezona writes uri to stderr" grep -q "uri: $k/464963" "$o.err"
 # No Kinopoisk ID: IMDb and TMDB are not enough.
 for f in movie series movie_tmdb_only series_tmdbtv_only series_movie_tmdb_only movie_no_ids series_no_ids; do
     supplier "$fx/$f.json" error_is err_no_id
