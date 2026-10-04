@@ -27,25 +27,29 @@ function filmix_play($user_input, $plugins_dir)
     if (!is_file("$plugins_dir/Filmix_api/dune_plugin.xml"))
         return filmix_error_action('err_not_installed');
 
+    // Arrays, not objects: before PHP 7.1 a key starting with "\0" is a fatal
+    // error in json_decode to objects.
     $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
-        json_decode($user_input->movie_str) : null;
+        json_decode($user_input->movie_str, true) : null;
     // "title" is in the Dune UI language, "native_title" is the original one.
-    $title = '';
     foreach (array('title', 'native_title') as $k)
     {
-        if ($title === '' && is_object($movie) && isset($movie->$k) &&
-            is_scalar($movie->$k))
-            $title = trim(strval($movie->$k));
-    }
-    // json_decode turns a lone \ud800 into invalid UTF-8; json_encode then
-    // fails: false on PHP 5.5+, null in place of the string on PHP 5.3.
-    $media_url = $title === '' ? false : json_encode(array(
-        'screen_id' => 'vod_list', 'category_id' => 'search', 'genre_id' => $title));
-    if ($media_url === false || json_last_error() !== JSON_ERROR_NONE)
-        return filmix_error_action('err_no_title');
+        if (!is_array($movie) || !isset($movie[$k]) || !is_scalar($movie[$k]))
+            continue;
+        $title = trim(strval($movie[$k]));
+        if ($title === '')
+            continue;
+        // json_decode turns a lone \ud800 into invalid UTF-8; json_encode then
+        // fails: false on PHP 5.5+, null in place of the string on PHP 5.3.
+        $media_url = json_encode(array(
+            'screen_id' => 'vod_list', 'category_id' => 'search', 'genre_id' => $title));
+        if ($media_url === false || json_last_error() !== JSON_ERROR_NONE)
+            continue;
 
-    hd_print("filmix_api_supplier: search: $title");
-    return filmix_search_action($title, $media_url);
+        hd_print("filmix_api_supplier: search: $title");
+        return filmix_search_action($title, $media_url);
+    }
+    return filmix_error_action('err_no_title');
 }
 
 class FilmixSupplierFw extends DunePluginFw

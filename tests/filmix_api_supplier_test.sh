@@ -189,6 +189,19 @@ if [ "$php_ok" = 1 ]; then
     search "$work/ui.json" "emoji" 'a😀b😀c'
     user_input '{"title":"ab\ud800cd"}'
     error "$work/ui.json" "lone surrogate" err_no_title
+    user_input '{"title":"\ud800","native_title":"Good"}'
+    if [ "$("$php_bin" -r 'echo PHP_MAJOR_VERSION;')" -lt 7 ]; then
+        search "$work/ui.json" "lone surrogate title, fallback to native_title" Good
+    else
+        # PHP 7+ json_decode rejects the whole movie_str.
+        error "$work/ui.json" "lone surrogate title (PHP 7+)" err_no_title
+    fi
+    user_input '{"title":"\ud800","native_title":"x\udc00"}'
+    error "$work/ui.json" "lone surrogates in both titles" err_no_title
+    user_input '{"\u0000a":1,"x":{"\u0000":2},"title":"T"}'
+    search "$work/ui.json" "keys starting with NUL" T
+    user_input '["title","native_title"]'
+    error "$work/ui.json" "movie_str JSON list" err_no_title
     user_input '{"title":2049}'
     search "$work/ui.json" "numeric title" 2049
     user_input '{"title":{"ru":"x"},"native_title":"Nested"}'
