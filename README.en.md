@@ -21,6 +21,7 @@ Details on each item are in the [plugin README](plugin/play_in_apps/README.en.md
 
 Missing items and why:
 - **Kino.pub (KinoWatch)**: the app opens a title only by its internal kino.pub number. It cannot be opened by IMDb, TMDB or title, and a search cannot be started from outside either, so the item could only open the app's home screen.
+- **Lift**: the app opens a title only by its internal number, and a search cannot be started from outside, so the item could only open the app's home screen.
 - **Lampa TV 7.7.9 (`ru.twicker.lampa`, the "Un" build)**: the card opens only if the link is sent again about a second after the app starts. That workaround is fragile (on a slow network you get the home screen instead), and the build is no longer updated. The Lampa item works with the official LAMPA (`top.rootu.lampa`).
 
 Tested only on Dune HD Pro 8K Plus, firmware 260827_0003_r24. Other Android Dune models with r24 firmware may work, but this is not tested.
