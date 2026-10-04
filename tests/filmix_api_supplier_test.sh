@@ -1,7 +1,8 @@
 #!/bin/sh
 # Tests for plugin/filmix_api_supplier. Run: dash tests/filmix_api_supplier_test.sh
 # TEST_SH selects the shell used to run plugin scripts (default: dash).
-# PHP selects the PHP CLI for main.php (default: php). The device runs PHP 5.6.
+# PHP selects the PHP CLI for main.php (default: php). The device runs PHP 5.3.6:
+# tests/php53/Dockerfile has it with the other tools (see the comment there).
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 src="$root/plugin/filmix_api_supplier"
@@ -106,7 +107,7 @@ EOF
 }
 
 # out_is <expected action JSON or "none">: plugin output with this GUI action.
-# media_url is compared as decoded JSON (PHP 5.6 escapes "/" and non-ASCII).
+# media_url is compared as decoded JSON (PHP 5.3 escapes "/" and non-ASCII).
 out_is() {
     python3 - "$o" "$1" <<'EOF'
 import json, sys
