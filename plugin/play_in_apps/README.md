@@ -14,6 +14,7 @@
 | Filmix | плагин Дюны Filmix_API 0.1.9 | не открывает по ID, поиск по названию |
 | Stremio | Stremio для Android TV 1.11.2 (`com.stremio.one`) | IMDb, если нет — TMDB |
 | Nuvio | Nuvio TV 1.0.0 (`com.nuvio.tv`) | IMDb, если нет — TMDB |
+| FreeZona | FreeZona 3.0.74 (`free.zona`) | Кинопоиск |
 
 Сделан для Dune HD Pro 8K Plus, прошивка 260827_0003_r24; версии приложений в таблице — те, с которыми проверялось.
 
@@ -78,6 +79,11 @@
 **Nuvio** — [Nuvio TV](https://github.com/NuvioMedia/NuvioTV) с потоками из ваших аддонов Nuvio.
 - Фильм открывается по IMDb ID (`nuvio://movie/tt…`, `nuvio://series/tt…`). Если IMDb ID нет — по TMDB ID (`nuvio://tmdb/movie/…`, `nuvio://tmdb/series/…`).
 - Back с карточки Nuvio ведёт на главную Nuvio; чтобы выйти из Nuvio и вернуться в карточку Дюны, нажмите Back ещё несколько раз (или Home).
+
+**FreeZona** — неофициальная сборка клиента онлайн-кинотеатра Zona, не от авторов Zona.
+- Фильм и сериал открываются по ID Кинопоиска (`https://www.kinopoisk.ru/film/…`). IMDb и TMDB FreeZona не понимает, а поиск по названию снаружи не запустить: если у карточки нет ID Кинопоиска, Дюна покажет сообщение.
+- Карточку FreeZona находит на сервере Zona. Если Zona этот фильм не знает или нет сети, откроется главный экран FreeZona без сообщения — найдите фильм поиском в самой FreeZona.
+- Каждый запуск заменяет то, что было открыто в FreeZona.
 
 ### Удаление
 Удалите плагин в списке плагинов Дюны — пропадут все его пункты.

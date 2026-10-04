@@ -16,6 +16,7 @@
 | Filmix | не открывает по ID, поиск по названию в плагине Дюны Filmix_API |
 | Stremio | IMDb, если нет — TMDB |
 | Nuvio | IMDb, если нет — TMDB |
+| FreeZona | Кинопоиск |
 
 Подробно о каждом пункте — в [README плагина](plugin/play_in_apps/README.md). Сами приложения (для Filmix — плагин Filmix_API) нужно установить и настроить (аддоны, аккаунты) отдельно.
 

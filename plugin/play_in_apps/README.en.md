@@ -14,6 +14,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Filmix | Filmix_API 0.1.9 Dune plugin | no ID, search by title |
 | Stremio | Stremio for Android TV 1.11.2 (`com.stremio.one`) | IMDb ID, else TMDB ID |
 | Nuvio | Nuvio TV 1.0.0 (`com.nuvio.tv`) | IMDb ID, else TMDB ID |
+| FreeZona | FreeZona 3.0.74 (`free.zona`) | Kinopoisk ID |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -78,6 +79,11 @@ For all items:
 **Nuvio** is [Nuvio TV](https://github.com/NuvioMedia/NuvioTV), with streams from your Nuvio addons.
 - The title is opened by IMDb ID (`nuvio://movie/tt…`, `nuvio://series/tt…`). Without an IMDb ID, by TMDB ID (`nuvio://tmdb/movie/…`, `nuvio://tmdb/series/…`).
 - Back from the Nuvio title page leads to the Nuvio home screen; press Back a few more times (or Home) to exit Nuvio and return to the Dune card.
+
+**FreeZona** is an unofficial build of the Zona online cinema client, not made by the Zona authors.
+- Movies and series are opened by Kinopoisk ID (`https://www.kinopoisk.ru/film/…`). FreeZona does not understand IMDb or TMDB IDs, and a search by title cannot be started from outside: if the card has no Kinopoisk ID, the Dune shows a message.
+- FreeZona looks the title up on the Zona server. If Zona does not know the title or there is no network, the FreeZona home screen opens with no message; find the title with FreeZona's own search.
+- Each launch replaces what was open in FreeZona.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.
