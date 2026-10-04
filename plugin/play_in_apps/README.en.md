@@ -82,8 +82,10 @@ For all items:
 
 **FreeZona** is an unofficial build of the Zona online cinema client, not made by the Zona authors.
 - Movies and series are opened by Kinopoisk ID (`https://www.kinopoisk.ru/film/…`). FreeZona does not understand IMDb or TMDB IDs, and a search by title cannot be started from outside: if the card has no Kinopoisk ID, the Dune shows a message.
+- Not every card in the Dune catalog has a Kinopoisk ID. Movies usually have one, series more often don't: for example, Game of Thrones has one, while newer series such as Shōgun, Fallout and House of the Dragon don't.
 - FreeZona looks the title up on the Zona server. If Zona does not know the title or there is no network, the FreeZona home screen opens with no message; find the title with FreeZona's own search.
 - Each launch replaces what was open in FreeZona.
+- Back from the FreeZona title page leads to the FreeZona home screen; press Back once more to return to the Dune card.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.
