@@ -33,9 +33,13 @@ apps="$tmp/applications/app_data.json"
 plugins=$(dirname "$(dirname "$mydir")")
 
 # Without the shell's app list (missing, empty or not written yet) nothing is
-# known about Android apps: their items stay as they are.
+# known about Android apps: their items stay as they are. A list read while the
+# shell rewrites it is cut short: its braces do not balance.
 apps_known=0
-grep -q '"package_name"' "$apps" 2>/dev/null && apps_known=1
+if grep -q '"package_name"' "$apps" 2>/dev/null &&
+    [ "$(tr -cd '{' <"$apps" | wc -c)" -eq "$(tr -cd '}' <"$apps" | wc -c)" ]; then
+    apps_known=1
+fi
 
 # icon <package>: the app's own icon, the "icon" path from the shell's app
 # list, as in its Applications menu. On Dune HD Media Center installed as an

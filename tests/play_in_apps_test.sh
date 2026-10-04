@@ -466,6 +466,10 @@ for content in '' '{}' 'garbage' '{"applications":['; do
     run sync.sh
     check "sync app_data.json '$content': Android items unchanged" shown num lampa prisma vokino stremio nuvio
 done
+# Read while the shell rewrites it: cut short, most apps missing.
+head -c 1500 "$fx/app_data.json" >"$apps"
+run sync.sh
+check "sync app_data.json cut short: Android items unchanged" shown num lampa prisma vokino stremio nuvio
 cp "$fx/app_data.json" "$apps"
 : >"$plugins/Filmix_api/dune_plugin.xml"
 rm -f "$data/hidden"
@@ -591,10 +595,18 @@ check "uninstall: all items removed, other suppliers kept" listing_is "$menu" Yo
 run uninstall.sh
 check "uninstall twice: exit 0" rc_is 0
 mkdir -p "$work/atv/tmp/movie_suppliers"
-for i in $all YouTube; do : >"$work/atv/tmp/movie_suppliers/$i"; done
+for i in $all; do printf '{"plugin":"play_in_apps"}\n' >"$work/atv/tmp/movie_suppliers/$i"; done
+: >"$work/atv/tmp/movie_suppliers/YouTube"
 env -u PLAY_IN_APPS_TMP FS_PREFIX="$work/atv" "$sh_bin" "$bin/uninstall.sh" >"$o" 2>"$o.err"
 check "uninstall PLAY_IN_APPS_TMP unset: items removed from \$FS_PREFIX/tmp" \
     listing_is "$work/atv/tmp/movie_suppliers" YouTube
+# An old single-app plugin with the same id still installed: its copy stays.
+printf '{"plugin":"nuvio_supplier"}\n' >"$menu/nuvio"
+printf '{"plugin":"play_in_apps"}\n' >"$menu/num"
+run uninstall.sh
+check "uninstall: exit 0 with an old plugin's copy" rc_is 0
+check "uninstall: old plugin's copy kept" listing_is "$menu" YouTube nuvio
+rm -f "$menu/nuvio"
 
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
 cat >"$work/fw_stub.php" <<'EOF'
