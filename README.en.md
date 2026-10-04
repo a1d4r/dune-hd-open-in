@@ -32,7 +32,7 @@ To update, install the new zip over the old one. To remove, uninstall the plugin
 The plugins make no network requests and run nothing in the background.
 
 ## Build from source
-`sh build.sh <name>` runs shellcheck and the tests, then writes `dist/dune_plugin_<name>_<version>.zip`. Needs `shellcheck`, `dash`, `zip` and `python3`, plus `php` for `filmix_api_supplier` (`PHP=…` for another path; the Dune runs PHP 5.6); `mksh`, if installed, is used for a second test run. The zips in Releases are built by GitHub Actions with the same script.
+`sh build.sh <name>` runs shellcheck and the tests, then writes `dist/dune_plugin_<name>_<version>.zip`. Needs `shellcheck`, `dash`, `zip` and `python3`, plus `php` for `filmix_api_supplier` (`PHP=…` for another path); `mksh`, if installed, is used for a second test run. The Dune runs PHP 5.3.6: `tests/php53/Dockerfile` builds it along with all the tools, `docker build -t dune-php53 tests/php53`, then `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh <name>`. The zips in Releases are built by GitHub Actions with the same script in this image; CI runs the tests under both PHP 5.3.6 and Ubuntu's PHP.
 
 ## Feedback
 Made for my own Dune and shared as is. Bug reports are welcome in [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); fixes are best effort.

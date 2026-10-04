@@ -32,7 +32,7 @@
 Плагины не ходят в сеть и ничего не запускают в фоне.
 
 ## Сборка из исходников
-`sh build.sh <имя>` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_<имя>_<версия>.zip`. Нужны `shellcheck`, `dash`, `zip` и `python3`, для `filmix_api_supplier` — ещё `php` (`PHP=…` — другой путь; на Дюне PHP 5.6); `mksh`, если установлен, используется для второго прогона тестов. Zip в Releases собирает GitHub Actions тем же скриптом.
+`sh build.sh <имя>` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_<имя>_<версия>.zip`. Нужны `shellcheck`, `dash`, `zip` и `python3`, для `filmix_api_supplier` — ещё `php` (`PHP=…` — другой путь); `mksh`, если установлен, используется для второго прогона тестов. На Дюне PHP 5.3.6 — его и все нужные инструменты собирает `tests/php53/Dockerfile`: `docker build -t dune-php53 tests/php53`, затем `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh <имя>`. Zip в Releases собирает GitHub Actions тем же скриптом в этом образе; CI прогоняет тесты и под PHP 5.3.6, и под PHP из Ubuntu.
 
 ## Обратная связь
 Сделано для своей Дюны и выложено как есть. Об ошибках пишите в [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); исправления — по возможности.
