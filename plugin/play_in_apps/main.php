@@ -155,6 +155,27 @@ function pia_control_defs()
         GuiControlDef::title => null,
         GuiControlDef::kind => GUI_CONTROL_LABEL,
         GuiControlDef::specific_def => array(GuiLabelDef::caption => '%tr%screen_hint')));
+
+    // A separate "Open in <app>" plugin registers the same id and the shell
+    // copies its file back on every boot, so hiding would not stick. One line
+    // for all of them: the controls screen does not scroll on r24.
+    $old = array();
+    foreach (PlayInApps::$apps as $id => $app)
+    {
+        if (is_file(pia_plugins_dir() . "/{$id}_supplier/dune_plugin.xml"))
+            $old[] = $app[0];
+    }
+    if ($old)
+    {
+        $defs[] = array(
+            GuiControlDef::name => '',
+            GuiControlDef::title => null,
+            GuiControlDef::kind => GUI_CONTROL_LABEL,
+            GuiControlDef::specific_def => array(GuiLabelDef::caption =>
+                '%ext%<key_global>play_in_apps_plugin_old_plugins__1<p>' .
+                implode(', ', $old) . '</p></key_global>'));
+    }
+
     foreach (PlayInApps::$apps as $id => $app)
     {
         $defs[] = array(
@@ -171,18 +192,6 @@ function pia_control_defs()
                     GuiAction::params => array('handler_id' => 'setup', 'control_id' => $id))),
             GuiControlDef::params => pia_installed($app[1], $app_list) ?
                 null : array('text_right' => '%tr%not_installed'));
-
-        // A separate "Open in <app>" plugin registers the same id and the
-        // shell copies its file back on every boot, so hiding would not stick.
-        if (is_file(pia_plugins_dir() . "/{$id}_supplier/dune_plugin.xml"))
-        {
-            $defs[] = array(
-                GuiControlDef::name => '',
-                GuiControlDef::title => null,
-                GuiControlDef::kind => GUI_CONTROL_LABEL,
-                GuiControlDef::specific_def => array(GuiLabelDef::caption =>
-                    "%ext%<key_global>play_in_apps_plugin_old_plugin__1<p>{$app[0]}</p></key_global>"));
-        }
     }
     return $defs;
 }

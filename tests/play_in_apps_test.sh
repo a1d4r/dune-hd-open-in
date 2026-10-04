@@ -840,8 +840,9 @@ if [ "$php_ok" = 1 ]; then
     # --- the screen: get_folder_view
 
     # screen_is <installed ids> <hidden ids> <ids with an old plugin>: view_controls
-    # with a hint label, then a combobox per app in the manifest order, each
-    # followed by a warning label if a separate "Open in <app>" plugin is there.
+    # with a hint label, one warning label listing the apps whose separate
+    # "Open in <app>" plugin is there (if any), then a combobox per app in the
+    # manifest order. The screen does not scroll on r24: one warning line only.
     screen_is() {
         python3 - "$o" "$@" <<'EOF'
 import json, sys
@@ -850,6 +851,10 @@ installed, hidden, old = (set(a.split()) for a in sys.argv[2:5])
 names = [("num", "NUM"), ("lampa", "Lampa"), ("prisma", "Prisma"), ("vokino", "VoKino"),
          ("lazymedia", "LazyMedia"), ("filmix_api", "Filmix"), ("stremio", "Stremio"), ("nuvio", "Nuvio")]
 defs = [{"name": "", "title": None, "kind": "label", "specific_def": {"caption": "%tr%screen_hint"}}]
+if old:
+    defs.append({"name": "", "title": None, "kind": "label", "specific_def": {
+        "caption": "%%ext%%<key_global>play_in_apps_plugin_old_plugins__1<p>%s</p></key_global>"
+                   % ", ".join(cap for i, cap in names if i in old)}})
 for i, cap in names:
     defs.append({
         "name": i, "title": cap, "kind": "combobox",
@@ -860,9 +865,6 @@ for i, cap in names:
             "apply_action": {"handler_string_id": "plugin_handle_user_input",
                              "params": {"handler_id": "setup", "control_id": i}}},
         "params": None if i in installed else {"text_right": "%tr%not_installed"}})
-    if i in old:
-        defs.append({"name": "", "title": None, "kind": "label", "specific_def": {
-            "caption": "%%ext%%<key_global>play_in_apps_plugin_old_plugin__1<p>%s</p></key_global>" % cap}})
 want = {"has_data": True, "plugin_cookies": {"k": "v"}, "is_error": False, "error_action": None,
         "data_type": "plugin_folder_view",
         "data": {"view_kind": "view_controls", "multiple_views_supported": False,
@@ -902,6 +904,16 @@ EOF
     folder_view
     check "screen no app_data.json: Android apps marked not installed" \
         screen_is "" "nuvio prisma" "num nuvio"
+    for i in $all; do
+        mkdir -p "$plugins/${i}_supplier"
+        : >"$plugins/${i}_supplier/dune_plugin.xml"
+    done
+    folder_view
+    check "screen all 8 old plugins: one warning line, 8 comboboxes" \
+        screen_is "" "nuvio prisma" "$all"
+    check "screen all 8 old plugins: 10 controls" python3 -c \
+        'import json, sys; sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["defs"]) != 10)' "$o"
+    for i in $all; do rm -rf "$plugins/${i}_supplier"; done
     cp "$fx/app_data.json" "$apps"
     : >"$plugins/Filmix_api/dune_plugin.xml"
     rm -rf "$plugins/nuvio_supplier" "$plugins/num_supplier" "$plugins/stremio_supplier"
