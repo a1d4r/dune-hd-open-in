@@ -1011,7 +1011,7 @@ ok = (r.findtext("name") == "play_in_apps"
       and r.findtext("params/movie_suppliers") == "-".join(sys.argv[2].split())
       and r.findtext("global_actions/uninstall/data/run_string") == "bin/uninstall.sh"
       and r.findtext("global_actions/early_gui_start/data/run_string") == "bin/sync.sh"
-      and e.findtext("parent_media_url") == "root://applications"
+      and e.findtext("parent_media_url") == "setup://applications"
       and e.findtext("actions/key_enter/type") == "plugin_open_folder"
       and re.fullmatch(r"\d+\.\d+\.\d+", r.findtext("version") or "")
       and re.fullmatch(r"\d+", r.findtext("version_index") or ""))

@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Applications → Play in apps**.
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps**.
 
 ![Play... menu with the plugin items](screenshots/play-menu.png)
 

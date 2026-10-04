@@ -8,7 +8,7 @@
   </params>
   <entry_points>
     <entry_point>
-      <parent_media_url>root://applications</parent_media_url>
+      <parent_media_url>setup://applications</parent_media_url>
       <media_url>setup</media_url>
       <caption>%tr%plugin_caption</caption>
       <icon_url>gui_skin://large_icons/info.aai</icon_url>
@@ -37,6 +37,6 @@
       </data>
     </uninstall>
   </global_actions>
-  <version>0.1.0</version>
-  <version_index>1</version_index>
+  <version>0.1.1</version>
+  <version_index>2</version_index>
 </dune_plugin>
