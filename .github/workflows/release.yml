@@ -21,7 +21,7 @@ jobs:
         run: |
           base="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME"
           {
-            echo "Скачайте zip нужного плагина ниже, в Assets. Установка — в [README]($base/README.md)."
+            echo "Скачайте zip плагина ниже, в Assets. Установка — в [README]($base/README.md)."
             echo
             for p in plugin/*/; do
               n=$(basename "$p")

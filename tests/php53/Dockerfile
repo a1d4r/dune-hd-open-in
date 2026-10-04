@@ -6,7 +6,7 @@
 #
 #   docker build -t dune-php53 tests/php53
 #   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 \
-#       sh build.sh filmix_api_supplier
+#       sh build.sh play_in_apps
 FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
 
 ARG PHP_VERSION=5.3.6

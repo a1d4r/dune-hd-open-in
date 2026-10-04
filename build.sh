@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build dist/dune_plugin_<name>_<version>.zip from plugin/<name> once
 # tests/<name>_test.sh and shellcheck pass. Version comes from dune_plugin.xml.
-# Usage: sh build.sh <name>, e.g. sh build.sh nuvio_supplier
+# Usage: sh build.sh <name>, e.g. sh build.sh play_in_apps
 
 set -eu
 
