@@ -23,7 +23,7 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the 
 3. On the Dune open **Sources**, find the zip and press ENTER.
 4. The items of the installed apps appear in the **Play...** menu within half a minute, no reboot needed.
 
-If you install or remove an app later, open the plugin screen (**Applications → Play in apps**) and the items are updated. They should also update by themselves the next time the Dune starts, but this is not tested yet.
+If you install or remove an app later, its item appears or goes away after the Dune wakes from standby or reboots, or at once if you open **Applications → Play in apps**.
 
 ### Hide an item
 **Applications → Play in apps**: choose **Show** or **Hide** for each app. The item leaves the menu at once and stays hidden after a reboot. An app that is not installed is marked "not installed"; the choice is kept for when the app appears.
