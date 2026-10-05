@@ -27,7 +27,7 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the 
 If you install or remove an app later, its item appears or goes away after the Dune wakes from standby or reboots, or at once if you open **Settings → Applications → Play in apps**.
 
 ### Update
-Since 0.3.0 the Dune checks for plugin updates by itself after it boots (waking from standby is not a boot) and offers to install the new version. Install the versions before 0.3.0 and 0.3.0 itself by hand: the new zip over the old one, as when installing.
+Since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before.
 
 ### Hide an item
 **Settings → Applications → Play in apps**: choose **Show** or **Hide** for each app. The item leaves the menu at once and stays hidden after a reboot. An app that is not installed is marked "not installed"; the choice is kept for when the app appears.

@@ -3,7 +3,7 @@
 **English version**
 
 ## 0.3.0
-- Online updates: the Dune checks for a new version of the plugin by itself after it boots and offers to install it. Install 0.3.0 by hand, like the earlier versions; later versions arrive this way.
+- Online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version of the plugin and offers to install it. Install 0.3.0 itself by hand; if an update does not come, install the new zip over the old one, as before.
 
 ## 0.2.1
 - Filmix: the item first makes Filmix_API load its account token, then opens the search. Before, right after power-on or standby Filmix_API searched without the token until one entered a section of its main menu, and a PRO account was treated as none.
@@ -25,7 +25,7 @@
 **Russian version**
 
 ## 0.3.0
-- Онлайн-обновление: Дюна сама проверяет, нет ли новой версии плагина, после загрузки и предлагает её поставить. Саму 0.3.0 ставьте вручную, как раньше; следующие придут так.
+- Онлайн-обновление: после загрузки Дюны (выход из режима ожидания — не загрузка) прошивка проверяет новую версию плагина на GitHub Pages и предлагает её поставить. Саму 0.3.0 ставьте вручную; если обновление не пришло — поставьте новый zip поверх старого, как раньше.
 
 ## 0.2.1
 - Filmix: пункт сначала даёт Filmix_API подгрузить токен аккаунта, потом открывает поиск. Раньше сразу после включения или сна Filmix_API искал без токена, пока не войдёшь в какой-нибудь раздел его главного меню, и PRO-аккаунт не учитывался.

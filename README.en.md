@@ -33,7 +33,7 @@ Tested only on Dune HD Pro 8K Plus, firmware 260827_0003_r24. Other Android Dune
 3. On the Dune open **Sources**, find the zip and press ENTER.
 4. The items appear in the **Play...** menu within half a minute, no reboot needed.
 
-Updates: since 0.3.0 the Dune checks for plugin updates by itself after it boots (waking from standby is not a boot) and offers to install the new version. Up to and including 0.3.0, update by hand: install the new zip over the old one. To remove, uninstall the plugin in the Dune plugin list.
+Updates: since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before. To remove, uninstall the plugin in the Dune plugin list.
 
 **If you have the separate "Open in …" plugins** (`num_supplier`, `nuvio_supplier` and others; until October 2026 each item was a plugin of its own), uninstall them in the Dune plugin list: this plugin replaces them, the items work the same way, and while an old plugin is installed its item cannot be hidden.
 
