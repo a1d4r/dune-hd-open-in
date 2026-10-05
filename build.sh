@@ -47,6 +47,9 @@ php_files=$(cd "$src" && find . -maxdepth 1 -name '*.php' | sed 's:^\./::')
 (cd "$src" && zip -q -X -r "$out" dune_plugin.xml bin icons translations LICENSE $php_files -x '*.DS_Store' '*/._*')
 unzip -l "$out"
 
+# No leftovers of an earlier build, with or without <check_update> now.
+pages="$root/dist/pages/$name"
+rm -rf "$pages"
 grep -q '<check_update>' "$manifest" || exit 0
 
 # --- Online update channel (check_update schema 2).
@@ -79,12 +82,10 @@ caption=$(sed -n 's/^plugin_caption = //p' "$src/translations/dune_language_russ
     sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 [ -n "$caption" ] || fail "no plugin_caption in translations/dune_language_russian.txt"
 
-pages="$root/dist/pages/$name"
 archive="dune_plugin_${name}_$version.tar.gz"
 tgz="$pages/$archive"
 info="$pages/update_info.xml"
 url="${channel%/update_info.xml}/$archive"
-rm -rf "$pages"
 mkdir -p "$pages"
 
 # The zip's files, directories included, as paths from the plugin root.
