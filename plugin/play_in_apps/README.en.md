@@ -26,6 +26,9 @@ Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the 
 
 If you install or remove an app later, its item appears or goes away after the Dune wakes from standby or reboots, or at once if you open **Settings → Applications → Play in apps**.
 
+### Update
+Since 0.3.0 the Dune checks for plugin updates by itself after it boots (waking from standby is not a boot) and offers to install the new version. Install the versions before 0.3.0 and 0.3.0 itself by hand: the new zip over the old one, as when installing.
+
 ### Hide an item
 **Settings → Applications → Play in apps**: choose **Show** or **Hide** for each app. The item leaves the menu at once and stays hidden after a reboot. An app that is not installed is marked "not installed"; the choice is kept for when the app appears.
 
@@ -33,7 +36,7 @@ If you install or remove an app later, its item appears or goes away after the D
 For all items:
 - Series open on the series page: Dune does not pass a season or episode.
 - If the card has no ID the app needs (or no title, for a search), Dune shows a message.
-- The plugin makes no network requests and runs nothing in the background.
+- The plugin itself makes no network requests and runs nothing in the background. The Dune checks for its updates on GitHub Pages (`a1d4r.github.io`).
 
 **NUM** is the torrent catalog and search app for Android TV by YouROK, where you can find torrents and send them to a torrent client such as TorrServe.
 - The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`). NUM cannot open a title by IMDb ID or by name.

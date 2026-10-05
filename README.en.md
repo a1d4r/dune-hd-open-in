@@ -33,11 +33,11 @@ Tested only on Dune HD Pro 8K Plus, firmware 260827_0003_r24. Other Android Dune
 3. On the Dune open **Sources**, find the zip and press ENTER.
 4. The items appear in the **Play...** menu within half a minute, no reboot needed.
 
-To update, install the new zip over the old one. To remove, uninstall the plugin in the Dune plugin list.
+Updates: since 0.3.0 the Dune checks for plugin updates by itself after it boots (waking from standby is not a boot) and offers to install the new version. Up to and including 0.3.0, update by hand: install the new zip over the old one. To remove, uninstall the plugin in the Dune plugin list.
 
 **If you have the separate "Open in …" plugins** (`num_supplier`, `nuvio_supplier` and others; until October 2026 each item was a plugin of its own), uninstall them in the Dune plugin list: this plugin replaces them, the items work the same way, and while an old plugin is installed its item cannot be hidden.
 
-The plugin makes no network requests and runs nothing in the background.
+The plugin itself makes no network requests and runs nothing in the background. The Dune checks for its updates on GitHub Pages (`a1d4r.github.io`).
 
 ## Build from source
 `sh build.sh play_in_apps` runs shellcheck and the tests, then writes `dist/dune_plugin_play_in_apps_<version>.zip`. Needs `shellcheck`, `dash`, `zip`, `python3` and `php` (`PHP=…` for another path); `mksh`, if installed, is used for a second test run. The Dune runs PHP 5.3.6: `tests/php53/Dockerfile` builds it along with all the tools, `docker build -t dune-php53 tests/php53`, then `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh play_in_apps`. The zips in Releases are built by GitHub Actions with the same script in this image; CI runs the tests under both PHP 5.3.6 and Ubuntu's PHP.
