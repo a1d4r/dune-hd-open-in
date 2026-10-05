@@ -17,19 +17,24 @@ jobs:
         run: |
           v=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' plugin/play_in_apps/dune_plugin.xml)
           test "$GITHUB_REF_NAME" = "v$v" || { echo "tag $GITHUB_REF_NAME != v$v"; exit 1; }
-      # Dunes update only to a greater version_index: a new archive under the
-      # old one would never reach them.
-      - name: version_index grew since the previous tag
+      # Dunes update only to a greater version_index: a new archive under an
+      # already published one would never reach them. Compared with every
+      # other v* tag, not only the nearest: a hotfix on an old branch counts.
+      - name: version_index is greater than in all other tags
         run: |
           m=plugin/play_in_apps/dune_plugin.xml
           vindex() { sed -n 's:.*<version_index>\(.*\)</version_index>.*:\1:p'; }
           cur=$(vindex <"$m")
-          prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null) ||
-            { echo "no earlier v* tag, check skipped"; exit 0; }
-          old=$(git show "$prev:$m" 2>/dev/null | vindex || true)
-          [ -n "$old" ] || { echo "no version_index in $m at $prev, check skipped"; exit 0; }
-          echo "version_index: $old at $prev, $cur at $GITHUB_REF_NAME"
-          [ "$cur" -gt "$old" ] || { echo "::error::version_index $cur is not greater than $old at $prev"; exit 1; }
+          max=
+          for t in $(git tag --list 'v*'); do
+            [ "$t" != "$GITHUB_REF_NAME" ] || continue
+            v=$(git show "$t:$m" 2>/dev/null | vindex || true)
+            case "$v" in '' | *[!0-9]*) echo "$t: no version_index, skipped"; continue ;; esac
+            if [ -z "$max" ] || [ "$v" -gt "$max" ]; then max=$v; at=$t; fi
+          done
+          [ -n "$max" ] || { echo "no other v* tag with version_index, check skipped"; exit 0; }
+          echo "version_index: at most $max ($at), $cur at $GITHUB_REF_NAME"
+          [ "$cur" -gt "$max" ] || { echo "::error::version_index $cur is not greater than $max at $at"; exit 1; }
       - name: Build all plugins under PHP 5.3.6, the Dune's version
         run: |
           docker build -t dune-php53 tests/php53
@@ -40,6 +45,7 @@ jobs:
           base="https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME"
           {
             echo "Скачайте zip плагина ниже, в Assets. Установка — в [README]($base/README.md)."
+            echo "Для ручной установки нужен zip; \`.tar.gz\` — тот же плагин для онлайн-обновления и «Коллекции плагинов» Dune BackUp."
             echo
             for p in plugin/*/; do
               n=$(basename "$p")
@@ -48,15 +54,16 @@ jobs:
             done
           } > notes.md
           cat notes.md
+      # The online update channel: dist/pages/<name>/update_info.xml and the
+      # archive it points to. Each deploy replaces the whole site. Uploaded
+      # before the release, so a failed upload leaves no half-done release.
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/pages
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/*.zip dist/pages/*/*.tar.gz --title "$GITHUB_REF_NAME" --notes-file notes.md
-      # The online update channel: dist/pages/<name>/update_info.xml and the
-      # archive it points to. Each deploy replaces the whole site.
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist/pages
 
   pages:
     needs: release
