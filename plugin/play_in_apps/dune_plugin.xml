@@ -37,6 +37,13 @@
       </data>
     </uninstall>
   </global_actions>
-  <version>0.2.1</version>
-  <version_index>4</version_index>
+  <check_update>
+    <schema>2</schema>
+    <url>https://a1d4r.github.io/dune-hd-open-in/play_in_apps/update_info.xml</url>
+    <timeout>86400</timeout>
+    <required>no</required>
+    <auto>yes</auto>
+  </check_update>
+  <version>0.3.0</version>
+  <version_index>5</version_index>
 </dune_plugin>
