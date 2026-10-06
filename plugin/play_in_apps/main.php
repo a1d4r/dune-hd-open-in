@@ -670,7 +670,6 @@ function pia_logs_dialog()
     pia_log('logs link made');
 
     $side = $qr['size'];
-    $q = strpos($url, '?');
     $defs = array(
         array(
             GuiControlDef::name => '',
@@ -684,21 +683,16 @@ function pia_logs_dialog()
             GuiControlDef::title => null,
             GuiControlDef::kind => GUI_CONTROL_VGAP,
             GuiControlDef::specific_def => array(GuiVGapDef::vgap => $side)),
-        // The shell cuts a long label in the middle: the address in two lines.
-        pia_label(substr($url, 0, $q)),
-        pia_label(substr($url, $q)),
-        pia_label(pia_tr('logs_when')));
-    // One sentence per line, for the same reason.
-    foreach (preg_split('/(?<=\.) /', pia_tr('logs_warning'), 2) as $line)
-        $defs[] = pia_label($line);
-    $defs[] = array(
-        GuiControlDef::name => 'close',
-        GuiControlDef::title => null,
-        GuiControlDef::kind => GUI_CONTROL_BUTTON,
-        GuiControlDef::specific_def => array(
-            GuiButtonDef::caption => pia_tr('logs_close'),
-            GuiButtonDef::width => 300,
-            GuiButtonDef::push_action => pia_close_dialog_and(pia_input('logs_close'))));
+        // Only the QR: the shell cuts long labels in the middle; the page
+        // itself warns about personal data.
+        array(
+            GuiControlDef::name => 'close',
+            GuiControlDef::title => null,
+            GuiControlDef::kind => GUI_CONTROL_BUTTON,
+            GuiControlDef::specific_def => array(
+                GuiButtonDef::caption => pia_tr('logs_close'),
+                GuiButtonDef::width => 300,
+                GuiButtonDef::push_action => pia_close_dialog_and(pia_input('logs_close')))));
     return array(
         GuiAction::handler_string_id => SHOW_DIALOG_ACTION_ID,
         GuiAction::data => array(

@@ -972,10 +972,15 @@ check "diag brief uid 10123: no details" no_details
 STUB_RESOLVE=$all_pkgs
 diag
 check "diag uid 10123, resolves: OK" verdicts_are OK
-STUB_UID=0
 STUB_RESOLVE=
+for u in 0 1000 2000 9999; do
+    STUB_UID=$u
+    diag
+    check "diag uid $u (not an ordinary app): does not resolve" verdicts_are "!! the app will not take the link" Filmix=OK
+done
+STUB_UID=10000
 diag
-check "diag uid 0 (the logs page): does not resolve" verdicts_are "!! the app will not take the link" Filmix=OK
+check "diag uid 10000 (an ordinary app): no data" verdicts_are "?? could not check the launch" Filmix=OK
 STUB_RESOLVE=$all_pkgs
 unset STUB_UID
 if ! command -v cmd >/dev/null 2>&1; then
@@ -1071,6 +1076,23 @@ check "diag shell log: timed-out cut at 300" sh -c '[ "$(grep "timed-out" "$1" |
 check "diag shell_ext.log: sup E" sh -c 'grep -qxF "  sup E: app not found for package: x" "$1" && grep -qxF "  sup E: second" "$1"' _ "$o"
 diag english brief
 check "diag brief: no shell log lines" brief_is en
+
+# A long version in the brief line: 19 characters and "…"; bytes past ASCII
+# of a long one become "?", a short one stays as is.
+# version_line <version>: the NUM line of the brief report with that version.
+version_line() {
+    python3 -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", sys.argv[3]))' \
+        "$fx/app_data.json" "$apps" "$1"
+    diag english brief
+    sed -n 2p "$o"
+}
+check "diag brief version of 20: as is" test "$(version_line 12345678901234567890)" = "NUM 12345678901234567890 — OK"
+check "diag brief version of 21: cut" test "$(version_line 123456789012345678901)" = "NUM 1234567890123456789… — OK"
+check "diag brief short UTF-8 version: as is" test "$(version_line 'бета 2')" = "NUM бета 2 — OK"
+check "diag brief long UTF-8 version: ? in place of bytes, valid UTF-8" test \
+    "$(version_line '1.0 бета-сборка')" = "NUM 1.0 ????????-??????… — OK"
+check "diag brief: 12 lines with a long version" test "$(wc -l <"$o" | tr -d ' ')" = 12
+cp "$fx/app_data.json" "$apps"
 rm -f "$PLAY_IN_APPS_TMP/run/shell.log" "$PLAY_IN_APPS_TMP/run/shell_ext.log"
 
 # Other device classes: Android TV (no PLAY_IN_APPS_TMP: paths under
@@ -1263,32 +1285,7 @@ class ViewItemParams
     const item_caption_width = 'item_caption_width';
     const item_caption_font_size = 'item_caption_font_size';
 }
-// The device's PHP has zlib, the PHP 5.3.6 image does not: stored deflate
-// blocks in a zlib stream, enough for the QR PNG.
-if (!function_exists('gzcompress'))
-{
-    function gzcompress($data, $level = -1)
-    {
-        $out = "\x78\x01";
-        $len = strlen($data);
-        $pos = 0;
-        do
-        {
-            $chunk = (string) substr($data, $pos, 65535);
-            $n = strlen($chunk);
-            $pos += $n;
-            $out .= chr($pos >= $len ? 1 : 0) . pack('v', $n) . pack('v', ~$n & 0xffff) . $chunk;
-        } while ($pos < $len);
-        $a = 1;
-        $b = 0;
-        for ($i = 0; $i < $len; $i++)
-        {
-            $a = ($a + ord($data[$i])) % 65521;
-            $b = ($b + $a) % 65521;
-        }
-        return $out . pack('N', ($b << 16) | $a);
-    }
-}
+require dirname(__FILE__) . '/gz_stub.php';
 function hd_silence_warnings()
 {
 }
@@ -1315,6 +1312,44 @@ error_reporting(E_ALL);
 ini_set('display_errors', 'stderr');
 require $argv[1];
 echo DunePluginFw::$instance->call_plugin(file_get_contents('php://stdin'));
+EOF
+
+cat >"$work/gz_stub.php" <<'EOF'
+<?php
+// The device's PHP has zlib, the PHP 5.3.6 image does not: stored deflate
+// blocks in a zlib stream, enough for the QR PNG.
+if (!function_exists('gzcompress'))
+{
+    function gzcompress($data, $level = -1)
+    {
+        $out = "\x78\x01";
+        $len = strlen($data);
+        $pos = 0;
+        do
+        {
+            $chunk = (string) substr($data, $pos, 65535);
+            $n = strlen($chunk);
+            $pos += $n;
+            $out .= chr($pos >= $len ? 1 : 0) . pack('v', $n) . pack('v', ~$n & 0xffff) . $chunk;
+        } while ($pos < $len);
+        $a = 1;
+        $b = 0;
+        for ($i = 0; $i < $len; $i++)
+        {
+            $a = ($a + ord($data[$i])) % 65521;
+            $b = ($b + $a) % 65521;
+        }
+        return $out . pack('N', ($b << 16) | $a);
+    }
+}
+EOF
+# qr_png <url>: the QR picture qrpng.php makes for this URL, as the dialog's.
+cat >"$work/qr_of.php" <<'EOF'
+<?php
+require dirname(__FILE__) . '/gz_stub.php';
+require $argv[1];
+$q = PiaQrPng::make($argv[2], 8, 4);
+echo $q['png'];
 EOF
 
 # php_run <call ctx file>: stdout/stderr/rc of main.php into $o*.
@@ -1840,41 +1875,42 @@ sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] !
     folder_view check
     check "check screen, Russian Dune: Russian report" check_view_is "$work/diag_ru.txt"
     rm -f "$cfg/settings.properties"
-    # Bad UTF-8 and a tab from a command, a line over 300 characters.
+    # Bad UTF-8 and a tab from a command, a line over 300 characters (the
+    # owner of someone else's menu file).
     STUB_MODEL=$(printf 'Pro\377\376\t8K')
     export STUB_MODEL
-    python3 -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", "9" * 400))' \
-        "$fx/app_data.json" "$apps"
+    printf '{"plugin":"%0400d","bin":"sh %s/num.sh"}\n' 0 "$bin" >"$menu/num"
     folder_view check
     unset STUB_MODEL
-    cp "$fx/app_data.json" "$apps"
+    "$sh_bin" "$bin/sync.sh" >/dev/null 2>&1
     check "check screen, bad UTF-8: exit 0" rc_is 0
     check "check screen, bad UTF-8 and a tab: cleaned" python3 -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
 sys.exit(rows[0]["caption"] != "Pro?? 8K · r24 260827 · Android 11 · plugin " + sys.argv[2])' "$o" "$plugin_version"
     check "check screen, long line: cut at 300 characters" python3 -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
-long = [r["caption"] for r in rows if r["caption"].startswith("NUM 999")]
+long = [r["caption"] for r in rows if r["caption"].startswith("NUM ")]
 sys.exit(len(long) != 1 or len(long[0]) != 300 or not long[0].endswith("…"))' "$o"
 
     # --- "Logs for the author": QR dialog, token for the CGI page
 
     pia_tmp="$PLAY_IN_APPS_TMP/plugins/play_in_apps"
     token_of() { cat "$pia_tmp/logs_token"; }
-    # qr_dialog_is <host>: the dialog for the current token and QR picture.
+    # qr_dialog_is <host>: the dialog for the current token: title, the QR
+    # picture of the page's address (no text but the title) and "Close".
     qr_dialog_is() {
-        python3 - "$o" "$1" "$(token_of)" "$pia_tmp" <<'EOF'
+        "$php_bin" "$work/qr_of.php" "$plugin/qrpng.php" \
+            "http://$1/cgi-bin/plugins/play_in_apps/logs?t=$(token_of)" >"$work/qr_want.png" || return 1
+        python3 - "$o" "$pia_tmp" "$work/qr_want.png" <<'EOF'
 import glob, json, sys
 d = json.load(open(sys.argv[1]))
-host, tok, tmp = sys.argv[2], sys.argv[3], sys.argv[4]
+tmp = sys.argv[2]
 pngs = glob.glob(tmp + "/qr_*.png")
 if len(pngs) != 1:
     sys.exit(1)
 png = pngs[0]
 data = open(png, "rb").read()
 side = int.from_bytes(data[16:20], "big")
-def label(c):
-    return {"name": "", "title": None, "kind": "label", "specific_def": {"caption": c}}
 def inp(c):
     return {"handler_string_id": "plugin_handle_user_input", "data": None,
             "params": {"handler_id": "setup", "control_id": c}}
@@ -1883,16 +1919,11 @@ defs = [
      "specific_def": {"caption": '<icon width="%d" height="%d">%s</icon>' % (side, side, png)},
      "params": {"smart": 1}},
     {"name": "", "title": None, "kind": "vgap", "specific_def": {"vgap": side}},
-    label("http://%s/cgi-bin/plugins/play_in_apps/logs" % host),
-    label("?t=" + tok),
-    label("Download right after the error, without rebooting the Dune."),
-    label("The logs may contain personal data."),
-    label("Do not post them publicly — on forums or in group chats."),
     {"name": "close", "title": None, "kind": "button", "specific_def": {
         "caption": "Close", "width": 300, "push_action": {
             "handler_string_id": "close_dialog_and_run", "data": {"post_action": inp("logs_close")}}}}]
 action = {"handler_string_id": "show_dialog", "data": {
-    "title": "Logs for the author", "defs": defs, "close_by_return": False, "preferred_width": 1500,
+    "title": "Download logs to phone", "defs": defs, "close_by_return": False, "preferred_width": 1500,
     "actions": {"key_return": inp("logs_return"), "timer": inp("logs_ttl")},
     "timer": {"delay_ms": 300000}}}
 want = {"has_data": True, "plugin_cookies": {"k": "v"}, "is_error": False, "error_action": None,
@@ -1902,7 +1933,7 @@ idat = data.find(b"IDAT")
 n = int.from_bytes(data[idat - 4:idat], "big")
 rows = zlib.decompress(data[idat + 4:idat + 4 + n])
 ok = (d == want and data[:8] == b"\x89PNG\r\n\x1a\n" and side > 100 and data.endswith(b"IEND\xaeB`\x82")
-      and len(rows) == side * (side + 1))
+      and len(rows) == side * (side + 1) and data == open(sys.argv[3], "rb").read())
 sys.exit(not ok)
 EOF
     }
@@ -1919,7 +1950,9 @@ EOF
     check "logs: token of 32 hex" grep -qxE '[0-9a-f]{32}' "$pia_tmp/logs_token"
     check "logs: token 0600" mode_is "$pia_tmp/logs_token" 600
     check "logs: QR picture 0600" mode_is "$(find "$pia_tmp" -name 'qr_*.png' | head -n 1)" 600
-    check "logs: dialog with QR, address, warnings, Close" qr_dialog_is 192.0.2.10
+    check "logs: dialog with the title, QR of the address, Close" qr_dialog_is 192.0.2.10
+    qr_not() { ! qr_dialog_is "$1"; }
+    check "logs: the QR holds the address (another host fails)" qr_not 192.0.2.11
     check "logs: token never logged" sh -c '! grep -qF "$(cat "$1")" "$2"' _ "$pia_tmp/logs_token" "$o.err"
     check "logs: no temp files" test -z "$(find "$pia_tmp" -name '*.tmp')"
     tok1=$(token_of)

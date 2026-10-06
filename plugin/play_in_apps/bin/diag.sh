@@ -63,8 +63,8 @@ l_intent=$(t diag_intent)
 l_no_data=$(t diag_no_data)
 # Android 11+ hides apps from an ordinary app (Dune HD on Android TV) unless
 # it declares them, and then query-activities says "No activities found" for
-# an installed app. The system uid (the shell on Dune models) and root (the
-# logs page) see all packages.
+# an installed app. Ordinary apps have a uid from 10000; system ones (the
+# shell on Dune models: 1000) and root (the logs page) see all packages.
 uid=$(id -u 2>/dev/null)
 
 body=
@@ -104,15 +104,16 @@ query() {
     case "$out" in
         *'No activit'*)
             case "$uid" in
-                0 | 1000)
-                    res=no
-                    add "$l_intent: $(t diag_not_resolves)"
-                    ;;
-                *)
-                    res=nodata
-                    add "$l_intent: $l_no_data ($(t diag_not_system) ${uid:-?}): $(printf '%s\n' "$out" | sed -n '/./{p;q;}' | cut -c 1-120)"
-                    ;;
+                '' | *[!0-9]*) app_uid=0 ;;
+                *) app_uid=$((uid >= 10000)) ;;
             esac
+            if [ "$app_uid" = 1 ]; then
+                res=nodata
+                add "$l_intent: $l_no_data ($(t diag_not_system) $uid): $(printf '%s\n' "$out" | sed -n '/./{p;q;}' | cut -c 1-120)"
+            else
+                res=no
+                add "$l_intent: $(t diag_not_resolves)"
+            fi
             return
             ;;
     esac
@@ -261,6 +262,11 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         if [ -z "$mark" ]; then
             verdict=$(t diag_v_ok)
             [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_filmix_api))"
+        fi
+        # A version over 20 bytes: 19 characters and "…". Bytes past ASCII
+        # become "?" first, so no UTF-8 character is cut in two.
+        if [ "$(printf '%s' "$v" | wc -c)" -gt 20 ]; then
+            v="$(printf '%s' "$v" | LC_ALL=C tr -c ' -~' '?' | cut -c 1-19)…"
         fi
         say "$(t "${id}_caption")${v:+ $v} — $verdict"
     else
