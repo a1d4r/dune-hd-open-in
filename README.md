@@ -11,6 +11,7 @@
 | NUM | TMDB |
 | Lampa | TMDB |
 | BYLAMPA | TMDB |
+| LAMPA ATV | TMDB |
 | Prisma | TMDB |
 | VoKino | IMDb, если нет — поиск по названию |
 | LazyMedia | не открывает по ID, только поиск по названию |

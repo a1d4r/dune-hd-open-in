@@ -4,6 +4,7 @@
 
 ## 0.4.0
 - BYLAMPA item: opens the movie or series in BYLAMPA (`top.rootu.bylumpa`) by TMDB ID.
+- LAMPA ATV item: opens the movie or series in LAMPA ATV (`top.rootu.lumpa`) by TMDB ID.
 
 ## 0.3.0
 - Online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version of the plugin and offers to install it. Install 0.3.0 itself by hand; if an update does not come, install the new zip over the old one, as before.
@@ -29,6 +30,7 @@
 
 ## 0.4.0
 - Пункт BYLAMPA: открывает фильм или сериал в BYLAMPA (`top.rootu.bylumpa`) по TMDB ID.
+- Пункт LAMPA ATV: открывает фильм или сериал в LAMPA ATV (`top.rootu.lumpa`) по TMDB ID.
 
 ## 0.3.0
 - Онлайн-обновление: после загрузки Дюны (выход из режима ожидания — не загрузка) прошивка проверяет новую версию плагина на GitHub Pages и предлагает её поставить. Саму 0.3.0 ставьте вручную; если обновление не пришло — поставьте новый zip поверх старого, как раньше.

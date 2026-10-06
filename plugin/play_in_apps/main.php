@@ -11,6 +11,7 @@ class PlayInApps
         'num' => array('NUM', 'ru.yourok.num'),
         'lampa' => array('Lampa', 'top.rootu.lampa'),
         'bylampa' => array('BYLAMPA', 'top.rootu.bylumpa'),
+        'lampa_atv' => array('LAMPA ATV', 'top.rootu.lumpa'),
         'prisma' => array('Prisma', 'top.rootu.prisma'),
         'vokino' => array('VoKino', 'ru.vokino.web'),
         'lazymedia' => array('LazyMedia', 'com.lazycatsoftware.lmd'),

@@ -119,18 +119,6 @@
       "first_install_timestamp": 1791300283,
       "last_modified_time": "2026-10-06T18:24:39.000+0300",
       "last_modified_timestamp": 1791300279
-    },
-    {
-      "caption": "LAMPA ATV",
-      "package_name": "top.rootu.lumpa",
-      "version": "1.13.3",
-      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_top.rootu.lumpa.png",
-      "activity": "top.rootu.lumpa.MainActivity",
-      "source_dir": "\/data\/app\/~~Jsnd8bAXZZZezujFWhfNTA==\/top.rootu.lumpa-ZLHUKasBMa5rPhJEAyxE7Q==\/base.apk",
-      "first_install_time": "2026-10-06T18:35:18.112+0300",
-      "first_install_timestamp": 1791300918,
-      "last_modified_time": "2026-10-06T18:35:13.000+0300",
-      "last_modified_timestamp": 1791300913
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"

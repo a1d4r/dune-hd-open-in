@@ -9,6 +9,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | NUM | NUM 1.0.150 (`ru.yourok.num`) | TMDB ID |
 | Lampa | Lampa 1.13.1 (`top.rootu.lampa`) | TMDB ID |
 | BYLAMPA | BYLAMPA 1.13.3 (`top.rootu.bylumpa`) | TMDB ID |
+| LAMPA ATV | LAMPA ATV 1.13.3 (`top.rootu.lumpa`) | TMDB ID |
 | Prisma | Prisma 1.3.4 (`top.rootu.prisma`) | TMDB ID |
 | VoKino | VoKino 1.1.1 (`ru.vokino.web`) | IMDb ID, else search by title |
 | LazyMedia | LazyMedia Deluxe 3.467 (`com.lazycatsoftware.lmd`) | no ID, search by title only |
@@ -54,6 +55,9 @@ For all items:
 **BYLAMPA** is an unofficial Lampa fork with its own server.
 - The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`), as in Lampa.
 - Each launch replaces what was open in BYLAMPA.
+
+**LAMPA ATV** is an unofficial Lampa build.
+- The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`), as in Lampa.
 
 **Prisma** is a Lampa fork: [prisma.ws](https://prisma.ws), APK in [Releases](https://github.com/Sheinices/Prisma_TV/releases/latest).
 - The title is opened by its TMDB ID, as in Lampa: opening by IMDb ID or by name is unreliable there.
