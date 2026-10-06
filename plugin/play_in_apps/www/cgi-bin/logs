@@ -1,0 +1,14 @@
+#!/bin/sh
+# CGI entry of the logs page: run_plugin_cgi runs every file of www/cgi-bin as
+# `sh <file>` (root), so only this wrapper lives here. The page and php.ini
+# are in <plugin>/cgi/, outside www/ (not served as static files, never run
+# as sh). Builtins only; no ".." in SCRIPT_FILENAME (php-cgi answers 404).
+case $0 in
+/*) dir=${0%/*} ;;
+*/*) dir=$PWD/${0%/*} ;;
+*) dir=$PWD ;;
+esac
+cgi=${dir%/www/cgi-bin}/cgi
+SCRIPT_FILENAME="$cgi/logs.php"
+export SCRIPT_FILENAME
+exec "$FS_PREFIX/firmware_ext/php/php-cgi" -c "$cgi"
