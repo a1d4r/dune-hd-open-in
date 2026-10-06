@@ -35,24 +35,21 @@ Since 0.3.0 the plugin supports online updates: after the Dune boots (waking fro
 **Settings → Applications → Play in apps** is a short screen, like the Dune's own settings:
 - **Items of the "Play..." menu: Configure…** — which items to show;
 - **Check: Open…** — why an item does not start;
-- **Logs for the author: To a phone…** — the logs as one file to send to the author.
+- **Logs: Download to phone…** — the logs as one file to send to the author.
 
 ### Hide an item
 **Items of the "Play..." menu: Configure…** opens the Dune's own dialog with a list of the apps and checkmarks. Uncheck an item to hide it, check it to show it; the **Apps** line switches all of them. All may be unchecked. The choice applies when the dialog closes ("Close" or Back): the item leaves the menu or comes back and stays so after a reboot. **POP UP → "Reset to Default Values"** turns all items on again. Apps that are not installed are marked "(not installed)"; the choice is kept for when the app appears. A choice made in earlier versions of the plugin is kept.
 
 ### Check
-**Check: Open…** shows a report: the Dune model, Android, firmware, the plugin version, and for every item a verdict (`OK`; `--` not installed or hidden; `!!` something is wrong; `??` could not check) with the reasons under it:
-- whether the app is installed and its version; whether the item is hidden; whether the item is in the menu and whose it is (for example, an old "Open in …" plugin's);
-- what the item answers for the movie "Cars": the launch command or an error;
-- whether the app takes that link (Android is asked which app would open it; the app itself is not started).
+**Check: Open…** fits on one screen: the first line is the Dune model, firmware, Android and the plugin version, then one line per item: the app name, its version (if installed) and the verdict, for example "NUM 2.1 — OK", "Lampa 1.13.1 — hidden", "Prisma — not installed", "Filmix — OK (through the Filmix_API plugin)", "FreeZona 3.0.74 — the app will not take the link".
 
-At the bottom are the Dune's last records about launching items. An app that takes too long to open or closes at once is not seen by the check, only in the logs.
+The check looks at whether the app is installed, whether the item is hidden, whether it is in the menu and not another plugin's (for example, an old "Open in …" one), what the item answers for the movie "Cars" and whether the app takes that link (Android is asked which app would open it; the app itself is not started). The details — the launch command, Android's answer, the Dune's last records about launching items — go to the logs only. An app that takes too long to open or closes at once is not seen by the check, only in the logs.
 
 ### Logs for the author
 If an item says "Failed to start playback" or misbehaves, send the logs to the author:
-1. **Right after the error, without rebooting the Dune** (a reboot erases part of the logs), open **Logs for the author: To a phone…**.
+1. **Right after the error, without rebooting the Dune** (a reboot erases part of the logs), open **Logs: Download to phone…**.
 2. Scan the QR code with a phone on the same home network (or type the address under it) and tap **Download**: one `.txt` file arrives.
-3. The link works for 5 minutes; **Close** or Back on the remote turns it off at once.
+3. The link works while the QR code is open on the Dune, at most 5 minutes: **Close** or Back on the remote turns it off at once.
 
 **The logs may contain personal data. Do not post them publicly — on forums or in group chats.**
 
