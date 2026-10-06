@@ -362,6 +362,40 @@ function pia_write_lcfg($hidden)
     return $ok;
 }
 
+// package => "icon" of the app in the shell's app list: the path its
+// Applications menu shows (on Android TV the cache is in flashdata).
+function pia_app_icons($app_list)
+{
+    $icons = array();
+    $d = is_string($app_list) ? json_decode($app_list, true) : null;
+    if (!is_array($d) || !isset($d['applications']) || !is_array($d['applications']))
+        return $icons;
+    foreach ($d['applications'] as $a)
+    {
+        if (is_array($a) && isset($a['package_name'], $a['icon']) &&
+            is_string($a['package_name']) && is_string($a['icon']))
+            $icons[$a['package_name']] = $a['icon'];
+    }
+    return $icons;
+}
+
+// The item's icon in the dialog: the app's from the app list, else the
+// shell's icon cache under tmp; Filmix: the logo of the Filmix_API plugin.
+function pia_icon($pkg, $icons)
+{
+    if (is_null($pkg))
+        $paths = array(pia_plugins_dir() . '/Filmix_api/icons/logo.png');
+    else
+        $paths = array(isset($icons[$pkg]) ? $icons[$pkg] : '',
+            pia_tmp_root() . "/applications/icon_cache/icon_$pkg.png");
+    foreach ($paths as $p)
+    {
+        if (substr($p, 0, 1) === '/' && strpos($p, "\0") === false && is_file($p))
+            return $p;
+    }
+    return 'gui_skin://small_icons/apps.aai';
+}
+
 function pia_items_dialog()
 {
     // r22 and r24 have it; older firmware has no such dialog.
@@ -370,16 +404,15 @@ function pia_items_dialog()
         return pia_message(pia_tr('err_no_list_dialog'));
 
     $app_list = pia_app_list();
-    $icons = pia_tmp_root() . '/applications/icon_cache';
+    $icons = pia_app_icons($app_list);
     $items = array();
     foreach (PlayInApps::$apps as $id => $app)
     {
-        $icon = is_null($app[1]) ? '' : "$icons/icon_{$app[1]}.png";
         $items[] = array(
             GuiItem::id => $id,
             GuiItem::caption => pia_installed($app[1], $app_list) ?
                 $app[0] : $app[0] . ' (' . pia_tr('not_installed') . ')',
-            GuiItem::icon_url => $icon !== '' && is_file($icon) ? $icon : 'gui_skin://small_icons/apps.aai',
+            GuiItem::icon_url => pia_icon($app[1], $icons),
             GuiItem::group_id => 'apps');
     }
     if (!pia_write_lcfg(pia_read_hidden()))

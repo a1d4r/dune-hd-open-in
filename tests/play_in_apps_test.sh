@@ -1526,13 +1526,15 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
 
     # --- "Configure…": the shell's dialog with checkmarks (edit_list_config)
 
-    # items_is <installed ids> <ids with an icon> <en|ru>: the dialog action.
+    # items_is <installed ids> <ids with an icon in icon_cache> <en|ru> [<id>=<icon> ...]:
+    # the dialog action; the other icons are apps.aai.
     items_is() {
-        python3 - "$o" "$1" "$2" "$3" "$PLAY_IN_APPS_TMP/applications/icon_cache" <<'EOF'
+        python3 - "$o" "$1" "$2" "$3" "$PLAY_IN_APPS_TMP/applications/icon_cache" "${4-}" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 installed, icons = set(sys.argv[2].split()), set(sys.argv[3].split())
 ru = sys.argv[4] == "ru"
+other = dict(a.split("=", 1) for a in sys.argv[6].split())
 names = [("num", "NUM", "ru.yourok.num"), ("lampa", "Lampa", "top.rootu.lampa"),
          ("bylampa", "BYLAMPA", "top.rootu.bylumpa"), ("lampa_atv", "LAMPA ATV", "top.rootu.lumpa"),
          ("prisma", "Prisma", "top.rootu.prisma"), ("vokino", "VoKino", "ru.vokino.web"),
@@ -1544,6 +1546,7 @@ for i, c, pkg in names:
     if i not in installed:
         c += " (не установлено)" if ru else " (not installed)"
     icon = "%s/icon_%s.png" % (sys.argv[5], pkg) if i in icons else "gui_skin://small_icons/apps.aai"
+    icon = other.get(i, icon)
     items.append({"id": i, "caption": c, "icon_url": icon, "group_id": "apps"})
 action = {"handler_string_id": "edit_list_config", "data": {
     "config_id": "play_in_apps",
@@ -1620,7 +1623,66 @@ EOF
     check "items, firmware without the dialog: message" out_is \
         "$(message_json 'The Dune firmware does not support the item choice dialog')"
     cp "$fx/app_data.json" "$apps"
+
+    # Icons: Filmix — the logo of the installed Filmix_API plugin; an app —
+    # its "icon" in app_data.json (Android TV: in flashdata), else icon_cache.
+    mkdir -p "$plugins/Filmix_api/icons" "$work/atv_icons"
     : >"$plugins/Filmix_api/dune_plugin.xml"
+    : >"$plugins/Filmix_api/icons/logo.png"
+    : >"$work/atv_icons/icon_ru.yourok.num.png"
+    : >"$work/atv_icons/icon_com.nuvio.tv.png"
+    # app_icons <package>=<icon JSON> ...: app_data.json with these "icon" values.
+    app_icons() {
+        python3 - "$fx/app_data.json" "$apps" "$@" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+icons = dict(a.split("=", 1) for a in sys.argv[3:])
+for a in d["applications"]:
+    if a["package_name"] in icons:
+        a["icon"] = json.loads(icons[a["package_name"]])
+open(sys.argv[2], "w").write(json.dumps(d, indent=2).replace("/", "\\/"))
+EOF
+    }
+    # NUM: in flashdata; FreeZona: none there, icon_cache; Lampa: neither.
+    app_icons "ru.yourok.num=\"$work/atv_icons/icon_ru.yourok.num.png\"" \
+        "free.zona=\"$work/atv_icons/icon_free.zona.png\"" "top.rootu.lampa=\"$work/atv_icons/none.png\""
+    press items
+    check "items icons: stderr has only own log lines" only_own_log
+    check "items icons: app_data icon, icon_cache, Filmix_API logo" items_is "$all" "num freezona" en \
+        "num=$work/atv_icons/icon_ru.yourok.num.png filmix_api=$plugins/Filmix_api/icons/logo.png"
+    rm -f "$plugins/Filmix_api/dune_plugin.xml"
+    press items
+    check "items icons: Filmix_API logo without its manifest: still the logo" items_is \
+        "num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona" "num freezona" en \
+        "num=$work/atv_icons/icon_ru.yourok.num.png filmix_api=$plugins/Filmix_api/icons/logo.png"
+    : >"$plugins/Filmix_api/dune_plugin.xml"
+    rm -f "$plugins/Filmix_api/icons/logo.png"
+    press items
+    check "items icons: no Filmix_API logo: apps.aai" items_is "$all" "num freezona" en \
+        "num=$work/atv_icons/icon_ru.yourok.num.png"
+    # Not a usable path: relative, NUL, not a string, a directory.
+    (cd "$work" && mkdir -p rel && : >rel/icon.png)
+    app_icons 'ru.yourok.num="rel/icon.png"' 'com.nuvio.tv="/x\u0000/y"' 'com.stremio.one=7' \
+        "free.zona=\"$work/atv_icons\""
+    press items
+    check "items icons, bad paths: stderr has only own log lines" only_own_log
+    check "items icons, bad paths: icon_cache or apps.aai" items_is "$all" "num freezona" en
+    printf '{"applications":[' >"$apps"
+    press items
+    check "items icons, app list cut short: stderr has only own log lines" only_own_log
+    # Older Android: FS_PREFIX empty; the paths come from app_data.json and tmp_dir_path.
+    app_icons "com.nuvio.tv=\"$work/atv_icons/icon_com.nuvio.tv.png\""
+    printf '%s\n' '{"handler_id":"setup","control_id":"items"}' >"$work/ui.json"
+    ctx "$work/ui.json"
+    (
+        FS_PREFIX=
+        php_run "$work/ctx.json"
+    )
+    check "items icons, FS_PREFIX empty: exit 0" rc_is 0
+    check "items icons, FS_PREFIX empty: stderr has only own log lines" only_own_log
+    check "items icons, FS_PREFIX empty: app_data icon, icon_cache" items_is "$all" "num freezona" en \
+        "nuvio=$work/atv_icons/icon_com.nuvio.tv.png"
+    cp "$fx/app_data.json" "$apps"
 
     # --- post_action of the dialog: list_apply
 
