@@ -580,19 +580,33 @@ function pia_write_0600($path, $data)
     return $ok;
 }
 
-// The Dune's LAN address: busybox ifconfig, else the source address of a
-// UDP socket (connect sends nothing).
+// The Dune's LAN address from ifconfig: eth0, else wlan0, else the first
+// other interface but loopback and VPNs (tun*, ppp*, wg*); without ifconfig
+// the source address of a UDP socket (connect sends nothing).
 function pia_ip()
 {
     $o = array();
     exec('ifconfig 2>/dev/null', $o);
-    if (preg_match_all('/inet addr: ?([0-9]{1,3}(?:\.[0-9]{1,3}){3})/', implode("\n", $o), $m))
+    $ips = array();
+    $if = '';
+    foreach ($o as $line)
     {
-        foreach ($m[1] as $ip)
-        {
-            if (strpos($ip, '127.') !== 0)
-                return $ip;
-        }
+        // A block starts with the interface name at the line start.
+        if (preg_match('/^([^\s:]+)/', $line, $m))
+            $if = $m[1];
+        if ($if !== '' && !isset($ips[$if]) &&
+            preg_match('/inet addr: ?([0-9]{1,3}(?:\.[0-9]{1,3}){3})/', $line, $m) && strpos($m[1], '127.') !== 0)
+            $ips[$if] = $m[1];
+    }
+    foreach (array('eth0', 'wlan0') as $if)
+    {
+        if (isset($ips[$if]))
+            return $ips[$if];
+    }
+    foreach ($ips as $if => $ip)
+    {
+        if (!preg_match('/^(tun|ppp|wg)/', $if))
+            return $ip;
     }
     if (!function_exists('socket_create'))
         return '';

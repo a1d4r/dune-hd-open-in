@@ -61,6 +61,11 @@ yes_=$(t diag_yes)
 no_=$(t diag_no)
 l_intent=$(t diag_intent)
 l_no_data=$(t diag_no_data)
+# Android 11+ hides apps from an ordinary app (Dune HD on Android TV) unless
+# it declares them, and then query-activities says "No activities found" for
+# an installed app. The system uid (the shell on Dune models) and root (the
+# logs page) see all packages.
+uid=$(id -u 2>/dev/null)
 
 body=
 add() {
@@ -98,8 +103,16 @@ query() {
     out=$(cmd package query-activities --brief "$@" 2>&1 </dev/null)
     case "$out" in
         *'No activit'*)
-            res=no
-            add "$l_intent: $(t diag_not_resolves)"
+            case "$uid" in
+                0 | 1000)
+                    res=no
+                    add "$l_intent: $(t diag_not_resolves)"
+                    ;;
+                *)
+                    res=nodata
+                    add "$l_intent: $l_no_data ($(t diag_not_system) ${uid:-?}): $(printf '%s\n' "$out" | sed -n '/./{p;q;}' | cut -c 1-120)"
+                    ;;
+            esac
             return
             ;;
     esac
@@ -134,7 +147,7 @@ else
     else
         say "FS_PREFIX: $(t diag_unset)"
     fi
-    say "$(t diag_plugin): $name ${version:-?}"
+    say "$(t diag_plugin): $name ${version:-?} (uid ${uid:-?})"
 fi
 
 # --- The items. id:package; Filmix is the Filmix_API Dune plugin.

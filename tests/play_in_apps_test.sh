@@ -731,10 +731,12 @@ sbin="$work/sbin"
 mkdir -p "$sbin" "$work/sbin_nocmd"
 cat >"$sbin/android_stub" <<'EOF'
 #!/bin/sh
-# Stand-ins for cmd, getprop, ifconfig and logcat, in the formats seen on the
-# device (exit code 0 either way, as there). cmd: packages listed in
+# Stand-ins for cmd, getprop, id, ifconfig and logcat, in the formats seen on
+# the device (exit code 0 either way, as there). cmd: packages listed in
 # STUB_RESOLVE resolve, others do not; STUB_CMD=deny answers with an
-# exception. Every cmd call is appended to STUB_LOG.
+# exception. Every cmd call is appended to STUB_LOG. id -u: STUB_UID, 1000 by
+# default (the shell's uid on Dune models). ifconfig: the interfaces of
+# STUB_IFCONFIG, "<name>:<address>" each, loopback first.
 name=${0##*/}
 case $name in
 cmd)
@@ -771,18 +773,23 @@ getprop)
     ro.build.version.release) echo 11 ;;
     esac
     ;;
+id)
+    [ "${1-}" = -u ] && echo "${STUB_UID:-1000}"
+    ;;
 ifconfig)
-    echo 'lo        Link encap:Local Loopback'
-    echo '          inet addr:127.0.0.1  Mask:255.0.0.0'
-    echo 'eth0      Link encap:Ethernet'
-    echo '          inet addr:192.0.2.10  Bcast:192.0.2.255  Mask:255.255.255.0'
+    for i in lo:127.0.0.1 ${STUB_IFCONFIG:-eth0:192.0.2.10}; do
+        printf '%-10sLink encap:Ethernet\n' "${i%%:*}"
+        echo "          inet addr:${i#*:}  Mask:255.255.255.0"
+        echo '          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1'
+        echo
+    done
     ;;
 logcat) echo '10-06 12:00:00.000  1000  1000 I Stub: LOGCAT_MARK' ;;
 esac
 exit 0
 EOF
 chmod 755 "$sbin/android_stub"
-for n in cmd getprop ifconfig logcat; do
+for n in cmd getprop id ifconfig logcat; do
     ln -s "$sbin/android_stub" "$sbin/$n"
 done
 ln -s "$sbin/android_stub" "$work/sbin_nocmd/getprop"
@@ -879,7 +886,7 @@ check "diag: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.er
 check "diag: device" has_line "Device: Pro 8K Plus, Android 11"
 check "diag: firmware" has_line "Firmware: 260827_0003_r24 (tv188b)"
 check "diag: FS_PREFIX set" has_line "FS_PREFIX: set"
-check "diag: plugin version" has_line "Plugin: play_in_apps $plugin_version"
+check "diag: plugin version and uid" has_line "Plugin: play_in_apps $plugin_version (uid 1000)"
 check "diag all resolve: every item OK" verdicts_are OK
 check "diag NUM: installed with version" in_item NUM "  installed: yes, version 1.0.150 (ru.yourok.num)"
 check "diag NUM: not hidden" in_item NUM "  hidden: no"
@@ -949,6 +956,28 @@ diag english brief
 check "diag brief cmd refuses" brief_all "could not check the launch"
 check "diag brief cmd refuses: no details" no_details
 unset STUB_CMD
+# Not the system uid (Dune HD as an app on Android TV): Android 11+ may hide
+# installed apps from it, so "No activities found" proves nothing.
+STUB_UID=10123
+export STUB_UID
+STUB_RESOLVE=
+diag
+check "diag uid 10123, No activities found: no data" verdicts_are "?? could not check the launch" Filmix=OK
+check "diag uid 10123: the answer in the full report" in_item NUM \
+    "  intent: no data (not a system process, uid 10123): No activities found"
+check "diag uid 10123: uid in the full report" has_line "Plugin: play_in_apps $plugin_version (uid 10123)"
+diag english brief
+check "diag brief uid 10123: could not check" brief_all "could not check the launch"
+check "diag brief uid 10123: no details" no_details
+STUB_RESOLVE=$all_pkgs
+diag
+check "diag uid 10123, resolves: OK" verdicts_are OK
+STUB_UID=0
+STUB_RESOLVE=
+diag
+check "diag uid 0 (the logs page): does not resolve" verdicts_are "!! the app will not take the link" Filmix=OK
+STUB_RESOLVE=$all_pkgs
+unset STUB_UID
 if ! command -v cmd >/dev/null 2>&1; then
     PATH="$work/sbin_nocmd:$PATH" "$sh_bin" "$bin/diag.sh" >"$o" 2>"$o.err"
     check "diag no cmd: no data" verdicts_are "?? could not check the launch" Filmix=OK
@@ -1902,6 +1931,17 @@ EOF
     HD_HTTP_LOCAL_PORT=80
     press logs
     check "logs, port 80: not in the address" qr_dialog_is 192.0.2.10
+    # The address: eth0, else wlan0, else the first but tun*, ppp*, wg*.
+    for c in 'wlan0:192.0.2.20=192.0.2.20' \
+        'tun0:198.51.100.1 wlan0:192.0.2.20 eth0:192.0.2.10=192.0.2.10' \
+        'tun0:198.51.100.1 wlan0:192.0.2.20=192.0.2.20' \
+        'tun0:198.51.100.1 ppp0:198.51.100.2 wg0:198.51.100.3 usb0:192.0.2.30 wlan1:192.0.2.40=192.0.2.30'; do
+        STUB_IFCONFIG=${c%=*}
+        export STUB_IFCONFIG
+        press logs
+        check "logs, ifconfig '$STUB_IFCONFIG': address ${c##*=}" qr_dialog_is "${c##*=}"
+    done
+    unset STUB_IFCONFIG
     unset HD_HTTP_LOCAL_PORT
     press logs_return
     check "logs RETURN: closes the dialog" out_is "$closes_json"
@@ -2035,6 +2075,8 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     check "cgi page: no X-Powered-By" sh -c '! grep -qi "^X-Powered-By" "$1"' _ "$o"
     check "cgi page: warning" body_has 'The logs may contain personal data. Do not post them publicly — on forums or in group chats.'
     check "cgi page: Download link with the token" body_has "<a class=\"btn\" href=\"logs?t=$tok&amp;dl=1\">Download</a>"
+    check "cgi page: the link lives while the QR is open, at most 5 minutes" \
+        body_has 'The link works while the QR code is open on the Dune, at most 5 minutes.'
     check "cgi page: no PHP errors" quiet
     printf 'interface_language = russian\n' >"$cfg/settings.properties"
     req GET "t=$tok"
@@ -2099,6 +2141,38 @@ EOF
     check "cgi after RETURN: same 403" forbidden
     unset PIA_T_TMP
 fi
+
+# --- build.sh: www/cgi-bin holds only the logs wrapper (the shell runs every
+# file there as root). A copy of the repo whose test script fails: a build
+# that passes the check stops at the tests.
+br="$work/build_repo"
+mkdir -p "$br/plugin" "$br/tests"
+cp "$root/build.sh" "$br/"
+cp -R "$src" "$br/plugin/play_in_apps"
+echo 'exit 1' >"$br/tests/play_in_apps_test.sh"
+cgi_msg='www/cgi-bin may hold only the file logs'
+# build_cgi_is <ok|refused>: what build.sh says about www/cgi-bin.
+build_cgi_is() {
+    sh "$br/build.sh" play_in_apps >"$o" 2>"$o.err"
+    rc=$?
+    if [ "$1" = ok ]; then
+        [ "$rc" != 0 ] && ! grep -qF "$cgi_msg" "$o.err"
+    else
+        [ "$rc" = 1 ] && grep -qF "$cgi_msg" "$o.err" && [ ! -d "$br/dist" ]
+    fi
+}
+check "build.sh: www/cgi-bin with logs only passes" build_cgi_is ok
+: >"$br/plugin/play_in_apps/www/cgi-bin/settings"
+check "build.sh: another file in www/cgi-bin refused" build_cgi_is refused
+check "build.sh: the extra file named" grep -qF 'it has: logs settings' "$o.err"
+rm -f "$br/plugin/play_in_apps/www/cgi-bin/settings"
+mkdir "$br/plugin/play_in_apps/www/cgi-bin/sub"
+check "build.sh: a directory in www/cgi-bin refused" build_cgi_is refused
+rmdir "$br/plugin/play_in_apps/www/cgi-bin/sub"
+mv "$br/plugin/play_in_apps/www/cgi-bin/logs" "$br/plugin/play_in_apps/www/logs"
+ln -s ../logs "$br/plugin/play_in_apps/www/cgi-bin/logs"
+check "build.sh: logs as a symlink refused" build_cgi_is refused
+rm -rf "$br"
 
 # --- manifest and translations
 check "manifest: php, suppliers, entry point, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'

@@ -30,6 +30,14 @@ out="$root/dist/dune_plugin_${name}_$version.zip"
 # wrappers, run by the shell as `sh <file>`; PHP and php.ini are in cgi/) and
 # third-party code in its own dir with its license.
 extra_dirs=$(cd "$src" && for d in cgi qrcode www; do if [ -d "$d" ]; then echo "$d"; fi; done)
+# The shell runs every file of www/cgi-bin as root: only the logs wrapper.
+if [ -e "$src/www/cgi-bin" ]; then
+    cgi_list=$(ls -A "$src/www/cgi-bin" 2>&1 || true)
+    if [ "$cgi_list" != logs ] || [ -L "$src/www/cgi-bin/logs" ] || [ ! -f "$src/www/cgi-bin/logs" ]; then
+        echo "plugin/$name/www/cgi-bin may hold only the file logs, it has: $(printf '%s ' "$cgi_list" | tr '\n' ' ')" >&2
+        exit 1
+    fi
+fi
 cgi_bins=$(find "$src/www/cgi-bin" -type f 2>/dev/null || true)
 # shellcheck disable=SC2086 # one word per file
 shellcheck -s sh "$src"/bin/*.sh "$test" $cgi_bins
