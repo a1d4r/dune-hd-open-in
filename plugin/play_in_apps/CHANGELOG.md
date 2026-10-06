@@ -2,6 +2,12 @@
 
 **English version**
 
+## 0.5.0
+- New plugin screen, like the Dune's own settings: three buttons instead of a line per app, so it no longer runs off the screen.
+- Items of the "Play..." menu are chosen in the Dune's own dialog with checkmarks: the "Apps" line switches all of them, all may be unchecked, POP UP → "Reset to Default Values" turns all on. A choice made in earlier versions is kept.
+- "Check": a report on every item — installed or not and its version, hidden or not, whether its menu entry is in place, what it answers for a sample movie and whether the app takes that link — plus the Dune's last records about launching items.
+- "Logs for the author": a QR code opens a page on a phone in the same network that downloads the logs as one `.txt` file. Download them right after an error, without rebooting the Dune. The link works for 5 minutes, "Close" or Back turns it off. The logs may contain personal data: do not post them publicly — on forums or in group chats.
+
 ## 0.4.0
 - BYLAMPA item: opens the movie or series in BYLAMPA (`top.rootu.bylumpa`) by TMDB ID.
 - LAMPA ATV item: opens the movie or series in LAMPA ATV (`top.rootu.lumpa`) by TMDB ID.
@@ -27,6 +33,12 @@
 ---
 
 **Russian version**
+
+## 0.5.0
+- Новый экран плагина — как настройки самой Дюны: три кнопки вместо строки на каждое приложение, экран больше не уходит за край.
+- Пункты меню «Смотреть…» выбираются в штатном диалоге Дюны с галочками: строка «Приложения» переключает все, можно снять все, POP UP → «Сброс к значениям по умолчанию» включает все. Выбор из прошлых версий сохраняется.
+- «Проверка»: отчёт по каждому пункту — установлено ли приложение и его версия, скрыт ли пункт, на месте ли он в меню, что отвечает на пример фильма и примет ли приложение эту ссылку, — и последние записи Дюны о запуске пунктов.
+- «Логи для автора»: QR-код открывает на телефоне в той же сети страницу, с которой логи скачиваются одним файлом `.txt`. Качайте сразу после ошибки, не перезагружая Дюну. Ссылка действует 5 минут, «Закрыть» или Back её гасят. В логах могут быть личные данные: не выкладывайте их в открытый доступ — на форумы и в общие чаты.
 
 ## 0.4.0
 - Пункт BYLAMPA: открывает фильм или сериал в BYLAMPA (`top.rootu.bylumpa`) по TMDB ID.

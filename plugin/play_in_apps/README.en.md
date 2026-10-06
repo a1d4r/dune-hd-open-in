@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. An item appears only if its app is installed; any item can be hidden on the plugin screen.
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and logs for the author.
 
 | Menu item | App | Opens the title by |
 |---|---|---|
@@ -31,8 +31,30 @@ If you install or remove an app later, its item appears or goes away after the D
 ### Update
 Since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before.
 
+### Plugin screen
+**Settings → Applications → Play in apps** is a short screen, like the Dune's own settings:
+- **Items of the "Play..." menu: Configure…** — which items to show;
+- **Check: Open…** — why an item does not start;
+- **Logs for the author: To a phone…** — the logs as one file to send to the author.
+
 ### Hide an item
-**Settings → Applications → Play in apps**: choose **Show** or **Hide** for each app. The item leaves the menu at once and stays hidden after a reboot. An app that is not installed is marked "not installed"; the choice is kept for when the app appears.
+**Items of the "Play..." menu: Configure…** opens the Dune's own dialog with a list of the apps and checkmarks. Uncheck an item to hide it, check it to show it; the **Apps** line switches all of them. All may be unchecked. The choice applies when the dialog closes ("Close" or Back): the item leaves the menu or comes back and stays so after a reboot. **POP UP → "Reset to Default Values"** turns all items on again. Apps that are not installed are marked "(not installed)"; the choice is kept for when the app appears. A choice made in earlier versions of the plugin is kept.
+
+### Check
+**Check: Open…** shows a report: the Dune model, Android, firmware, the plugin version, and for every item a verdict (`OK`; `--` not installed or hidden; `!!` something is wrong; `??` could not check) with the reasons under it:
+- whether the app is installed and its version; whether the item is hidden; whether the item is in the menu and whose it is (for example, an old "Open in …" plugin's);
+- what the item answers for the movie "Cars": the launch command or an error;
+- whether the app takes that link (Android is asked which app would open it; the app itself is not started).
+
+At the bottom are the Dune's last records about launching items. An app that takes too long to open or closes at once is not seen by the check, only in the logs.
+
+### Logs for the author
+If an item says "Failed to start playback" or misbehaves, send the logs to the author:
+1. **Right after the error, without rebooting the Dune** (a reboot erases part of the logs), open **Logs for the author: To a phone…**.
+2. Scan the QR code with a phone on the same home network (or type the address under it) and tap **Download**: one `.txt` file arrives.
+3. The link works for 5 minutes; **Close** or Back on the remote turns it off at once.
+
+**The logs may contain personal data. Do not post them publicly — on forums or in group chats.**
 
 ### How the items work
 For all items:
@@ -103,4 +125,4 @@ For all items:
 Uninstall the plugin in the Dune plugin list — all its items go away.
 
 ### License
-MIT, see `LICENSE`.
+MIT, see `LICENSE`. The QR code is drawn by [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT, `qrcode/LICENSE`).
