@@ -1,12 +1,13 @@
 #!/bin/sh
-# The "Check" report, one line per row: the device, then for every item a
-# verdict line and its reasons (installed, hidden, the menu file, what the
-# item script answers for a built-in movie and whether that intent resolves
-# to an activity), then the shell's last lines about launching items.
-# The same text goes to the plugin's check screen (main.php) and to the logs
-# file (cgi/logs.php). Read only: the item scripts only print a command, and
+# The "Check" report. Full (the logs file, cgi/logs.php): the device, then
+# for every item a verdict line and its reasons (installed, hidden, the menu
+# file, what the item script answers for a built-in movie and whether that
+# intent resolves to an activity), then the shell's last lines about
+# launching items. Brief (the plugin's check screen, main.php): 12 lines, one
+# screen — the device, then one line per item with its verdict.
+# Read only: the item scripts only print a command, and
 # `cmd package query-activities` starts nothing.
-# Usage: sh diag.sh [russian|english]; output is in that language.
+# Usage: sh diag.sh [russian|english] [brief]; output is in that language.
 
 name=play_in_apps
 mydir=$(cd "$(dirname "$0")" && pwd)
@@ -17,6 +18,8 @@ plugins=$(dirname "$(dirname "$mydir")")
 
 lang=english
 [ "${1-}" = russian ] && lang=russian
+brief=0
+[ "${2-}" = brief ] && brief=1
 trf="$mydir/../translations/dune_language_$lang.txt"
 
 # t <key>: the translation of a key (keys are [a-z0-9_] only).
@@ -119,14 +122,20 @@ release=$(getprop ro.build.version.release 2>/dev/null)
 fw=$(sed -n 's/^firmware_version=//p' "$tmp/run/versions.txt" 2>/dev/null | head -n 1)
 product=$(sed -n 's/^product=//p' "$tmp/run/versions.txt" 2>/dev/null | head -n 1)
 version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$mydir/../dune_plugin.xml" 2>/dev/null | head -n 1)
-say "$(t diag_device): ${model:-?}, Android ${release:-?}"
-say "$(t diag_firmware): ${fw:-?} (${product:-?})"
-if [ -n "$FS_PREFIX" ]; then
-    say "FS_PREFIX: $(t diag_set)"
+if [ "$brief" = 1 ]; then
+    # 260827_0003_r24 -> r24 260827
+    fw_short=$(printf '%s\n' "$fw" | sed -n 's/^\([0-9][0-9]*\)_[0-9][0-9]*_\(r[0-9][0-9]*\)$/\2 \1/p')
+    say "${model:-?} · ${fw_short:-${fw:-?}} · Android ${release:-?} · $(t diag_brief_plugin) ${version:-?}"
 else
-    say "FS_PREFIX: $(t diag_unset)"
+    say "$(t diag_device): ${model:-?}, Android ${release:-?}"
+    say "$(t diag_firmware): ${fw:-?} (${product:-?})"
+    if [ -n "$FS_PREFIX" ]; then
+        say "FS_PREFIX: $(t diag_set)"
+    else
+        say "FS_PREFIX: $(t diag_unset)"
+    fi
+    say "$(t diag_plugin): $name ${version:-?}"
 fi
-say "$(t diag_plugin): $name ${version:-?}"
 
 # --- The items. id:package; Filmix is the Filmix_API Dune plugin.
 for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
@@ -137,6 +146,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     pkg=${app#*:}
     body=
     res=
+    v=
 
     if [ -z "$pkg" ]; then
         installed=0
@@ -205,27 +215,47 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         add "$(t diag_launch): $(t diag_play_action)"
     fi
 
+    # mark: the full report's sign before the verdict.
     if [ "$installed" = 0 ]; then
-        verdict="-- $(t diag_v_not_installed)"
+        mark=--
+        verdict=$(t diag_v_not_installed)
     elif [ "$hidden" = 1 ]; then
-        verdict="-- $(t diag_v_hidden)"
+        mark=--
+        verdict=$(t diag_v_hidden)
     elif [ "$menu" = none ]; then
-        verdict="!! $(t diag_v_no_menu)"
+        mark='!!'
+        verdict=$(t diag_v_no_menu)
     elif [ "$menu" = foreign ]; then
-        verdict="!! $(t diag_v_foreign) ${owner:-?}"
+        mark='!!'
+        verdict="$(t diag_v_foreign) ${owner:-?}"
     elif [ "$menu" = nobin ]; then
-        verdict="!! $(t diag_v_no_bin)"
+        mark='!!'
+        verdict=$(t diag_v_no_bin)
     elif [ "$res" = error ]; then
-        verdict="!! $(t diag_v_launch_error)"
+        mark='!!'
+        verdict=$(t diag_v_launch_error)
     elif [ "$res" = no ]; then
-        verdict="!! $(t diag_v_not_resolves)"
+        mark='!!'
+        verdict=$(t diag_v_not_resolves)
     elif [ "$res" = nodata ]; then
-        verdict="?? $(t diag_v_no_data)"
+        mark='??'
+        verdict=$(t diag_v_no_data)
     else
-        verdict='OK'
+        mark=
+        verdict=OK
     fi
-    say "$(t "${id}_caption"): $verdict$body"
+    if [ "$brief" = 1 ]; then
+        if [ -z "$mark" ]; then
+            verdict=$(t diag_v_ok)
+            [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_filmix_api))"
+        fi
+        say "$(t "${id}_caption")${v:+ $v} — $verdict"
+    else
+        say "$(t "${id}_caption"): ${mark:+$mark }$verdict$body"
+    fi
 done
+
+[ "$brief" = 1 ] && exit 0
 
 # --- What the shell logged about launching items (the check above does not
 # see a launch timing out, only these lines do).

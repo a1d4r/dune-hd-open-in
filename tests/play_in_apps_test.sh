@@ -831,6 +831,39 @@ sys.exit(got != ["%s: %s" % (c, want[c]) for c in caps])
 EOF
 }
 
+# brief_is <en|ru> [<caption>=<verdict>...]: the brief report is exactly 12
+# lines: the device, then "<caption> <version> — <verdict>" per item, OK by
+# default.
+brief_is() {
+    python3 - "$o" "$plugin_version" "$@" <<'EOF'
+import sys
+lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")
+ver, ru = sys.argv[2], sys.argv[3] == "ru"
+items = [("NUM", "1.0.150"), ("Lampa", "1.13.1"), ("BYLAMPA", "1.13.3"), ("LAMPA ATV", "1.13.3"),
+         ("Prisma", "1.3.4"), ("VoKino", "1.1.1-android"), ("LazyMedia", "3.467"), ("Filmix", ""),
+         ("Stremio", "1.11.2"), ("Nuvio", "1.0.0"), ("FreeZona", "3.0.74")]
+ok = "ОК" if ru else "OK"
+verdict = dict((c, ok) for c, _ in items)
+verdict["Filmix"] = ok + (" (через плагин Filmix_API)" if ru else " (through the Filmix_API plugin)")
+version = dict(items)
+for a in sys.argv[4:]:
+    c, v = a.split("=", 1)
+    verdict[c] = v
+want = ["Pro 8K Plus · r24 260827 · Android 11 · %s %s" % ("плагин" if ru else "plugin", ver)]
+want += ["%s%s — %s" % (c, " " + version[c] if version[c] else "", verdict[c]) for c, _ in items]
+sys.exit(lines != want + [""])
+EOF
+}
+# brief_all <verdict> [args of brief_is]: every Android item has this verdict.
+brief_all() {
+    v=$1
+    shift
+    brief_is en NUM="$v" Lampa="$v" BYLAMPA="$v" "LAMPA ATV=$v" Prisma="$v" VoKino="$v" \
+        LazyMedia="$v" Stremio="$v" Nuvio="$v" FreeZona="$v" "$@"
+}
+# no_details: none of the full report's details.
+no_details() { ! grep -qE 'am start|intent|menu item|installed:|launch:|FS_PREFIX|records|movie_suppliers' "$o"; }
+
 mkdir -p "$plugins/Filmix_api" "$PLAY_IN_APPS_TMP/run"
 : >"$plugins/Filmix_api/dune_plugin.xml"
 cp "$fx/app_data.json" "$apps"
@@ -871,10 +904,36 @@ check "diag query Stremio" grep -qxF "$q -a android.intent.action.VIEW -d stremi
 check "diag query LazyMedia: -n component" grep -qxF \
     "$q -n com.lazycatsoftware.lmd/com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch" "$STUB_LOG"
 
+# Brief: the check screen, one line per item.
+: >"$STUB_LOG"
+diag english brief
+check "diag brief: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
+check "diag brief: device line, then one line per item with version" brief_is en
+check "diag brief: no details" no_details
+check "diag brief: the same 10 queries" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 10
+diag russian brief
+check "diag brief russian" brief_is ru
+diag english brief extra
+check "diag brief, extra argument: still brief" brief_is en
+diag brief
+check "diag brief as the first argument: full report" has_line "Device: Pro 8K Plus, Android 11"
+cp "$PLAY_IN_APPS_TMP/run/versions.txt" "$work/versions.txt"
+printf 'firmware_version=custom_build\n' >"$PLAY_IN_APPS_TMP/run/versions.txt"
+diag english brief
+check "diag brief, other firmware name: as is" sh -c 'head -n 1 "$1" | grep -qxF "Pro 8K Plus · custom_build · Android 11 · plugin $2"' _ "$o" "$plugin_version"
+rm -f "$PLAY_IN_APPS_TMP/run/versions.txt"
+diag english brief
+check "diag brief, no versions.txt: ?" sh -c 'head -n 1 "$1" | grep -qxF "Pro 8K Plus · ? · Android 11 · plugin $2"' _ "$o" "$plugin_version"
+cp "$work/versions.txt" "$PLAY_IN_APPS_TMP/run/versions.txt"
+
 STUB_RESOLVE=
 diag
 check "diag none resolves: verdicts" verdicts_are "!! the app will not take the link" Filmix=OK
 check "diag none resolves: reason" in_item NUM "  intent: does not resolve, the app will not take this link"
+diag english brief
+check "diag brief none resolves" brief_all "the app will not take the link"
+diag russian brief
+check "diag brief russian none resolves: FreeZona" grep -qxF "FreeZona 3.0.74 — приложение не примет ссылку" "$o"
 STUB_RESOLVE=$all_pkgs
 STUB_DEFAULT=false
 export STUB_DEFAULT
@@ -886,6 +945,9 @@ export STUB_CMD
 diag
 check "diag cmd refuses: no data" verdicts_are "?? could not check the launch" Filmix=OK
 check "diag cmd refuses: first line" in_item NUM "  intent: no data: Exception occurred while executing:"
+diag english brief
+check "diag brief cmd refuses" brief_all "could not check the launch"
+check "diag brief cmd refuses: no details" no_details
 unset STUB_CMD
 if ! command -v cmd >/dev/null 2>&1; then
     PATH="$work/sbin_nocmd:$PATH" "$sh_bin" "$bin/diag.sh" >"$o" 2>"$o.err"
@@ -908,11 +970,21 @@ diag
 check "diag hidden: verdicts" verdicts_are OK NUM="-- hidden" Filmix="-- hidden"
 check "diag hidden: reason" in_item NUM "  hidden: yes"
 check "diag hidden: no menu file" in_item NUM "  menu item: no"
+diag english brief
+check "diag brief hidden" brief_is en NUM=hidden Filmix=hidden
+diag russian brief
+check "diag brief russian hidden" brief_is ru NUM=скрыт Filmix=скрыт
 cp "$fx/app_data_no_vokino.json" "$apps"
 diag
 check "diag VoKino not installed: verdict" in_item VoKino "VoKino: -- not installed"
 check "diag VoKino not installed: reason" in_item VoKino "  installed: no (ru.vokino.web)"
 check "diag VoKino not installed: what the item says" in_item VoKino "  launch: error: VoKino is not installed"
+diag english brief
+check "diag brief VoKino not installed: no version" sh -c 'grep -qxF "VoKino — not installed" "$1" && grep -qxF "NUM 1.0.150 — hidden" "$1"' _ "$o"
+rm -f "$plugins/Filmix_api/dune_plugin.xml"
+diag russian brief
+check "diag brief Filmix_API not installed" grep -qxF "Filmix — не установлено" "$o"
+: >"$plugins/Filmix_api/dune_plugin.xml"
 rm -f "$data/hidden"
 cp "$fx/app_data.json" "$apps"
 run sync.sh
@@ -921,16 +993,22 @@ run sync.sh
 printf '{"plugin":"num_supplier","bin":"sh %s/num.sh"}\n' "$bin" >"$menu/num"
 diag
 check "diag foreign menu file" verdicts_are OK NUM="!! the item is from another plugin: num_supplier"
+diag english brief
+check "diag brief foreign menu file" brief_is en NUM="the item is from another plugin: num_supplier"
 printf '{"plugin":"play_in_apps","bin":"sh \\/nonexistent\\/bin\\/num.sh"}\n' >"$menu/num"
 diag
 check "diag missing bin: verdict" verdicts_are OK NUM="!! the item script is missing"
 check "diag missing bin: path" in_item NUM "  menu item: yes, plugin play_in_apps, no script: /nonexistent/bin/num.sh"
+diag english brief
+check "diag brief missing bin" brief_is en NUM="the item script is missing"
 printf '{"plugin":"play_in_apps","bin":"bin/num.sh"}\n' >"$menu/num"
 diag
 check "diag relative bin: missing" verdicts_are OK NUM="!! the item script is missing"
 rm -f "$menu/num"
 diag
 check "diag no menu file" verdicts_are OK NUM="!! the item is not in the menu"
+diag english brief
+check "diag brief no menu file" brief_is en NUM="the item is not in the menu"
 
 # Hostile files: their text is only printed.
 # shellcheck disable=SC2016 # literal $(...) on purpose
@@ -962,6 +1040,8 @@ check "diag shell log: last 5 lines" sh -c 'grep -qF "launch status: 4" "$1" && 
 check "diag shell log: noise left out" no_text "noise line"
 check "diag shell log: timed-out cut at 300" sh -c '[ "$(grep "timed-out" "$1" | wc -c | tr -d " ")" = 303 ]' _ "$o"
 check "diag shell_ext.log: sup E" sh -c 'grep -qxF "  sup E: app not found for package: x" "$1" && grep -qxF "  sup E: second" "$1"' _ "$o"
+diag english brief
+check "diag brief: no shell log lines" brief_is en
 rm -f "$PLAY_IN_APPS_TMP/run/shell.log" "$PLAY_IN_APPS_TMP/run/shell_ext.log"
 
 # Other device classes: Android TV (no PLAY_IN_APPS_TMP: paths under
@@ -1640,13 +1720,16 @@ sys.exit(d != want)
 EOF
     }
 
-    diag
+    diag english brief
     cp "$o" "$work/diag_en.txt"
     : >"$STUB_LOG"
     folder_view check
     check "check screen: exit 0" rc_is 0
     check "check screen: stderr has only own log lines" only_own_log
-    check "check screen: the lines of diag.sh as rows" check_view_is "$work/diag_en.txt"
+    check "check screen: the lines of the brief report as rows" check_view_is "$work/diag_en.txt"
+    check "check screen: 12 rows, one screen" python3 -c 'import json, sys
+sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]) != 12)' "$o"
+    check "check screen: no details" sh -c '! grep -qE "am start|intent|launch:|FS_PREFIX" "$1"' _ "$o"
     check "check screen: diag.sh ran from PHP" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 10
     folder_view check get_regular_folder_items
     check "check screen, get_regular_folder_items: the same rows" python3 -c 'import json, sys
@@ -1661,7 +1744,7 @@ sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] !
     check "Check button: opens the check screen" out_is \
         '{"handler_string_id":"plugin_open_folder","data":{"media_url":"check","caption":"Check"}}'
     printf 'interface_language = russian\n' >"$cfg/settings.properties"
-    diag russian
+    diag russian brief
     cp "$o" "$work/diag_ru.txt"
     folder_view check
     check "check screen, Russian Dune: Russian report" check_view_is "$work/diag_ru.txt"
@@ -1669,17 +1752,18 @@ sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] !
     # Bad UTF-8 and a tab from a command, a line over 300 characters.
     STUB_MODEL=$(printf 'Pro\377\376\t8K')
     export STUB_MODEL
-    printf '[x] activity launch status: %0300d\n' 0 >"$PLAY_IN_APPS_TMP/run/shell.log"
+    python3 -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", "9" * 400))' \
+        "$fx/app_data.json" "$apps"
     folder_view check
     unset STUB_MODEL
-    rm -f "$PLAY_IN_APPS_TMP/run/shell.log"
+    cp "$fx/app_data.json" "$apps"
     check "check screen, bad UTF-8: exit 0" rc_is 0
     check "check screen, bad UTF-8 and a tab: cleaned" python3 -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
-sys.exit(rows[0]["caption"] != "Device: Pro?? 8K, Android 11")' "$o"
+sys.exit(rows[0]["caption"] != "Pro?? 8K · r24 260827 · Android 11 · plugin " + sys.argv[2])' "$o" "$plugin_version"
     check "check screen, long line: cut at 300 characters" python3 -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
-long = [r["caption"] for r in rows if "launch status" in r["caption"]]
+long = [r["caption"] for r in rows if r["caption"].startswith("NUM 999")]
 sys.exit(len(long) != 1 or len(long[0]) != 300 or not long[0].endswith("…"))' "$o"
 
     # --- "Logs for the author": QR dialog, token for the CGI page
@@ -2006,6 +2090,11 @@ for lang in english russian; do
     for key in $keys; do
         check "translation $lang: $key" grep -q "^$key = ." "$tr_file"
     done
+done
+for lang in english russian; do
+    check "translation $lang: screen_hint fits the right column (50 characters)" python3 -c 'import sys
+t = [l for l in open(sys.argv[1], encoding="utf-8") if l.startswith("screen_hint = ")]
+sys.exit(len(t) != 1 or len(t[0].rstrip("\n")) - len("screen_hint = ") > 50)' "$src/translations/dune_language_$lang.txt"
 done
 check "translations: same keys in both languages" test \
     "$(cut -d' ' -f1 "$src/translations/dune_language_english.txt" | sort)" = \

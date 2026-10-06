@@ -2,7 +2,7 @@
 // The plugin screens and the play_action handler of the Filmix item:
 //  - "setup": a short controls screen with three buttons — the item choice
 //    (the shell's dialog with checkmarks), "Check" and logs for the author;
-//  - "check": the report of bin/diag.sh as a list that scrolls.
+//  - "check": the brief report of bin/diag.sh (12 lines) as a list.
 // The logs page itself is cgi/logs.php. Only the firmware PHP API is used
 // (/firmware_ext/php/), PHP 5.3.6.
 
@@ -443,8 +443,8 @@ function pia_list_apply($in)
     return null;
 }
 
-// --- The screen "check": the report of bin/diag.sh, one row per line, in a
-// list that scrolls.
+// --- The screen "check": the brief report of bin/diag.sh (the device, then a
+// line per item), one row per line; the full one is in the logs file.
 
 function pia_screen_text($line)
 {
@@ -457,7 +457,7 @@ function pia_check_rows()
 {
     $out = array();
     $rc = -1;
-    exec('sh ' . escapeshellarg(dirname(__FILE__) . '/bin/diag.sh') . ' ' . pia_lang() . ' 2>&1', $out, $rc);
+    exec('sh ' . escapeshellarg(dirname(__FILE__) . '/bin/diag.sh') . ' ' . pia_lang() . ' brief 2>&1', $out, $rc);
     if (!$out)
         $out = array(pia_tr('check_failed') . " ($rc)");
     $rows = array();
