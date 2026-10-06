@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y dash mksh shellcheck zip php-cli
+        run: sudo apt-get update && sudo apt-get install -y dash mksh shellcheck zip php-cli php-cgi
       - name: Shellcheck, tests (dash, mksh), build
         run: for p in plugin/*/; do sh build.sh "$(basename "$p")"; done
       - name: No private IPs or UUIDs

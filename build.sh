@@ -26,7 +26,13 @@ manifest="$src/dune_plugin.xml"
 version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$manifest")
 out="$root/dist/dune_plugin_${name}_$version.zip"
 
-shellcheck -s sh "$src"/bin/*.sh "$test"
+# Optional parts of a plugin: the CGI page (www/cgi-bin holds only sh
+# wrappers, run by the shell as `sh <file>`; PHP and php.ini are in cgi/) and
+# third-party code in its own dir with its license.
+extra_dirs=$(cd "$src" && for d in cgi qrcode www; do if [ -d "$d" ]; then echo "$d"; fi; done)
+cgi_bins=$(find "$src/www/cgi-bin" -type f 2>/dev/null || true)
+# shellcheck disable=SC2086 # one word per file
+shellcheck -s sh "$src"/bin/*.sh "$test" $cgi_bins
 dash "$test" >/dev/null || {
     echo "tests failed: dash tests/${name}_test.sh" >&2
     exit 1
@@ -44,7 +50,7 @@ rm -f "$out"
 # PHP plugins also ship their top-level *.php (names are plain words).
 php_files=$(cd "$src" && find . -maxdepth 1 -name '*.php' | sed 's:^\./::')
 # shellcheck disable=SC2086 # one word per file
-(cd "$src" && zip -q -X -r "$out" dune_plugin.xml bin icons translations LICENSE $php_files -x '*.DS_Store' '*/._*')
+(cd "$src" && zip -q -X -r "$out" dune_plugin.xml bin icons translations LICENSE $php_files $extra_dirs -x '*.DS_Store' '*/._*')
 unzip -l "$out"
 
 # No leftovers of an earlier build, with or without <check_update> now.
@@ -92,7 +98,7 @@ mkdir -p "$pages"
 files=$(mktemp)
 trap 'rm -f "$files"' EXIT
 # shellcheck disable=SC2086 # one word per file
-(cd "$src" && find dune_plugin.xml bin icons translations LICENSE $php_files \
+(cd "$src" && find dune_plugin.xml bin icons translations LICENSE $php_files $extra_dirs \
     ! -name .DS_Store ! -name '._*' | LC_ALL=C sort) >"$files"
 if tar --version 2>/dev/null | grep -q 'GNU tar'; then
     set -- --format=gnu --owner=0 --group=0 --numeric-owner
