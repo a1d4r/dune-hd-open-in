@@ -10,6 +10,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 |---|---|
 | NUM | TMDB ID |
 | Lampa | TMDB ID |
+| BYLAMPA | TMDB ID |
 | Prisma | TMDB ID |
 | VoKino | IMDb ID, else search by title |
 | LazyMedia | no ID, search by title only |

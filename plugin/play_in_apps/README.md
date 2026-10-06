@@ -8,6 +8,7 @@
 |---|---|---|
 | NUM | NUM 1.0.150 (`ru.yourok.num`) | TMDB |
 | Lampa | Lampa 1.13.1 (`top.rootu.lampa`) | TMDB |
+| BYLAMPA | BYLAMPA 1.13.3 (`top.rootu.bylumpa`) | TMDB |
 | Prisma | Prisma 1.3.4 (`top.rootu.prisma`) | TMDB |
 | VoKino | VoKino 1.1.1 (`ru.vokino.web`) | IMDb, если нет — поиск по названию |
 | LazyMedia | LazyMedia Deluxe 3.467 (`com.lazycatsoftware.lmd`) | не открывает по ID, только поиск по названию |
@@ -49,6 +50,10 @@
 - Back в Lampa начинает работать только после первого нажатия любой стрелки — так Lampa ведёт себя при каждом запуске. Сразу вернуться в карточку Дюны: долгое нажатие Back → «Завершить работу».
 - Если такого TMDB ID в Lampa нет (бывает, когда у Дюны ошибка в ID), Lampa покажет бесконечную загрузку, а не сообщение.
 - Проверено с сервером `http://lampa.mx`. Со своим сервером Lampa (например, Lampac) не проверялось.
+
+**BYLAMPA** — неофициальный форк Lampa со своим сервером.
+- Карточка открывается по TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`), как у Lampa.
+- Каждый запуск заменяет то, что было открыто в BYLAMPA.
 
 **Prisma** — форк Lampa: [prisma.ws](https://prisma.ws), APK — в [Releases](https://github.com/Sheinices/Prisma_TV/releases/latest).
 - Карточка открывается по TMDB ID, как у Lampa: открытие по IMDb ID или названию у неё ненадёжно.

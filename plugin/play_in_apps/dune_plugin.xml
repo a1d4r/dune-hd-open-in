@@ -4,7 +4,7 @@
   <type>php</type>
   <params>
     <program>main.php</program>
-    <movie_suppliers>num-lampa-prisma-vokino-lazymedia-filmix_api-stremio-nuvio-freezona</movie_suppliers>
+    <movie_suppliers>num-lampa-bylampa-prisma-vokino-lazymedia-filmix_api-stremio-nuvio-freezona</movie_suppliers>
   </params>
   <entry_points>
     <entry_point>
@@ -44,6 +44,6 @@
     <required>no</required>
     <auto>yes</auto>
   </check_update>
-  <version>0.3.0</version>
-  <version_index>5</version_index>
+  <version>0.4.0</version>
+  <version_index>6</version_index>
 </dune_plugin>
