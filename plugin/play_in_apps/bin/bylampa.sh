@@ -60,7 +60,9 @@ esac
 
 uri="https://www.themoviedb.org/$kind/$tmdb"
 log "uri: $uri"
-# -p is required: Lampa, NUM and a web browser also handle themoviedb.org links.
+# The package is required: Lampa, NUM and a web browser also handle themoviedb.org links.
 # --activity-clear-task: otherwise every launch stacks another card.
-printf '{"bin":"am start --activity-clear-task -a android.intent.action.VIEW -d '\''%s'\'' -p %s","package":"%s","title":"BYLAMPA","wait_app_start_delay":10}\n' \
-    "$uri" "$pkg" "$pkg"
+# An intent: URI rather than -a/-d/-p: the shell's command parser on some
+# firmware (r24 260214) rejects -p. The link has no '#', ';', spaces or quotes.
+printf '{"bin":"am start --activity-clear-task '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"BYLAMPA","wait_app_start_delay":10}\n' \
+    "${uri#*:}" "${uri%%:*}" "$pkg" "$pkg"

@@ -75,10 +75,13 @@ one_json() {
 # --- item scripts bin/<id>.sh. $id is the app under test.
 
 # launch_is <uri>: launch reply of app $id for this URI, nothing else. For
-# LazyMedia the argument is the percent-encoded search query.
+# LazyMedia the argument is the percent-encoded search query. The other apps
+# get the URI as an intent: URI with the package (no -p: the shell's command
+# parser on some firmware rejects it); it is parsed back the way
+# Intent.parseUri does to the scheme, data, action and package.
 launch_is() {
     python3 - "$o" "$id" "$1" <<'EOF'
-import json, sys
+import json, re, sys
 d = json.load(open(sys.argv[1]))
 app, arg = sys.argv[2], sys.argv[3]
 pkg, title, flags = {
@@ -97,8 +100,32 @@ if app == "lazymedia":
     cmd = ("am start --activity-clear-task 'intent:#Intent;component=com.lazycatsoftware.lmd/"
            "com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch;S.query=%s;end'" % arg)
 else:
-    cmd = "am start %s-a android.intent.action.VIEW -d '%s' -p %s" % (flags, arg, pkg)
-sys.exit(d != {"bin": cmd, "package": pkg, "title": title, "wait_app_start_delay": 10})
+    scheme, rest = arg.split(":", 1)
+    cmd = ("am start %s'intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'"
+           % (flags, rest, scheme, pkg))
+if d != {"bin": cmd, "package": pkg, "title": title, "wait_app_start_delay": 10}:
+    sys.exit(1)
+if " -p " in d["bin"] + " ":
+    sys.exit("-p in the command")
+if app != "lazymedia":
+    # One shell word: no spaces or quotes inside the URI.
+    m = re.match(r"^am start (--activity-clear-task )?'([^' \"]*)'$", d["bin"])
+    if not m:
+        sys.exit("not one quoted intent: URI")
+    uri = m.group(2)
+    # Intent.parseUri: data is before the last '#', fields "k=v;" after "#Intent;".
+    i = uri.rfind("#")
+    data, frag = uri[:i], uri[i:]
+    if not (data.startswith("intent:") and frag.startswith("#Intent;") and frag.endswith(";end")):
+        sys.exit("not an intent: URI")
+    if "#" in data or ";" in data:
+        sys.exit("'#' or ';' in the link")
+    fields = [f.split("=", 1) for f in frag[len("#Intent;"):-len(";end")].split(";")]
+    if [k for k, _ in fields] != ["scheme", "action", "package"]:
+        sys.exit("fields %r" % fields)
+    f = dict(fields)
+    got = (f["scheme"] + ":" + data[len("intent:"):], f["action"], f["package"])
+    sys.exit(got != (arg, "android.intent.action.VIEW", pkg))
 EOF
 }
 
@@ -746,15 +773,16 @@ cmd)
         echo 'java.lang.SecurityException: Permission Denial'
         exit 0
     fi
+    # The intent: URI: package=<pkg> or component=<pkg>/<class>.
     pkg=
     comp=
-    prev=
     for a in "$@"; do
-        case $prev in
-        -p) pkg=$a ;;
-        -n) comp=$a ;;
+        case $a in
+        intent:*)
+            pkg=$(printf '%s\n' "$a" | sed -n 's/.*;package=\([^;]*\);.*/\1/p')
+            comp=$(printf '%s\n' "$a" | sed -n 's/.*;component=\([^;]*\);.*/\1/p')
+            ;;
         esac
-        prev=$a
     done
     [ -z "$comp" ] || pkg=${comp%%/*}
     case " ${STUB_RESOLVE-} " in
@@ -892,7 +920,7 @@ check "diag NUM: installed with version" in_item NUM "  installed: yes, version 
 check "diag NUM: not hidden" in_item NUM "  hidden: no"
 check "diag NUM: menu file ours" in_item NUM "  menu item: yes, plugin play_in_apps"
 check "diag NUM: launch command of bin/num.sh" in_item NUM \
-    "  launch: am start --activity-clear-task -a android.intent.action.VIEW -d 'https://www.themoviedb.org/movie/920' -p ru.yourok.num"
+    "  launch: am start --activity-clear-task 'intent://www.themoviedb.org/movie/920#Intent;scheme=https;action=android.intent.action.VIEW;package=ru.yourok.num;end'"
 check "diag NUM: resolves" in_item NUM "  intent: resolves -> ru.yourok.num/.MainActivity"
 check "diag VoKino: resolves" in_item VoKino "  intent: resolves -> ru.vokino.web/.MainActivity"
 check "diag LazyMedia: resolves by component" in_item LazyMedia \
@@ -902,14 +930,51 @@ check "diag Filmix: not checked" in_item Filmix "  launch: through the Filmix_AP
 check "diag: no shell log lines" has_line "  none"
 check "diag: no empty lines" sh -c '! grep -q "^\$" "$1"' _ "$o"
 check "diag: 10 queries, Filmix none" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 10
-check "diag query NUM: -a -d -p of the item" grep -qxF \
-    "$q -a android.intent.action.VIEW -d https://www.themoviedb.org/movie/920 -p ru.yourok.num" "$STUB_LOG"
+ifr='#Intent;scheme=https;action=android.intent.action.VIEW;package'
+check "diag query NUM: the intent: URI of the item" grep -qxF \
+    "$q intent://www.themoviedb.org/movie/920$ifr=ru.yourok.num;end" "$STUB_LOG"
 check "diag query FreeZona: Kinopoisk link" grep -qxF \
-    "$q -a android.intent.action.VIEW -d https://www.kinopoisk.ru/film/61249 -p free.zona" "$STUB_LOG"
-check "diag query VoKino" grep -qxF "$q -a android.intent.action.VIEW -d vokino://ru.vokino.web/view/tt0317219 -p ru.vokino.web" "$STUB_LOG"
-check "diag query Stremio" grep -qxF "$q -a android.intent.action.VIEW -d stremio:///detail/movie/tt0317219 -p com.stremio.one" "$STUB_LOG"
-check "diag query LazyMedia: -n component" grep -qxF \
-    "$q -n com.lazycatsoftware.lmd/com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch" "$STUB_LOG"
+    "$q intent://www.kinopoisk.ru/film/61249$ifr=free.zona;end" "$STUB_LOG"
+check "diag query VoKino" grep -qxF \
+    "$q intent://ru.vokino.web/view/tt0317219#Intent;scheme=vokino;action=android.intent.action.VIEW;package=ru.vokino.web;end" "$STUB_LOG"
+check "diag query Stremio" grep -qxF \
+    "$q intent:///detail/movie/tt0317219#Intent;scheme=stremio;action=android.intent.action.VIEW;package=com.stremio.one;end" "$STUB_LOG"
+check "diag query Nuvio" grep -qxF \
+    "$q intent://movie/tt0317219#Intent;scheme=nuvio;action=android.intent.action.VIEW;package=com.nuvio.tv;end" "$STUB_LOG"
+check "diag query LazyMedia: the intent: URI with the component" grep -qxF \
+    "$q intent:#Intent;component=com.lazycatsoftware.lmd/com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch;S.query=%D0%A2%D0%B0%D1%87%D0%BA%D0%B8;end" "$STUB_LOG"
+check "diag: no query has -p" sh -c '! grep -q -- " -p " "$1"' _ "$STUB_LOG"
+check "diag: no -p warning" no_text "has -p"
+
+# An item whose command has -p (a regression) or is not one known intent: URI.
+# fake_num <command>: bin/num.sh answers with this command.
+fake_num() {
+    printf '{"bin":"%s","package":"ru.yourok.num"}\n' "$1" >"$work/num_reply"
+    printf 'cat "%s"\n' "$work/num_reply" >"$bin/num.sh"
+}
+cp "$bin/num.sh" "$work/num.sh.orig"
+for c in "am start --activity-clear-task -a android.intent.action.VIEW -d 'https://www.themoviedb.org/movie/920' -p ru.yourok.num" \
+    "am start 'intent://www.themoviedb.org/movie/920$ifr=ru.yourok.num;end' -p ru.yourok.num"; do
+    fake_num "$c"
+    : >"$STUB_LOG"
+    diag
+    check "diag -p in the command: warning" in_item NUM "  warning: the command has -p, some firmware (r24 260214) rejects it"
+    check "diag -p in the command: not checked" in_item NUM "  intent: no data (unknown command)"
+    check "diag -p in the command: verdict" verdicts_are OK "NUM=?? could not check the launch"
+    check "diag -p in the command: no query for NUM" sh -c '! grep -q ru.yourok.num "$1"' _ "$STUB_LOG"
+done
+diag russian
+check "diag russian -p warning" in_item NUM "  внимание: в команде есть -p, его не понимают некоторые прошивки (r24 260214)"
+for c in "am start 'intent://www.themoviedb.org/movie/920#Intent;scheme=https;end'" \
+    "am start 'intent://a b$ifr=ru.yourok.num;end'" \
+    "am start 'intent://a$ifr=ru.yourok.num;end' x" \
+    "am start --activity-clear-task 'https://www.themoviedb.org/movie/920'"; do
+    fake_num "$c"
+    diag
+    check "diag unknown command ($c): not checked" in_item NUM "  intent: no data (unknown command)"
+    check "diag unknown command ($c): no -p warning" no_text "has -p"
+done
+cp "$work/num.sh.orig" "$bin/num.sh"
 
 # Brief: the check screen, one line per item.
 : >"$STUB_LOG"

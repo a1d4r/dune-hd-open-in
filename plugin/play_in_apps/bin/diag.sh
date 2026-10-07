@@ -77,30 +77,26 @@ add() {
 # of the item's package? Sets res to yes, no or nodata. The exit code of
 # query-activities is 0 either way, only the text tells.
 query() {
-    # am start [--activity-clear-task] -a <action> -d '<uri>' -p <package>
-    q=$(printf '%s\n' "$1" | sed -n "s/^am start \(--activity-clear-task \)*-a \([A-Za-z0-9._][A-Za-z0-9._]*\) -d '\([^']*\)' -p \([A-Za-z0-9._][A-Za-z0-9._]*\)\$/\2 \4 \3/p")
-    if [ -n "$q" ]; then
-        qa=${q%% *}
-        q=${q#* }
-        qp=${q%% *}
-        set -- -a "$qa" -d "${q#* }" -p "$qp"
-    else
-        # LazyMedia: am start --activity-clear-task 'intent:#Intent;component=<pkg>/<class>;...;end'
-        c=$(printf '%s\n' "$1" | sed -n "s/^am start --activity-clear-task 'intent:#Intent;component=\([A-Za-z0-9._][A-Za-z0-9._]*\/[A-Za-z0-9._][A-Za-z0-9._]*\);[^']*;end'\$/\1/p")
-        if [ -z "$c" ]; then
-            res=nodata
-            add "$l_intent: $l_no_data ($(t diag_unknown_command))"
-            return
-        fi
-        qp=${c%%/*}
-        set -- -n "$c"
+    # Some firmware (r24 260214) rejects -p in a launch command.
+    case " $1 " in
+        *' -p '*) add "$(t diag_p_option)" ;;
+    esac
+    # am start [--activity-clear-task] 'intent:...;end': the URI names the app
+    # by package=<pkg> or component=<pkg>/<class>; query it as it is.
+    uri=$(printf '%s\n' "$1" | sed -n "s/^am start \(--activity-clear-task \)*'\(intent:[^' ]*;end\)'\$/\2/p")
+    qp=$(printf '%s\n' "$uri" | sed -n 's/.*;package=\([A-Za-z0-9._][A-Za-z0-9._]*\);.*/\1/p')
+    [ -n "$qp" ] || qp=$(printf '%s\n' "$uri" | sed -n 's/.*;component=\([A-Za-z0-9._][A-Za-z0-9._]*\)\/.*/\1/p')
+    if [ -z "$qp" ]; then
+        res=nodata
+        add "$l_intent: $l_no_data ($(t diag_unknown_command))"
+        return
     fi
     if ! command -v cmd >/dev/null 2>&1; then
         res=nodata
         add "$l_intent: $l_no_data ($(t diag_no_cmd))"
         return
     fi
-    out=$(cmd package query-activities --brief "$@" 2>&1 </dev/null)
+    out=$(cmd package query-activities --brief "$uri" 2>&1 </dev/null)
     case "$out" in
         *'No activit'*)
             case "$uid" in

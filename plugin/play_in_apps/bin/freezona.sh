@@ -55,7 +55,9 @@ kp=$(ext_id 'kinopoisk:[0-9]{1,9}')
 
 uri="https://www.kinopoisk.ru/film/$kp"
 log "uri: $uri"
-# -p is required: web browsers also handle kinopoisk.ru links.
+# The package is required: web browsers also handle kinopoisk.ru links.
 # --activity-clear-task: FreeZona ignores a link to the card it already shows.
-printf '{"bin":"am start --activity-clear-task -a android.intent.action.VIEW -d '\''%s'\'' -p %s","package":"%s","title":"FreeZona","wait_app_start_delay":10}\n' \
-    "$uri" "$pkg" "$pkg"
+# An intent: URI rather than -a/-d/-p: the shell's command parser on some
+# firmware (r24 260214) rejects -p. The link has no '#', ';', spaces or quotes.
+printf '{"bin":"am start --activity-clear-task '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"FreeZona","wait_app_start_delay":10}\n' \
+    "${uri#*:}" "${uri%%:*}" "$pkg" "$pkg"

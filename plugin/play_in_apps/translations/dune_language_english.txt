@@ -46,6 +46,7 @@ diag_no_data = no data
 diag_not_system = not a system process, uid
 diag_no_cmd = no cmd command
 diag_unknown_command = unknown command
+diag_p_option = warning: the command has -p, some firmware (r24 260214) rejects it
 diag_empty_output = empty output
 diag_v_ok = OK
 diag_v_via_filmix_api = through the Filmix_API plugin

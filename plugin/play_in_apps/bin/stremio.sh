@@ -65,6 +65,8 @@ else
 fi
 
 log "uri: $uri"
-# -p is required: Nuvio also handles stremio: links.
-printf '{"bin":"am start -a android.intent.action.VIEW -d '\''%s'\'' -p %s","package":"%s","title":"Stremio","wait_app_start_delay":10}\n' \
-    "$uri" "$pkg" "$pkg"
+# The package is required: Nuvio also handles stremio: links.
+# An intent: URI rather than -a/-d/-p: the shell's command parser on some
+# firmware (r24 260214) rejects -p. The link has no '#', ';', spaces or quotes.
+printf '{"bin":"am start '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"Stremio","wait_app_start_delay":10}\n' \
+    "${uri#*:}" "${uri%%:*}" "$pkg" "$pkg"

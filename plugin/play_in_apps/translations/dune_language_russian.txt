@@ -46,6 +46,7 @@ diag_no_data = нет данных
 diag_not_system = не system-процесс, uid
 diag_no_cmd = нет команды cmd
 diag_unknown_command = непонятная команда
+diag_p_option = внимание: в команде есть -p, его не понимают некоторые прошивки (r24 260214)
 diag_empty_output = пустой ответ
 diag_v_ok = ОК
 diag_v_via_filmix_api = через плагин Filmix_API
