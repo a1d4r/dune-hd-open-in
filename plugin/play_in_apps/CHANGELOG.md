@@ -4,6 +4,7 @@
 
 ## 0.5.1
 - Fixed: items did not start on older firmware (e.g. r24 260214) — "Failed to start playback". The items now name the app inside the link instead of the `-p` option that firmware does not understand.
+- Nuvio and Stremio: the chosen movie opens even if the app already shows another card.
 
 ## 0.5.0
 - New plugin screen, like the Dune's own settings: three buttons instead of a line per app, so it no longer runs off the screen.
@@ -39,6 +40,7 @@
 
 ## 0.5.1
 - Исправлено: на старых прошивках (например, r24 260214) пункты не запускались — «Не удалось запустить воспроизведение». Теперь пункты указывают приложение в самой ссылке, а не опцией `-p`, которую такие прошивки не понимают.
+- Nuvio и Stremio: открывается выбранный фильм, даже если в приложении уже открыта другая карточка.
 
 ## 0.5.0
 - Новый экран плагина — как настройки самой Дюны: три кнопки вместо строки на каждое приложение, экран больше не уходит за край.

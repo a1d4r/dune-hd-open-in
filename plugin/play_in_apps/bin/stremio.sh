@@ -66,7 +66,9 @@ fi
 
 log "uri: $uri"
 # The package is required: Nuvio also handles stremio: links.
+# --activity-clear-task: otherwise a running Stremio is just brought to the
+# front and keeps its current screen; the link is lost.
 # An intent: URI rather than -a/-d/-p: the shell's command parser on some
 # firmware (r24 260214) rejects -p. The link has no '#', ';', spaces or quotes.
-printf '{"bin":"am start '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"Stremio","wait_app_start_delay":10}\n' \
+printf '{"bin":"am start --activity-clear-task '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"Stremio","wait_app_start_delay":10}\n' \
     "${uri#*:}" "${uri%%:*}" "$pkg" "$pkg"

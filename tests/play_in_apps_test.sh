@@ -85,8 +85,8 @@ import json, re, sys
 d = json.load(open(sys.argv[1]))
 app, arg = sys.argv[2], sys.argv[3]
 pkg, title, flags = {
-    "nuvio": ("com.nuvio.tv", "Nuvio", ""),
-    "stremio": ("com.stremio.one", "Stremio", ""),
+    "nuvio": ("com.nuvio.tv", "Nuvio", "--activity-clear-task "),
+    "stremio": ("com.stremio.one", "Stremio", "--activity-clear-task "),
     "num": ("ru.yourok.num", "NUM", "--activity-clear-task "),
     "lampa": ("top.rootu.lampa", "Lampa", "--activity-clear-task "),
     "bylampa": ("top.rootu.bylumpa", "BYLAMPA", "--activity-clear-task "),

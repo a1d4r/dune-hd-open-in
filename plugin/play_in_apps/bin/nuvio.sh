@@ -64,7 +64,9 @@ else
 fi
 
 log "uri: $uri"
+# --activity-clear-task: otherwise Nuvio keeps showing the card it has open
+# and ignores a link to another title.
 # An intent: URI rather than -a/-d/-p: the shell's command parser on some
 # firmware (r24 260214) rejects -p. The link has no '#', ';', spaces or quotes.
-printf '{"bin":"am start '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"Nuvio","wait_app_start_delay":10}\n' \
+printf '{"bin":"am start --activity-clear-task '\''intent:%s#Intent;scheme=%s;action=android.intent.action.VIEW;package=%s;end'\''","package":"%s","title":"Nuvio","wait_app_start_delay":10}\n' \
     "${uri#*:}" "${uri%%:*}" "$pkg" "$pkg"
