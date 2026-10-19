@@ -486,6 +486,21 @@ sed 's/"cc\.alcopa\.tv"/"cc.alcopa.tv.dev"/' "$fx/app_data.json" >"$apps"
 supplier "$fx/movie.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
 
+# --- Search by title: vokino.sh, lazymedia.sh and alpac.sh carry the same
+# copies of the helpers. Once they differ, move them into a shared file.
+# body <file> <function>: lines from "<function>() {" to the first "}".
+body() {
+    awk -v f="$2() {" '$0 == f { on = 1 } on { print } on && /^}/ { exit }' "$1"
+}
+same_copies() {
+    copy=$(body "$src/bin/vokino.sh" "$1")
+    [ -n "$copy" ] && [ "$copy" = "$(body "$src/bin/lazymedia.sh" "$1")" ] &&
+        [ "$copy" = "$(body "$src/bin/alpac.sh" "$1")" ]
+}
+for f in title put utf8 query; do
+    check "$f(): the copies in vokino.sh, lazymedia.sh and alpac.sh are the same (else: move them into a shared file)" same_copies "$f"
+done
+
 # --- filmix_api.sh: answers only if play_action was ignored
 id=filmix_api
 for args in start_playback_app '' get_stream_url; do

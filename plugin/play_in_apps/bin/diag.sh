@@ -3,8 +3,8 @@
 # for every item a verdict line and its reasons (installed, hidden, the menu
 # file, what the item script answers for a built-in movie and whether that
 # intent resolves to an activity), then the shell's last lines about
-# launching items. Brief (the plugin's check screen, main.php): 13 lines, one
-# screen — the device, then one line per item with its verdict.
+# launching items. Brief (the plugin's check screen, main.php): one screen —
+# the device, then one line per item with its verdict.
 # Read only: the item scripts only print a command, and
 # `cmd package query-activities` starts nothing.
 # Usage: sh diag.sh [russian|english] [brief]; output is in that language.
