@@ -17,6 +17,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Stremio | Stremio for Android TV 1.11.2 (`com.stremio.one`) | IMDb ID, else TMDB ID |
 | Nuvio | Nuvio TV 1.0.0 (`com.nuvio.tv`) | IMDb ID, else TMDB ID |
 | FreeZona | FreeZona 3.0.74 (`free.zona`) | Kinopoisk ID |
+| ALPAC | ALPAC 1.0.96 (`cc.alcopa.tv`) | TMDB ID, else search by title |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -117,6 +118,12 @@ For all items:
 - FreeZona looks the title up on the Zona server. If Zona does not know the title or there is no network, the FreeZona home screen opens with no message; find the title with FreeZona's own search.
 - Each launch replaces what was open in FreeZona.
 - Back from the FreeZona title page leads to the FreeZona home screen; press Back once more to return to the Dune card.
+
+**ALPAC** is an online cinema client for Android TV.
+- If the card has a TMDB ID, the ALPAC title page opens right away (`alpac://title/movie/…`, `alpac://title/tv/…`). ALPAC does not understand IMDb or Kinopoisk IDs.
+- Without a TMDB ID, ALPAC search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
+- If ALPAC does not know the title, an empty title page with "Источники не найдены" (no sources found) opens with no message; find the title with ALPAC's own search.
+- You need to be signed in to your ALPAC account.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.

@@ -21,6 +21,7 @@
 | Stremio | IMDb, если нет — TMDB |
 | Nuvio | IMDb, если нет — TMDB |
 | FreeZona | Кинопоиск |
+| ALPAC | TMDB, если нет — поиск по названию |
 
 Подробно о каждом пункте — в [README плагина](plugin/play_in_apps/README.md). Сами приложения (для Filmix — плагин Filmix_API) нужно установить и настроить (аддоны, аккаунты) отдельно.
 

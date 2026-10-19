@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.6.0
+- ALPAC item: opens the movie or series in ALPAC (`cc.alcopa.tv`) by TMDB ID; without one, ALPAC search by title.
+
 ## 0.5.1
 - Fixed: items did not start on older firmware (e.g. r24 260214) — "Failed to start playback". The items now name the app inside the link instead of the `-p` option that firmware does not understand.
 - Nuvio and Stremio: the chosen movie opens even if the app already shows another card.
@@ -37,6 +40,9 @@
 ---
 
 **Russian version**
+
+## 0.6.0
+- Пункт ALPAC: открывает фильм или сериал в ALPAC (`cc.alcopa.tv`) по TMDB ID, а если его нет — поиск ALPAC по названию.
 
 ## 0.5.1
 - Исправлено: на старых прошивках (например, r24 260214) пункты не запускались — «Не удалось запустить воспроизведение». Теперь пункты указывают приложение в самой ссылке, а не опцией `-p`, которую такие прошивки не понимают.
