@@ -122,10 +122,11 @@ fi
 
 # ALPAC opens a title by TMDB ID. The type in the path must match the ID:
 # movie/ with a TV id (or the reverse) opens an empty card with no error.
+# ID 0 closes the card at once, so only a positive number without leading zeros.
 tmdb=
 case "$type" in
-    single) kind=movie tmdb=$(ext_id 'tmdb:[0-9]{1,9}') ;;
-    series) kind=tv tmdb=$(ext_id 'tmdbtv:[0-9]{1,9}') ;;
+    single) kind=movie tmdb=$(ext_id 'tmdb:[1-9][0-9]{0,8}') ;;
+    series) kind=tv tmdb=$(ext_id 'tmdbtv:[1-9][0-9]{0,8}') ;;
 esac
 
 if [ -n "$tmdb" ]; then

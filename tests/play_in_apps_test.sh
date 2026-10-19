@@ -460,6 +460,14 @@ hostile '{"movieInfo":{"movieExtId":"tmdb:9999999999","type":"single"}}' error_i
 hostile '{"movieInfo":{"movieExtId":"tmdb:9999999999","type":"single","title":{"ru":"z"}}}' search_is z
 hostile '{"movieInfo":{"movieExtId":"tmdbtv:1234567890","type":"series","title":{"ru":"z"}}}' search_is z
 hostile '{"movieInfo":{"movieExtId":"tmdb:999999999","type":"single"}}' launch_is "$a/movie/999999999"
+# ID 0 closes ALPAC's card at once; a leading zero is not a TMDB ID either:
+# search. The first item that is a valid ID wins.
+hostile '{"movieInfo":{"movieExtId":"tmdb:0","type":"single","title":{"ru":"z"}}}' search_is z
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:0","type":"series","title":{"ru":"z"}}}' search_is z
+hostile '{"movieInfo":{"movieExtId":"tmdb:007","type":"single","title":{"ru":"z"}}}' search_is z
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:0123","type":"series"}}' error_is err_no_id
+hostile '{"movieInfo":{"movieExtId":"tmdb:0,tmdb:007,tmdb:5","type":"single"}}' launch_is "$a/movie/5"
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:10","type":"series"}}' launch_is "$a/tv/10"
 hostile '{"movieInfo":{"movieExtId":"tmdb:278-slug,tmdb:12345678901","type":"single"}}' error_is err_no_id
 # Other types: search.
 hostile '{"movieInfo":{"movieExtId":"tmdb:1","type":"movie","title":{"ru":"x"}}}' search_is x

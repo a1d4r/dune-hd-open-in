@@ -120,8 +120,8 @@ For all items:
 - Back from the FreeZona title page leads to the FreeZona home screen; press Back once more to return to the Dune card.
 
 **ALPAC** is an online cinema client for Android TV.
-- If the card has a TMDB ID, the ALPAC title page opens right away (`alpac://title/movie/…`, `alpac://title/tv/…`). ALPAC does not understand IMDb or Kinopoisk IDs.
-- Without a TMDB ID, ALPAC search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
+- If the card has a TMDB ID of the right type (a movie TMDB ID for a movie, a TV TMDB ID for a series), the ALPAC title page opens right away (`alpac://title/movie/…`, `alpac://title/tv/…`). ALPAC does not understand IMDb or Kinopoisk IDs.
+- Without such a TMDB ID, ALPAC search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
 - If ALPAC does not know the title, an empty title page with "Источники не найдены" (no sources found) opens with no message; find the title with ALPAC's own search.
 - You need to be signed in to your ALPAC account.
 
