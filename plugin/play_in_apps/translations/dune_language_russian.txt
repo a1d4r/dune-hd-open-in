@@ -104,3 +104,7 @@ freezona_caption = FreeZona
 freezona_err_not_installed = FreeZona не установлена
 freezona_err_no_id = У этой карточки нет ID Кинопоиска, FreeZona не сможет её открыть
 freezona_err_unsupported = Открыть в FreeZona: неподдерживаемый запрос
+alpac_caption = ALPAC
+alpac_err_not_installed = ALPAC не установлен
+alpac_err_no_id = У этой карточки нет ни TMDB ID, ни названия, ALPAC не сможет её открыть
+alpac_err_unsupported = Открыть в ALPAC: неподдерживаемый запрос

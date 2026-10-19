@@ -131,6 +131,18 @@
       "first_install_timestamp": 1791300918,
       "last_modified_time": "2026-10-06T18:35:13.000+0300",
       "last_modified_timestamp": 1791300913
+    },
+    {
+      "caption": "ALPAC",
+      "package_name": "cc.alcopa.tv",
+      "version": "1.0.96",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_cc.alcopa.tv.png",
+      "activity": "cc.alcopa.tv.MainActivity",
+      "source_dir": "\/data\/app\/~~cc.alcopa.tv\/base.apk",
+      "first_install_time": "2026-10-19T14:17:00.000+0300",
+      "first_install_timestamp": 1792408620,
+      "last_modified_time": "2026-10-19T14:17:00.000+0300",
+      "last_modified_timestamp": 1792408620
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"

@@ -2,7 +2,7 @@
 // The plugin screens and the play_action handler of the Filmix item:
 //  - "setup": a short controls screen with three buttons — the item choice
 //    (the shell's dialog with checkmarks), "Check" and logs for the author;
-//  - "check": the brief report of bin/diag.sh (12 lines) as a list.
+//  - "check": the brief report of bin/diag.sh (13 lines) as a list.
 // The logs page itself is cgi/logs.php. Only the firmware PHP API is used
 // (/firmware_ext/php/), PHP 5.3.6.
 
@@ -21,7 +21,8 @@ class PlayInApps
         'filmix_api' => array('Filmix', null),
         'stremio' => array('Stremio', 'com.stremio.one'),
         'nuvio' => array('Nuvio', 'com.nuvio.tv'),
-        'freezona' => array('FreeZona', 'free.zona'));
+        'freezona' => array('FreeZona', 'free.zona'),
+        'alpac' => array('ALPAC', 'cc.alcopa.tv'));
 
     // Per call: the Dune's language. Per php_server: translations by
     // language, the rows of the last check.
@@ -525,7 +526,7 @@ function pia_check_view()
         PluginFolderView::data => array(
             PluginRegularFolderView::view_params => array(
                 ViewParams::num_cols => 1,
-                ViewParams::num_rows => 12,
+                ViewParams::num_rows => 13,
                 ViewParams::paint_details => false,
                 ViewParams::paint_scrollbar => true,
                 ViewParams::scroll_animation_enabled => true),

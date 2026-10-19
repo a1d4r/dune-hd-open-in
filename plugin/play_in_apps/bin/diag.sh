@@ -3,7 +3,7 @@
 # for every item a verdict line and its reasons (installed, hidden, the menu
 # file, what the item script answers for a built-in movie and whether that
 # intent resolves to an activity), then the shell's last lines about
-# launching items. Brief (the plugin's check screen, main.php): 12 lines, one
+# launching items. Brief (the plugin's check screen, main.php): 13 lines, one
 # screen — the device, then one line per item with its verdict.
 # Read only: the item scripts only print a command, and
 # `cmd package query-activities` starts nothing.
@@ -151,7 +151,7 @@ fi
 for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     lampa_atv:top.rootu.lumpa prisma:top.rootu.prisma vokino:ru.vokino.web \
     lazymedia:com.lazycatsoftware.lmd filmix_api: stremio:com.stremio.one \
-    nuvio:com.nuvio.tv freezona:free.zona; do
+    nuvio:com.nuvio.tv freezona:free.zona alpac:cc.alcopa.tv; do
     id=${app%%:*}
     pkg=${app#*:}
     body=

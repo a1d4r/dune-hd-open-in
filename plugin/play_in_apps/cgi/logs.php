@@ -17,7 +17,7 @@ date_default_timezone_set('UTC');
 
 // The ids of the items, as in main.php.
 $GLOBALS['lp_ids'] = array('num', 'lampa', 'bylampa', 'lampa_atv', 'prisma', 'vokino', 'lazymedia',
-    'filmix_api', 'stremio', 'nuvio', 'freezona');
+    'filmix_api', 'stremio', 'nuvio', 'freezona', 'alpac');
 
 // The plugin's install dir: this file is <plugin>/cgi/logs.php.
 function lp_plugin_dir()

@@ -6,7 +6,7 @@
 # play_in_apps), which lives outside the plugin's dirs.
 
 dir=${PLAY_IN_APPS_TMP:-$FS_PREFIX/tmp}/movie_suppliers
-for id in num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona; do
+for id in num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac; do
     grep -q '"plugin":"play_in_apps"' "$dir/$id" 2>/dev/null && rm -f "$dir/$id"
 done
 rm -f "$FS_PREFIX/config/lcfg_play_in_apps.txt"
