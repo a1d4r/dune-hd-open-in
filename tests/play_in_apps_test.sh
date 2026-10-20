@@ -580,14 +580,22 @@ sed 's/"com\.jimdo\.xakerd\.season2hit"/"com.jimdo.xakerd.seasonhit"/' "$fx/app_
 supplier "$fx/series.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
 
-# --- Search by title: the helpers live in search.sh, sourced by vokino.sh,
-# lazymedia.sh, alpac.sh and seasonhit.sh; no script keeps its own copy.
-for s in vokino lazymedia alpac seasonhit; do
-    check "$s.sh sources search.sh" grep -qx '\. "\${0%/\*}/search\.sh"' "$src/bin/$s.sh"
-    for f in title put utf8 query; do
-        check "$f(): defined in search.sh, not in $s.sh" sh -c '! grep -q "^$1() {" "$2" && grep -q "^$1() {" "$3"' _ "$f" "$src/bin/$s.sh" "$src/bin/search.sh"
+# --- Search by title: the helpers live in search.sh only, the items that
+# search call its search_query.
+# only_in_search: no other bin/*.sh defines a function of search.sh (any
+# spacing or indent before "()").
+only_in_search() {
+    fns=$(sed -n 's/^[[:space:]]*\([A-Za-z_][A-Za-z0-9_]*\)[[:space:]]*([[:space:]]*).*/\1/p' "$src/bin/search.sh")
+    [ -n "$fns" ] || return 1
+    for f in $fns; do
+        [ "$(grep -lE "^[[:space:]]*${f}[[:space:]]*\\([[:space:]]*\\)" "$src"/bin/*.sh)" = "$src/bin/search.sh" ] || return 1
     done
-done
+}
+check "search.sh: its functions are defined in no other bin/*.sh" only_in_search
+check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and call search_query" sh -c '
+    for s in vokino lazymedia alpac seasonhit; do
+        grep -qx "\. \"\${0%/\*}/search\.sh\"" "$1/$s.sh" && grep -q "q=\$(search_query \"\$input\")" "$1/$s.sh" || exit 1
+    done' _ "$src/bin"
 
 # --- filmix_api.sh: answers only if play_action was ignored
 id=filmix_api

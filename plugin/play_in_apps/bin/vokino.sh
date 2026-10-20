@@ -51,11 +51,7 @@ imdb=$(ext_id 'imdb:tt[0-9]{1,10}')
 if [ -n "$imdb" ]; then
     path="view/$imdb"
 else
-    # "ru" is the title in the Dune UI language, "en" is the original title.
-    q=
-    for lang in ru en; do
-        [ -n "$q" ] || q=$(printf '%s' "$(title "$lang")" | query)
-    done
+    q=$(search_query "$input")
     [ -n "$q" ] || fail err_no_id
     path="search?name=$q"
 fi

@@ -38,12 +38,8 @@ if ! grep -qE '"package_name": *"com\.lazycatsoftware\.lmd"' "$tmp/applications/
 fi
 
 # LazyMedia has no IDs of its own (a title page belongs to one source site),
-# so it can only search. "ru" is the title in the Dune UI language, "en" is
-# the original title.
-q=
-for lang in ru en; do
-    [ -n "$q" ] || q=$(printf '%s' "$(title "$lang")" | query)
-done
+# so it can only search.
+q=$(search_query "$input")
 [ -n "$q" ] || fail err_no_title
 
 # ActivityTvSearch is exported without intent filters and reads only the

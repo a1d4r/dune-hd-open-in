@@ -1,15 +1,24 @@
 # Search by title, shared by the item scripts that fall back to an app's
 # search: vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source it.
-# Only function definitions. title() reads the caller's global $input (movie
-# info JSON).
+# Only function definitions; the entry point is search_query.
 # shellcheck shell=sh
 
-# title <lang>: body of the "title":{"<lang>":"..."} JSON string, escapes kept.
-# shellcheck disable=SC2154 # $input is set by the sourcing script
+# search_query <movie info JSON>: percent-encoded title in the Dune UI language
+# ("ru"), else the original title ("en"); empty if there is neither.
+search_query() {
+    q=
+    for lang in ru en; do
+        [ -n "$q" ] || q=$(printf '%s' "$(title "$1" "$lang")" | percent_encode)
+    done
+    printf '%s' "$q"
+}
+
+# title <JSON> <lang>: body of the "title":{"<lang>":"..."} JSON string,
+# escapes kept.
 title() {
-    printf '%s\n' "$input" |
+    printf '%s\n' "$1" |
         grep -oE '"title": *\{("([^"\\]|\\.)*"|[^"}])*\}' | head -n 1 |
-        grep -oE "\"$1\": *\"([^\"\\\\]|\\\\.)*\"" | head -n 1 |
+        grep -oE "\"$2\": *\"([^\"\\\\]|\\\\.)*\"" | head -n 1 |
         sed 's/^[^:]*: *"//; s/"$//'
 }
 
@@ -40,9 +49,10 @@ utf8() {
     fi
 }
 
-# query: JSON string body on stdin (raw UTF-8 and/or \u escapes) -> query value.
+# percent_encode: JSON string body on stdin (raw UTF-8 and/or \u escapes) ->
+# query value.
 # Only the first 600 bytes are used: 100 Cyrillic letters as \u escapes.
-query() {
+percent_encode() {
     fmt=
     args=
     # shellcheck disable=SC2046 # one word per byte, od prints only hex

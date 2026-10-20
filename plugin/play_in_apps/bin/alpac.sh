@@ -72,12 +72,8 @@ if [ -n "$tmdb" ]; then
     exit 0
 fi
 
-# No TMDB ID: search by title. "ru" is the title in the Dune UI language,
-# "en" is the original title.
-q=
-for lang in ru en; do
-    [ -n "$q" ] || q=$(printf '%s' "$(title "$lang")" | query)
-done
+# No TMDB ID: search by title.
+q=$(search_query "$input")
 [ -n "$q" ] || fail err_no_id
 
 # SearchActivity's filter has no DEFAULT category, so only the explicit

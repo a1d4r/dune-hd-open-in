@@ -39,11 +39,7 @@ fi
 
 # SeasonHit knows only seasonvar IDs (one per season), not TMDB/IMDb/Kinopoisk,
 # so it can only search. Its search lists seasonvar series, for movies too.
-# "ru" is the title in the Dune UI language, "en" is the original title.
-q=
-for lang in ru en; do
-    [ -n "$q" ] || q=$(printf '%s' "$(title "$lang")" | query)
-done
+q=$(search_query "$input")
 [ -n "$q" ] || fail err_no_title
 
 # SearchActivity reads the "query" extra and searches at once. It is not
