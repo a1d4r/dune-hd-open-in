@@ -580,20 +580,13 @@ sed 's/"com\.jimdo\.xakerd\.season2hit"/"com.jimdo.xakerd.seasonhit"/' "$fx/app_
 supplier "$fx/series.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
 
-# --- Search by title: vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh carry the same
-# copies of the helpers. Once they differ, move them into a shared file.
-# body <file> <function>: lines from "<function>() {" to the first "}".
-body() {
-    awk -v f="$2() {" '$0 == f { on = 1 } on { print } on && /^}/ { exit }' "$1"
-}
-same_copies() {
-    copy=$(body "$src/bin/vokino.sh" "$1")
-    [ -n "$copy" ] && [ "$copy" = "$(body "$src/bin/lazymedia.sh" "$1")" ] &&
-        [ "$copy" = "$(body "$src/bin/alpac.sh" "$1")" ] &&
-        [ "$copy" = "$(body "$src/bin/seasonhit.sh" "$1")" ]
-}
-for f in title put utf8 query; do
-    check "$f(): the copies in vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh are the same (else: move them into a shared file)" same_copies "$f"
+# --- Search by title: the helpers live in search.sh, sourced by vokino.sh,
+# lazymedia.sh, alpac.sh and seasonhit.sh; no script keeps its own copy.
+for s in vokino lazymedia alpac seasonhit; do
+    check "$s.sh sources search.sh" grep -qx '\. "\${0%/\*}/search\.sh"' "$src/bin/$s.sh"
+    for f in title put utf8 query; do
+        check "$f(): defined in search.sh, not in $s.sh" sh -c '! grep -q "^$1() {" "$2" && grep -q "^$1() {" "$3"' _ "$f" "$src/bin/$s.sh" "$src/bin/search.sh"
+    done
 done
 
 # --- filmix_api.sh: answers only if play_action was ignored
@@ -2529,7 +2522,7 @@ for i in $all; do
 done
 scripts=$(for i in $all; do echo "$i.sh"; done)
 # shellcheck disable=SC2086 # one word per script
-check "no other item scripts" listing_is "$src/bin" diag.sh movie_suppliers_update.sh sync.sh uninstall.sh $scripts
+check "no other item scripts" listing_is "$src/bin" diag.sh movie_suppliers_update.sh search.sh sync.sh uninstall.sh $scripts
 
 keys="plugin_caption"
 for i in $all; do
