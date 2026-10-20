@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.7.0
+- Flux item: opens the movie or series in Flux (`app.flux.tv`) by TMDB ID; without one, the Dune shows a message.
+
 ## 0.6.0
 - ALPAC item: opens the movie or series in ALPAC (`cc.alcopa.tv`) by TMDB ID; without one, ALPAC search by title.
 
@@ -40,6 +43,9 @@
 ---
 
 **Russian version**
+
+## 0.7.0
+- Пункт Flux: открывает фильм или сериал во Flux (`app.flux.tv`) по TMDB ID, а если его нет — Дюна покажет сообщение.
 
 ## 0.6.0
 - Пункт ALPAC: открывает фильм или сериал в ALPAC (`cc.alcopa.tv`) по TMDB ID, а если его нет — поиск ALPAC по названию.

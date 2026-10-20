@@ -18,6 +18,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Nuvio | Nuvio TV 1.0.0 (`com.nuvio.tv`) | IMDb ID, else TMDB ID |
 | FreeZona | FreeZona 3.0.74 (`free.zona`) | Kinopoisk ID |
 | ALPAC | ALPAC 1.0.96 (`cc.alcopa.tv`) | TMDB ID, else search by title |
+| Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -124,6 +125,10 @@ For all items:
 - Without such a TMDB ID, ALPAC search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
 - If ALPAC does not know the title, an empty title page with "Источники не найдены" (no sources found) opens with no message; find the title with ALPAC's own search.
 - You need to be signed in to your ALPAC account.
+
+**Flux** is a media center for Android TV: a movie and series catalog, torrents, its own player.
+- The title page opens by a TMDB ID of the right type (a movie TMDB ID for a movie, a TV TMDB ID for a series): `flux://movie/…`, `flux://series/…`. Flux does not understand IMDb or Kinopoisk IDs, and a search by title cannot be started from outside: without such a TMDB ID, the Dune shows a message.
+- No account is needed.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.
