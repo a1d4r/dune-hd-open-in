@@ -22,7 +22,8 @@ class PlayInApps
         'stremio' => array('Stremio', 'com.stremio.one'),
         'nuvio' => array('Nuvio', 'com.nuvio.tv'),
         'freezona' => array('FreeZona', 'free.zona'),
-        'alpac' => array('ALPAC', 'cc.alcopa.tv'));
+        'alpac' => array('ALPAC', 'cc.alcopa.tv'),
+        'flux' => array('Flux', 'app.flux.tv'));
 
     // Per call: the Dune's language. Per php_server: translations by
     // language, the rows of the last check.

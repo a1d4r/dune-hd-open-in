@@ -108,3 +108,7 @@ alpac_caption = ALPAC
 alpac_err_not_installed = ALPAC не установлен
 alpac_err_no_id = У этой карточки нет ни TMDB ID, ни названия, ALPAC не сможет её открыть
 alpac_err_unsupported = Открыть в ALPAC: неподдерживаемый запрос
+flux_caption = Flux
+flux_err_not_installed = Flux не установлен
+flux_err_no_id = Для этой карточки нет TMDB ID, Flux не сможет её открыть
+flux_err_unsupported = Открыть в Flux: неподдерживаемый запрос

@@ -143,6 +143,18 @@
       "first_install_timestamp": 1792408620,
       "last_modified_time": "2026-10-19T14:17:00.000+0300",
       "last_modified_timestamp": 1792408620
+    },
+    {
+      "caption": "Flux",
+      "package_name": "app.flux.tv",
+      "version": "1.63",
+      "icon": "\/data\/data\/com.dunehd.app\/tmp\/applications\/icon_cache\/icon_app.flux.tv.png",
+      "activity": "app.flux.tv.MainActivity",
+      "source_dir": "\/data\/app\/~~app.flux.tv\/base.apk",
+      "first_install_time": "2026-10-20T00:28:00.000+0300",
+      "first_install_timestamp": 1792445280,
+      "last_modified_time": "2026-10-20T00:28:00.000+0300",
+      "last_modified_timestamp": 1792445280
     }
   ],
   "generation_date": "2026-10-01T19:04:46.033+0300"
