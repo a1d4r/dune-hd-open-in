@@ -28,8 +28,8 @@ reg="$data/movie_suppliers"
 menu="$PLAY_IN_APPS_TMP/movie_suppliers"
 apps="$PLAY_IN_APPS_TMP/applications/app_data.json"
 
-android="num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona alpac flux"
-all="num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux"
+android="num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona alpac flux seasonhit"
+all="num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit"
 # Ids that had a separate "Open in <app>" plugin (<id>_supplier) before.
 old_ids="num lampa prisma vokino lazymedia filmix_api stremio nuvio"
 
@@ -75,7 +75,7 @@ one_json() {
 # --- item scripts bin/<id>.sh. $id is the app under test.
 
 # launch_is <uri>: launch reply of app $id for this URI, nothing else. For
-# LazyMedia, and for ALPAC when it is not an alpac: URI, the argument is the
+# LazyMedia and SeasonHit, and for ALPAC when it is not an alpac: URI, the argument is the
 # percent-encoded search query, sent to the app's search activity. Otherwise
 # the app gets the URI as an intent: URI with the package (no -p: the shell's command
 # parser on some firmware rejects it); it is parsed back the way
@@ -98,10 +98,12 @@ pkg, title, flags = {
     "freezona": ("free.zona", "FreeZona", "--activity-clear-task "),
     "alpac": ("cc.alcopa.tv", "ALPAC", "--activity-clear-task "),
     "flux": ("app.flux.tv", "Flux", "--activity-clear-task "),
+    "seasonhit": ("com.jimdo.xakerd.season2hit", "SeasonHit", "--activity-clear-task "),
 }[app]
 search = {
     "lazymedia": "com.lazycatsoftware.lmd/com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch",
     "alpac": "cc.alcopa.tv/cc.alcopa.tv.SearchActivity",
+    "seasonhit": "com.jimdo.xakerd.season2hit/com.jimdo.xakerd.season2hit.activity.SearchActivity",
 }.get(app)
 if app == "alpac" and arg.startswith("alpac:"):
     search = None
@@ -355,7 +357,7 @@ hostile '{"movieInfo":{"movieExtId":"kinopoisk:1","title":{"en":"\"movieExtId\":
 hostile '{"movieInfo":{"title":{"en":"\"movieExtId\":\"kinopoisk:2\""},"type":"single"}}' error_is err_no_id
 
 # titles <no-title error key> <launch_is prefix>: title parsing shared by VoKino,
-# LazyMedia and ALPAC:
+# LazyMedia, ALPAC and SeasonHit:
 # JSON escapes, raw UTF-8, percent-encoding, fallback to English.
 titles() {
     hostile '{"movieInfo":{"movieExtId":"","title":{"en":"a}b \"ru\":\"evil\"","ru":"good"}}}' search_is good
@@ -545,7 +547,40 @@ sed 's/"app\.flux\.tv"/"app.flux.tv.dev"/' "$fx/app_data.json" >"$apps"
 supplier "$fx/movie.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
 
-# --- Search by title: vokino.sh, lazymedia.sh and alpac.sh carry the same
+# --- seasonhit: no IDs, always search by the Russian title, movies too
+id=seasonhit
+check "fixture app_data.json has SeasonHit" grep -qE '"package_name": *"com\.jimdo\.xakerd\.season2hit"' "$fx/app_data.json"
+supplier "$fx/movie.json" search_is 'Гладиатор 2'
+supplier "$fx/series.json" search_is 'Дом Дракона'
+supplier "$fx/movie_tmdb_only.json" search_is 'Гладиатор 2'
+supplier "$fx/series_tmdbtv_only.json" search_is 'Дом Дракона'
+supplier "$fx/series_movie_tmdb_only.json" search_is 'Дом Дракона'
+supplier "$fx/movie_no_ids.json" search_is 'Гладиатор 2'
+supplier "$fx/series_no_ids.json" search_is 'Мастера меча онлайн: Алисизация '
+supplier "$fx/movie_kinopoisk.json" search_is 'Тачки'
+supplier "$fx/series_kinopoisk.json" search_is 'Игра престолов'
+check "seasonhit writes uri to stderr" grep -q 'uri: intent:#Intent;component=com.jimdo.xakerd.season2hit/com.jimdo.xakerd.season2hit.activity.SearchActivity;S.query=%D0%98.*;end$' "$o.err"
+common search_is 'Гладиатор 2' err_no_title
+hostile '{"movieInfo":{"movieExtId":"imdb:tt9218128,tmdb:558449","type":"single"}}' error_is err_no_title
+hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot","title":{"ru":"x"}}}' search_is x
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:1399","type":"series","title":{"ru":"","en":"Game of Thrones"}}}' search_is 'Game of Thrones'
+hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"movieExtId\":\"imdb:tt2\"","ru":"\"title\":{\"ru\":\"evil\"}"}}}' search_is '"title":{"ru":"evil"}'
+# Intent URI syntax inside the title stays inside S.query.
+hostile '{"movieInfo":{"title":{"ru":"x;end;component=a/b;S.query=y#Intent"}}}' search_is 'x;end;component=a/b;S.query=y#Intent'
+titles err_no_title ''
+cp "$fx/app_data_no_seasonhit.json" "$apps"
+supplier "$fx/series.json" error_is err_not_installed
+# Look-alike names: a dot matches only a dot, the name ends at the quote.
+sed 's/"com\.jimdo\.xakerd\.season2hit"/"comxjimdoxxakerdxseason2hit"/' "$fx/app_data.json" >"$apps"
+supplier "$fx/series.json" error_is err_not_installed
+sed 's/"com\.jimdo\.xakerd\.season2hit"/"com.jimdo.xakerd.season2hit.tv"/' "$fx/app_data.json" >"$apps"
+supplier "$fx/series.json" error_is err_not_installed
+# The other SeasonHit package of older versions is another app.
+sed 's/"com\.jimdo\.xakerd\.season2hit"/"com.jimdo.xakerd.seasonhit"/' "$fx/app_data.json" >"$apps"
+supplier "$fx/series.json" error_is err_not_installed
+cp "$fx/app_data.json" "$apps"
+
+# --- Search by title: vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh carry the same
 # copies of the helpers. Once they differ, move them into a shared file.
 # body <file> <function>: lines from "<function>() {" to the first "}".
 body() {
@@ -554,10 +589,11 @@ body() {
 same_copies() {
     copy=$(body "$src/bin/vokino.sh" "$1")
     [ -n "$copy" ] && [ "$copy" = "$(body "$src/bin/lazymedia.sh" "$1")" ] &&
-        [ "$copy" = "$(body "$src/bin/alpac.sh" "$1")" ]
+        [ "$copy" = "$(body "$src/bin/alpac.sh" "$1")" ] &&
+        [ "$copy" = "$(body "$src/bin/seasonhit.sh" "$1")" ]
 }
 for f in title put utf8 query; do
-    check "$f(): the copies in vokino.sh, lazymedia.sh and alpac.sh are the same (else: move them into a shared file)" same_copies "$f"
+    check "$f(): the copies in vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh are the same (else: move them into a shared file)" same_copies "$f"
 done
 
 # --- filmix_api.sh: answers only if play_action was ignored
@@ -586,7 +622,7 @@ pkg = {"nuvio": "com.nuvio.tv", "stremio": "com.stremio.one", "num": "ru.yourok.
        "lampa": "top.rootu.lampa", "bylampa": "top.rootu.bylumpa", "lampa_atv": "top.rootu.lumpa",
        "prisma": "top.rootu.prisma", "vokino": "ru.vokino.web",
        "lazymedia": "com.lazycatsoftware.lmd", "freezona": "free.zona", "alpac": "cc.alcopa.tv",
-       "flux": "app.flux.tv"}.get(app)
+       "flux": "app.flux.tv", "seasonhit": "com.jimdo.xakerd.season2hit"}.get(app)
 want = {
     "plugin": "play_in_apps",
     "caption": "%%tr%%%s_caption" % app,
@@ -645,6 +681,7 @@ opens_series lazymedia search_is 'Дом Дракона'
 opens_series freezona error_is err_no_id
 opens_series alpac launch_is "$a/tv/94997"
 opens_series flux launch_is flux://series/94997
+opens_series seasonhit search_is 'Дом Дракона'
 
 mkdir -p "$plugins/Filmix_api"
 run sync.sh
@@ -664,16 +701,19 @@ check "registered bin of filmix_api: err_unsupported" error_is err_unsupported
 printf 'nuvio\nfilmix_api\n' >"$data/hidden"
 run sync.sh
 check "sync hidden: exit 0" rc_is 0
-check "sync hidden: nuvio and filmix_api removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia stremio freezona alpac flux
+check "sync hidden: nuvio and filmix_api removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia stremio freezona alpac flux seasonhit
 printf 'freezona\n' >"$data/hidden"
 run sync.sh
-check "sync hidden: freezona removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio alpac flux
+check "sync hidden: freezona removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio alpac flux seasonhit
 printf 'alpac\n' >"$data/hidden"
 run sync.sh
-check "sync hidden: alpac removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona flux
+check "sync hidden: alpac removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona flux seasonhit
 printf 'flux\n' >"$data/hidden"
 run sync.sh
-check "sync hidden: flux removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac
+check "sync hidden: flux removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac seasonhit
+printf 'seasonhit\n' >"$data/hidden"
+run sync.sh
+check "sync hidden: seasonhit removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux
 rm -f "$data/hidden"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
@@ -699,7 +739,7 @@ run sync.sh
 } >"$data/hidden"
 run sync.sh
 check "sync garbage in hidden: exit 0" rc_is 0
-check "sync garbage in hidden: only prisma hidden" shown num lampa bylampa lampa_atv vokino lazymedia filmix_api stremio nuvio freezona alpac flux
+check "sync garbage in hidden: only prisma hidden" shown num lampa bylampa lampa_atv vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit
 check "sync garbage in hidden: no stray files" listing_is "$data" hidden movie_suppliers
 rm -f "$data/hidden"
 
@@ -713,6 +753,9 @@ check "sync ALPAC not installed: item removed" shown num lampa bylampa lampa_atv
 cp "$fx/app_data_no_flux.json" "$apps"
 run sync.sh
 check "sync Flux not installed: item removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac
+cp "$fx/app_data_no_seasonhit.json" "$apps"
+run sync.sh
+check "sync SeasonHit not installed: item removed" shown num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux
 cp "$fx/app_data_no_freezona.json" "$apps"
 run sync.sh
 check "sync FreeZona not installed: item removed" shown num lampa prisma vokino lazymedia filmix_api stremio nuvio
@@ -721,13 +764,13 @@ run sync.sh
 check "sync BYLAMPA not installed: item removed, Lampa shown" shown num lampa prisma vokino lazymedia filmix_api stremio nuvio freezona
 cp "$work/app_data_only_bylampa.json" "$apps"
 run sync.sh
-check "sync Lampa not installed: item removed, BYLAMPA shown" shown num bylampa prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux
+check "sync Lampa not installed: item removed, BYLAMPA shown" shown num bylampa prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit
 cp "$fx/app_data_no_lampa_atv.json" "$apps"
 run sync.sh
 check "sync LAMPA ATV not installed: item removed" shown num lampa bylampa prisma vokino lazymedia filmix_api stremio nuvio freezona
 cp "$work/app_data_only_lampa_atv.json" "$apps"
 run sync.sh
-check "sync only LAMPA ATV of the Lampa apps: its item shown" shown num lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux
+check "sync only LAMPA ATV of the Lampa apps: its item shown" shown num lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit
 cp "$fx/app_data_no_nuvio.json" "$apps"
 run sync.sh
 check "sync only Settings installed: only Filmix" shown filmix_api
@@ -744,16 +787,16 @@ printf 'lazymedia\nnuvio\n' >"$data/hidden"
 rm -f "$plugins/Filmix_api/dune_plugin.xml"
 run sync.sh
 check "sync no app_data.json: exit 0" rc_is 0
-check "sync no app_data.json: Android items unchanged, Filmix removed" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux
+check "sync no app_data.json: Android items unchanged, Filmix removed" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux seasonhit
 for content in '' '{}' 'garbage' '{"applications":['; do
     printf '%s' "$content" >"$apps"
     run sync.sh
-    check "sync app_data.json '$content': Android items unchanged" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux
+    check "sync app_data.json '$content': Android items unchanged" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux seasonhit
 done
 # Read while the shell rewrites it: cut short, most apps missing.
 head -c 1500 "$fx/app_data.json" >"$apps"
 run sync.sh
-check "sync app_data.json cut short: Android items unchanged" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux
+check "sync app_data.json cut short: Android items unchanged" shown num lampa bylampa lampa_atv prisma vokino stremio nuvio freezona alpac flux seasonhit
 cp "$fx/app_data.json" "$apps"
 : >"$plugins/Filmix_api/dune_plugin.xml"
 rm -f "$data/hidden"
@@ -798,7 +841,7 @@ pkg = {"nuvio": "com.nuvio.tv", "stremio": "com.stremio.one", "num": "ru.yourok.
        "lampa": "top.rootu.lampa", "bylampa": "top.rootu.bylumpa", "lampa_atv": "top.rootu.lumpa",
        "prisma": "top.rootu.prisma", "vokino": "ru.vokino.web",
        "lazymedia": "com.lazycatsoftware.lmd", "freezona": "free.zona", "alpac": "cc.alcopa.tv",
-       "flux": "app.flux.tv"}
+       "flux": "app.flux.tv", "seasonhit": "com.jimdo.xakerd.season2hit"}
 for app in sys.argv[3:]:
     want = sys.argv[2].replace("{pkg}", pkg[app])
     if json.load(open("%s/%s" % (sys.argv[1], app)))["icon_url"] != want:
@@ -980,7 +1023,7 @@ for n in cmd getprop id ifconfig logcat; do
 done
 ln -s "$sbin/android_stub" "$work/sbin_nocmd/getprop"
 STUB_LOG="$work/cmd.log"
-all_pkgs="ru.yourok.num top.rootu.lampa top.rootu.bylumpa top.rootu.lumpa top.rootu.prisma ru.vokino.web com.lazycatsoftware.lmd com.stremio.one com.nuvio.tv free.zona cc.alcopa.tv app.flux.tv"
+all_pkgs="ru.yourok.num top.rootu.lampa top.rootu.bylumpa top.rootu.lumpa top.rootu.prisma ru.vokino.web com.lazycatsoftware.lmd com.stremio.one com.nuvio.tv free.zona cc.alcopa.tv app.flux.tv com.jimdo.xakerd.season2hit"
 STUB_RESOLVE=$all_pkgs
 export STUB_LOG STUB_RESOLVE
 
@@ -1007,14 +1050,14 @@ for i, l in enumerate(lines):
 sys.exit(1)
 EOF
 }
-# verdicts_are <verdict> [<caption>=<verdict>...]: the 13 verdict lines, in
+# verdicts_are <verdict> [<caption>=<verdict>...]: the 14 verdict lines, in
 # the order of the items, after the 4 lines about the device.
 verdicts_are() {
     python3 - "$o" "$@" <<'EOF'
 import sys
 lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")
 caps = ["NUM", "Lampa", "BYLAMPA", "LAMPA ATV", "Prisma", "VoKino", "LazyMedia", "Filmix",
-        "Stremio", "Nuvio", "FreeZona", "ALPAC", "Flux"]
+        "Stremio", "Nuvio", "FreeZona", "ALPAC", "Flux", "SeasonHit"]
 want = dict((c, sys.argv[2]) for c in caps)
 for a in sys.argv[3:]:
     c, v = a.split("=", 1)
@@ -1024,7 +1067,7 @@ sys.exit(got != ["%s: %s" % (c, want[c]) for c in caps])
 EOF
 }
 
-# brief_is <en|ru> [<caption>=<verdict>...]: the brief report is exactly 14
+# brief_is <en|ru> [<caption>=<verdict>...]: the brief report is exactly 15
 # lines: the device, then "<caption> <version> — <verdict>" per item, OK by
 # default.
 brief_is() {
@@ -1035,7 +1078,7 @@ ver, ru = sys.argv[2], sys.argv[3] == "ru"
 items = [("NUM", "1.0.150"), ("Lampa", "1.13.1"), ("BYLAMPA", "1.13.3"), ("LAMPA ATV", "1.13.3"),
          ("Prisma", "1.3.4"), ("VoKino", "1.1.1-android"), ("LazyMedia", "3.467"), ("Filmix", ""),
          ("Stremio", "1.11.2"), ("Nuvio", "1.0.0"), ("FreeZona", "3.0.74"), ("ALPAC", "1.0.96"),
-         ("Flux", "1.63")]
+         ("Flux", "1.63"), ("SeasonHit", "2.4.4.2")]
 ok = "ОК" if ru else "OK"
 verdict = dict((c, ok) for c, _ in items)
 verdict["Filmix"] = ok + (" (через плагин Filmix_API)" if ru else " (through the Filmix_API plugin)")
@@ -1053,7 +1096,7 @@ brief_all() {
     v=$1
     shift
     brief_is en NUM="$v" Lampa="$v" BYLAMPA="$v" "LAMPA ATV=$v" Prisma="$v" VoKino="$v" \
-        LazyMedia="$v" Stremio="$v" Nuvio="$v" FreeZona="$v" ALPAC="$v" Flux="$v" "$@"
+        LazyMedia="$v" Stremio="$v" Nuvio="$v" FreeZona="$v" ALPAC="$v" Flux="$v" SeasonHit="$v" "$@"
 }
 # no_details: none of the full report's details.
 no_details() { ! grep -qE 'am start|intent|menu item|installed:|launch:|FS_PREFIX|records|movie_suppliers' "$o"; }
@@ -1088,7 +1131,7 @@ check "diag Filmix: Filmix_API installed" in_item Filmix "  installed: yes (Film
 check "diag Filmix: not checked" in_item Filmix "  launch: through the Filmix_API plugin, not checked"
 check "diag: no shell log lines" has_line "  none"
 check "diag: no empty lines" sh -c '! grep -q "^\$" "$1"' _ "$o"
-check "diag: 12 queries, Filmix none" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 12
+check "diag: 13 queries, Filmix none" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 13
 ifr='#Intent;scheme=https;action=android.intent.action.VIEW;package'
 check "diag query NUM: the intent: URI of the item" grep -qxF \
     "$q intent://www.themoviedb.org/movie/920$ifr=ru.yourok.num;end" "$STUB_LOG"
@@ -1106,6 +1149,8 @@ check "diag query Nuvio" grep -qxF \
     "$q intent://movie/tt0317219#Intent;scheme=nuvio;action=android.intent.action.VIEW;package=com.nuvio.tv;end" "$STUB_LOG"
 check "diag query LazyMedia: the intent: URI with the component" grep -qxF \
     "$q intent:#Intent;component=com.lazycatsoftware.lmd/com.lazycatsoftware.lazymediadeluxe.ui.tv.activities.ActivityTvSearch;S.query=%D0%A2%D0%B0%D1%87%D0%BA%D0%B8;end" "$STUB_LOG"
+check "diag query SeasonHit: the intent: URI with the component" grep -qxF \
+    "$q intent:#Intent;component=com.jimdo.xakerd.season2hit/com.jimdo.xakerd.season2hit.activity.SearchActivity;S.query=%D0%A2%D0%B0%D1%87%D0%BA%D0%B8;end" "$STUB_LOG"
 check "diag: no query has -p" sh -c '! grep -q -- " -p " "$1"' _ "$STUB_LOG"
 check "diag: no -p warning" no_text "has -p"
 
@@ -1145,7 +1190,7 @@ diag english brief
 check "diag brief: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 check "diag brief: device line, then one line per item with version" brief_is en
 check "diag brief: no details" no_details
-check "diag brief: the same 12 queries" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 12
+check "diag brief: the same 13 queries" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 13
 diag russian brief
 check "diag brief russian" brief_is ru
 diag english brief extra
@@ -1319,7 +1364,7 @@ check "diag brief version of 21: cut" test "$(version_line 123456789012345678901
 check "diag brief short UTF-8 version: as is" test "$(version_line 'бета 2')" = "NUM бета 2 — OK"
 check "diag brief long UTF-8 version: ? in place of bytes, valid UTF-8" test \
     "$(version_line '1.0 бета-сборка')" = "NUM 1.0 ????????-??????… — OK"
-check "diag brief: 14 lines with a long version" test "$(wc -l <"$o" | tr -d ' ')" = 14
+check "diag brief: 15 lines with a long version" test "$(wc -l <"$o" | tr -d ' ')" = 15
 cp "$fx/app_data.json" "$apps"
 rm -f "$PLAY_IN_APPS_TMP/run/shell.log" "$PLAY_IN_APPS_TMP/run/shell_ext.log"
 
@@ -1754,7 +1799,7 @@ old = set(sys.argv[2].split())
 names = [("num", "NUM"), ("lampa", "Lampa"), ("bylampa", "BYLAMPA"), ("lampa_atv", "LAMPA ATV"),
          ("prisma", "Prisma"), ("vokino", "VoKino"), ("lazymedia", "LazyMedia"), ("filmix_api", "Filmix"),
          ("stremio", "Stremio"), ("nuvio", "Nuvio"), ("freezona", "FreeZona"), ("alpac", "ALPAC"),
-         ("flux", "Flux")]
+         ("flux", "Flux"), ("seasonhit", "SeasonHit")]
 def label(c):
     return {"name": "", "title": None, "kind": "label", "specific_def": {"caption": c}}
 def button(n):
@@ -1834,7 +1879,7 @@ names = [("num", "NUM", "ru.yourok.num"), ("lampa", "Lampa", "top.rootu.lampa"),
          ("lazymedia", "LazyMedia", "com.lazycatsoftware.lmd"), ("filmix_api", "Filmix", None),
          ("stremio", "Stremio", "com.stremio.one"), ("nuvio", "Nuvio", "com.nuvio.tv"),
          ("freezona", "FreeZona", "free.zona"), ("alpac", "ALPAC", "cc.alcopa.tv"),
-         ("flux", "Flux", "app.flux.tv")]
+         ("flux", "Flux", "app.flux.tv"), ("seasonhit", "SeasonHit", "com.jimdo.xakerd.season2hit")]
 items = []
 for i, c, pkg in names:
     if i not in installed:
@@ -1869,7 +1914,7 @@ EOF
     press items
     check "items: exit 0" rc_is 0
     check "items: stderr has only own log lines" only_own_log
-    check "items: dialog with all 13 items, not installed marked, icons" \
+    check "items: dialog with all 14 items, not installed marked, icons" \
         items_is "num lampa prisma vokino stremio nuvio" "num freezona" en
     check "items: choice file from hidden, in item order" file_is "$lcfg" "$(printf '%s\n' -prisma -nuvio)"
     check "items: choice file 0644" mode_is "$lcfg" 644
@@ -1947,7 +1992,7 @@ EOF
     rm -f "$plugins/Filmix_api/dune_plugin.xml"
     press items
     check "items icons: Filmix_API logo without its manifest: still the logo" items_is \
-        "num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona alpac flux" "num freezona" en \
+        "num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona alpac flux seasonhit" "num freezona" en \
         "num=$work/atv_icons/icon_ru.yourok.num.png filmix_api=$plugins/Filmix_api/icons/logo.png"
     : >"$plugins/Filmix_api/dune_plugin.xml"
     rm -f "$plugins/Filmix_api/icons/logo.png"
@@ -1996,7 +2041,7 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     printf '+num\n-lampa\n-nuvio\n+nuvio\n\n  -stremio  \n---\nnum\n-freezona\n' >"$lcfg"
     apply '"1"' '"play_in_apps"'
     check "list_apply: last sign of an id wins, order part ignored" hidden_is "$(printf 'lampa\nstremio')"
-    check "list_apply: sync" shown num bylampa lampa_atv prisma vokino lazymedia filmix_api nuvio freezona alpac flux
+    check "list_apply: sync" shown num bylampa lampa_atv prisma vokino lazymedia filmix_api nuvio freezona alpac flux seasonhit
     press items
     check "list_apply then items: choice file from hidden" file_is "$lcfg" "$(printf '%s\n' -lampa -stremio)"
     printf '%s\n' -num >"$lcfg"
@@ -2051,7 +2096,7 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
 
     # --- "Check": the report of diag.sh as a list
 
-    # check_view_is <file with the expected lines>: view_regular 1x14 with a
+    # check_view_is <file with the expected lines>: view_regular 1x15 with a
     # scrollbar, a row per line, ENTER does nothing.
     check_view_is() {
         python3 - "$o" "$1" <<'EOF'
@@ -2061,7 +2106,7 @@ lines = open(sys.argv[2], encoding="utf-8").read().rstrip("\n").split("\n")
 rows = [{"media_url": "line:%d" % i, "caption": l, "view_item_params": []} for i, l in enumerate(lines)]
 rng = {"total": len(rows), "more_items_available": False, "from_ndx": 0, "count": len(rows), "items": rows}
 view = {"multiple_views_supported": False, "view_kind": "view_regular", "data": {
-    "view_params": {"num_cols": 1, "num_rows": 14, "paint_details": False, "paint_scrollbar": True,
+    "view_params": {"num_cols": 1, "num_rows": 15, "paint_details": False, "paint_scrollbar": True,
                     "scroll_animation_enabled": True},
     "base_view_item_params": {"item_padding_top": 0, "item_padding_bottom": 0, "item_layout": 0,
                               "item_caption_width": 1650, "item_caption_font_size": 1},
@@ -2083,10 +2128,10 @@ EOF
     check "check screen: exit 0" rc_is 0
     check "check screen: stderr has only own log lines" only_own_log
     check "check screen: the lines of the brief report as rows" check_view_is "$work/diag_en.txt"
-    check "check screen: 14 rows, one screen" python3 -c 'import json, sys
-sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]) != 14)' "$o"
+    check "check screen: 15 rows, one screen" python3 -c 'import json, sys
+sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]) != 15)' "$o"
     check "check screen: no details" sh -c '! grep -qE "am start|intent|launch:|FS_PREFIX" "$1"' _ "$o"
-    check "check screen: diag.sh ran from PHP" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 12
+    check "check screen: diag.sh ran from PHP" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 13
     folder_view check get_regular_folder_items
     check "check screen, get_regular_folder_items: the same rows" python3 -c 'import json, sys
 d = json.load(open(sys.argv[1]))
@@ -2355,6 +2400,7 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     printf 'FREEZONA_SUPPLIER_MARK\n' >"$cgi_tmp/run/freezona__supplier.log"
     printf 'ALPAC_SUPPLIER_MARK\n' >"$cgi_tmp/run/alpac__supplier.log"
     printf 'FLUX_SUPPLIER_MARK\n' >"$cgi_tmp/run/flux__supplier.log"
+    printf 'SEASONHIT_SUPPLIER_MARK\n' >"$cgi_tmp/run/seasonhit__supplier.log"
     printf 'OTHER_SUPPLIER_MARK\n' >"$cgi_tmp/run/youtube__supplier.log"
     printf 'PIA_LOG_MARK\n' >"$cgi_tmp/run/play_in_apps.log"
     printf 'SHELL_EXT_MARK\n' >"$cgi_tmp/run/shell_ext.log"
@@ -2375,7 +2421,7 @@ import sys
 s = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 marks = ["Device: Pro 8K Plus, Android 11", "Firmware: 260827_0003_r24 (tv188b)", "NUM_SUPPLIER_MARK",
          "lampa__supplier.log: no file", "FREEZONA_SUPPLIER_MARK", "ALPAC_SUPPLIER_MARK", "FLUX_SUPPLIER_MARK",
-         "PIA_LOG_MARK", "SHELL_EXT_MARK",
+         "SEASONHIT_SUPPLIER_MARK", "PIA_LOG_MARK", "SHELL_EXT_MARK",
          "ASYNC_MARK", "last 1048576 bytes", "SHELL_LOG_LAST_LINE", "LOGCAT_MARK"]
 pos = [s.find(m) for m in marks]
 sys.exit(-1 in pos or pos != sorted(pos) or not s.endswith("\nEND\n"))

@@ -23,7 +23,8 @@ class PlayInApps
         'nuvio' => array('Nuvio', 'com.nuvio.tv'),
         'freezona' => array('FreeZona', 'free.zona'),
         'alpac' => array('ALPAC', 'cc.alcopa.tv'),
-        'flux' => array('Flux', 'app.flux.tv'));
+        'flux' => array('Flux', 'app.flux.tv'),
+        'seasonhit' => array('SeasonHit', 'com.jimdo.xakerd.season2hit'));
 
     // Per call: the Dune's language. Per php_server: translations by
     // language, the rows of the last check.

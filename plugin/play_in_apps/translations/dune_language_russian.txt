@@ -112,3 +112,7 @@ flux_caption = Flux
 flux_err_not_installed = Flux не установлен
 flux_err_no_id = Для этой карточки нет TMDB ID, Flux не сможет её открыть
 flux_err_unsupported = Открыть в Flux: неподдерживаемый запрос
+seasonhit_caption = SeasonHit
+seasonhit_err_not_installed = SeasonHit не установлен
+seasonhit_err_no_title = У этой карточки нет названия, SeasonHit не сможет её найти
+seasonhit_err_unsupported = Открыть в SeasonHit: неподдерживаемый запрос
