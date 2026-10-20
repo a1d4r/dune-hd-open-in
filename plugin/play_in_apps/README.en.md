@@ -19,6 +19,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | FreeZona | FreeZona 3.0.74 (`free.zona`) | Kinopoisk ID |
 | ALPAC | ALPAC 1.0.96 (`cc.alcopa.tv`) | TMDB ID, else search by title |
 | Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
+| SeasonHit | SeasonHit 2.4.4.2 (`com.jimdo.xakerd.season2hit`) | no ID, search by title only |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -128,6 +129,12 @@ For all items:
 
 **Flux** is a media center for Android TV: a movie and series catalog, torrents, its own player.
 - The title page opens by a TMDB ID of the right type (a movie TMDB ID for a movie, a TV TMDB ID for a series): `flux://movie/…`, `flux://series/…`. Flux does not understand IMDb or Kinopoisk IDs, and a search by title cannot be started from outside: without such a TMDB ID, the Dune shows a message.
+- No account is needed.
+
+**SeasonHit** is an unofficial seasonvar.ru client: series, its own player.
+- SeasonHit **search** opens with the card's title in the Dune UI language, or with the original title if there is none. A series page cannot be opened directly: SeasonHit knows only its own seasonvar IDs (one per season), not TMDB, IMDb or Kinopoisk. The year is not passed to the search.
+- The search finds seasonvar series; movies are usually not found, look for them in the "Фильмы" (Movies) section of SeasonHit itself.
+- The results open in SeasonHit's mobile search screen, not in its TV interface.
 - No account is needed.
 
 ### Remove

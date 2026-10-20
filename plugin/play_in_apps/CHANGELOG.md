@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.8.0
+- SeasonHit item: opens SeasonHit (`com.jimdo.xakerd.season2hit`) search by the title; it finds seasonvar series, movies are rarely found.
+
 ## 0.7.0
 - Flux item: opens the movie or series in Flux (`app.flux.tv`) by TMDB ID; without one, the Dune shows a message.
 
@@ -43,6 +46,9 @@
 ---
 
 **Russian version**
+
+## 0.8.0
+- Пункт SeasonHit: открывает поиск SeasonHit (`com.jimdo.xakerd.season2hit`) по названию; находит сериалы seasonvar, фильмы — редко.
 
 ## 0.7.0
 - Пункт Flux: открывает фильм или сериал во Flux (`app.flux.tv`) по TMDB ID, а если его нет — Дюна покажет сообщение.

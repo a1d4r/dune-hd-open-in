@@ -23,6 +23,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | FreeZona | Kinopoisk ID |
 | ALPAC | TMDB ID, else search by title |
 | Flux | TMDB ID |
+| SeasonHit | no ID, search by title only |
 
 Details on each item are in the [plugin README](plugin/play_in_apps/README.en.md). The apps themselves (for Filmix, the Filmix_API plugin) must be installed and set up (addons, accounts) separately.
 
