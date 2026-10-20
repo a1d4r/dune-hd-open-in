@@ -2487,18 +2487,25 @@ check "build.sh: logs as a symlink refused" build_cgi_is refused
 rm -rf "$br"
 
 # --- manifest and translations
-check "manifest: php, suppliers, entry point, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
+check "manifest: php, suppliers, entry points, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
 import os, re, sys, xml.etree.ElementTree as ET
 r = ET.parse(sys.argv[1]).getroot()
-e = r.find("entry_points/entry_point")
+es = r.findall("entry_points/entry_point")
+e = es[0]
 icon = e.findtext("icon_url") or ""
+# The same shortcut in Applications and in Settings -> Applications.
+parents = [x.findtext("parent_media_url") for x in es]
+def strip(x):
+    x.tail = None
+    return re.sub(r"<parent_media_url>.*?</parent_media_url>", "", ET.tostring(x, "unicode"))
 ok = (r.findtext("name") == "play_in_apps"
       and r.findtext("type") == "php"
       and r.findtext("params/program") == "main.php"
       and r.findtext("params/movie_suppliers") == "-".join(sys.argv[2].split())
       and r.findtext("global_actions/uninstall/data/run_string") == "bin/uninstall.sh"
       and r.findtext("global_actions/early_gui_start/data/run_string") == "bin/sync.sh"
-      and e.findtext("parent_media_url") == "setup://applications"
+      and parents == ["root://applications", "setup://applications"]
+      and strip(es[0]) == strip(es[1])
       and e.findtext("actions/key_enter/type") == "plugin_open_folder"
       and icon.startswith("plugin_file://")
       and os.path.isfile(os.path.join(os.path.dirname(sys.argv[1]), icon[len("plugin_file://"):]))

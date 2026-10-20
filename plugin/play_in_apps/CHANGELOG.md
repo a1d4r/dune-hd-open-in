@@ -3,7 +3,8 @@
 **English version**
 
 ## 0.8.0
-- SeasonHit item: opens SeasonHit (`com.jimdo.xakerd.season2hit`) search by the title; it finds seasonvar series, movies are rarely found.
+- SeasonHit item: opens SeasonHit (`com.jimdo.xakerd.season2hit`) search by the title; it finds seasonvar series, movies are rarely found. On models where the Dune runs as an app on Android TV it will most likely not open (not checked).
+- The plugin screen is also in Applications → Dune HD, not only in Settings → Applications.
 
 ## 0.7.0
 - Flux item: opens the movie or series in Flux (`app.flux.tv`) by TMDB ID; without one, the Dune shows a message.
@@ -48,7 +49,8 @@
 **Russian version**
 
 ## 0.8.0
-- Пункт SeasonHit: открывает поиск SeasonHit (`com.jimdo.xakerd.season2hit`) по названию; находит сериалы seasonvar, фильмы — редко.
+- Пункт SeasonHit: открывает поиск SeasonHit (`com.jimdo.xakerd.season2hit`) по названию; находит сериалы seasonvar, фильмы — редко. На моделях, где Дюна стоит приложением на Android TV, скорее всего, не откроется (не проверено).
+- Экран плагина — ещё и в «Приложения» → «Dune HD», не только в «Настройки» → «Приложения».
 
 ## 0.7.0
 - Пункт Flux: открывает фильм или сериал во Flux (`app.flux.tv`) по TMDB ID, а если его нет — Дюна покажет сообщение.

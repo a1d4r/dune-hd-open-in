@@ -35,7 +35,7 @@ If you install or remove an app later, its item appears or goes away after the D
 Since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before.
 
 ### Plugin screen
-**Settings → Applications → Play in apps** is a short screen, like the Dune's own settings:
+**Settings → Applications → Play in apps** (also in **Applications → Dune HD**) is a short screen, like the Dune's own settings:
 - **Items of the "Play..." menu: Configure…** — which items to show;
 - **Check: Open…** — why an item does not start;
 - **Logs: Download to phone…** — the logs as one file to send to the author.
@@ -135,6 +135,7 @@ For all items:
 - SeasonHit **search** opens with the card's title in the Dune UI language, or with the original title if there is none. A series page cannot be opened directly: SeasonHit knows only its own seasonvar IDs (one per season), not TMDB, IMDb or Kinopoisk. The year is not passed to the search.
 - The search finds seasonvar series; movies are usually not found, look for them in the "Фильмы" (Movies) section of SeasonHit itself.
 - The results open in SeasonHit's mobile search screen, not in its TV interface.
+- Works on Dune HD players; on models where the Dune runs as an app on Android TV, SeasonHit will most likely not open (not checked).
 - No account is needed.
 
 ### Remove
