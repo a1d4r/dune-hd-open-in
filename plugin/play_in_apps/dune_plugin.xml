@@ -9,7 +9,7 @@
   <entry_points>
     <entry_point>
       <parent_media_url>root://applications</parent_media_url>
-      <media_url>setup</media_url>
+      <media_url>apps</media_url>
       <caption>%tr%plugin_caption</caption>
       <icon_url>plugin_file://icons/logo.png</icon_url>
       <actions>

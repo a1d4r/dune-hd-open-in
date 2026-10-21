@@ -2489,7 +2489,7 @@ rm -rf "$br"
 
 # --- manifest and translations
 check "manifest: php, suppliers, entry points, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
-import os, re, sys, xml.etree.ElementTree as ET
+import copy, os, re, sys, xml.etree.ElementTree as ET
 r = ET.parse(sys.argv[1]).getroot()
 es = r.findall("entry_points/entry_point")
 e = es[0]
@@ -2497,8 +2497,12 @@ icon = e.findtext("icon_url") or ""
 # The same shortcut in Applications and in Settings -> Applications.
 parents = [x.findtext("parent_media_url") for x in es]
 def strip(x):
+    x = copy.deepcopy(x)
     x.tail = None
-    return re.sub(r"<parent_media_url>.*?</parent_media_url>", "", ET.tostring(x, "unicode"))
+    for t in ("parent_media_url", "media_url"):
+        for c in x.findall(t):
+            x.remove(c)
+    return ET.tostring(x, "unicode")
 ok = (r.findtext("name") == "play_in_apps"
       and r.findtext("type") == "php"
       and r.findtext("params/program") == "main.php"
@@ -2508,12 +2512,22 @@ ok = (r.findtext("name") == "play_in_apps"
       and parents == ["root://applications", "setup://applications"]
       and strip(es[0]) == strip(es[1])
       and e.findtext("actions/key_enter/type") == "plugin_open_folder"
+      and e.findtext("actions/key_enter/data/media_url") == "setup"
       and icon.startswith("plugin_file://")
       and os.path.isfile(os.path.join(os.path.dirname(sys.argv[1]), icon[len("plugin_file://"):]))
       and r.findtext("operation_timeout/default") == "60"
       and re.fullmatch(r"\d+\.\d+\.\d+", r.findtext("version") or "")
       and re.fullmatch(r"\d+", r.findtext("version_index") or ""))
 sys.exit(not ok)
+EOF
+# The shell keys entry points by "<plugin>:<media_url>": with the same
+# media_url the later one replaces the earlier, and the root:// shortcut
+# drops out of Applications -> All.
+check "manifest: entry point media_url values all differ" python3 - "$src/dune_plugin.xml" <<'EOF'
+import sys, xml.etree.ElementTree as ET
+es = ET.parse(sys.argv[1]).getroot().findall("entry_points/entry_point")
+urls = [x.findtext("media_url") for x in es]
+sys.exit(not (urls and all(urls) and len(set(urls)) == len(urls)))
 EOF
 version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$src/dune_plugin.xml")
 check "CHANGELOG has the manifest version" grep -q "^## $version" "$src/CHANGELOG.md"
