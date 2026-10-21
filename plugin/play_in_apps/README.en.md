@@ -35,7 +35,7 @@ If you install or remove an app later, its item appears or goes away after the D
 Since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before.
 
 ### Plugin screen
-**Settings → Applications → Play in apps** (also in **Applications → Dune HD**) is a short screen, like the Dune's own settings:
+**Settings → Applications → Play in apps** (also in **Applications → Dune HD** and **All**) is a short screen, like the Dune's own settings:
 - **Items of the "Play..." menu: Configure…** — which items to show;
 - **Check: Open…** — why an item does not start;
 - **Logs: Download to phone…** — the logs as one file to send to the author.

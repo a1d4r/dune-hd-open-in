@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.8.1
+- Fixed: the plugin screen was missing from Applications → All, it was only in Applications → Dune HD.
+
 ## 0.8.0
 - SeasonHit item: opens SeasonHit (`com.jimdo.xakerd.season2hit`) search by the title; it finds seasonvar series, movies are rarely found. On models where the Dune runs as an app on Android TV it will most likely not open (not checked).
 - The plugin screen is also in Applications → Dune HD, not only in Settings → Applications.
@@ -47,6 +50,9 @@
 ---
 
 **Russian version**
+
+## 0.8.1
+- Исправлено: экрана плагина не было в «Приложения» → «Все», только в «Приложения» → «Dune HD».
 
 ## 0.8.0
 - Пункт SeasonHit: открывает поиск SeasonHit (`com.jimdo.xakerd.season2hit`) по названию; находит сериалы seasonvar, фильмы — редко. На моделях, где Дюна стоит приложением на Android TV, скорее всего, не откроется (не проверено).

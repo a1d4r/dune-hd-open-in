@@ -4,7 +4,7 @@
 
 > Android-based Dune HD models only. It will not work on older non-Android models (Sigma chips): they have no Android apps.
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps** (it is also in **Applications → Dune HD**).
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps** (it is also in **Applications → Dune HD** and **All**).
 
 <img src="screenshots/play-menu.png" alt="Play... menu with the plugin items" width="49%"> <img src="screenshots/settings.png" alt="Plugin screen: choosing the Play... menu items" width="49%">
 
