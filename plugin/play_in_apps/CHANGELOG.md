@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.9.0
+- Bazinga item: opens the title in the Bazinga Dune plugin (`Bazinga3`): its Kinopoisk title page by Kinopoisk ID; without one, Bazinga's Kinopoisk search by title. Bazinga is installed separately, for example from the "Plugin collection" of Dune BackUp.
+
 ## 0.8.1
 - Fixed: the plugin screen was missing from Applications → All, it was only in Applications → Dune HD.
 
@@ -50,6 +53,9 @@
 ---
 
 **Russian version**
+
+## 0.9.0
+- Пункт Bazinga: открывает фильм или сериал в плагине Дюны Bazinga (`Bazinga3`) — карточку Кинопоиска по ID Кинопоиска, а если его нет — поиск Кинопоиска в Bazinga по названию. Bazinga ставится отдельно, например из «Коллекции плагинов» Dune BackUp.
 
 ## 0.8.1
 - Исправлено: экрана плагина не было в «Приложения» → «Все», только в «Приложения» → «Dune HD».

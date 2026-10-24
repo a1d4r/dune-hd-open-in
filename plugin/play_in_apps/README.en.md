@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix item opens it in the Filmix_API Dune plugin. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and a logs download.
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and a logs download.
 
 | Menu item | App | Opens the title by |
 |---|---|---|
@@ -20,6 +20,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | ALPAC | ALPAC 1.0.96 (`cc.alcopa.tv`) | TMDB ID, else search by title |
 | Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
 | SeasonHit | SeasonHit 2.4.4.2 (`com.jimdo.xakerd.season2hit`) | no ID, search by title only |
+| Bazinga | Bazinga Dune plugin (`Bazinga3`) 2023031100_patch | Kinopoisk ID, else search by title |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -44,7 +45,7 @@ Since 0.3.0 the plugin supports online updates: after the Dune boots (waking fro
 **Items of the "Play..." menu: Configure…** opens the Dune's own dialog with a list of the apps and checkmarks. Uncheck an item to hide it, check it to show it; the **Apps** line switches all of them. All may be unchecked. The choice applies when the dialog closes ("Close" or Back): the item leaves the menu or comes back and stays so after a reboot. **POP UP → "Reset to Default Values"** turns all items on again. Apps that are not installed are marked "(not installed)"; the choice is kept for when the app appears. A choice made in earlier versions of the plugin is kept.
 
 ### Check
-**Check: Open…** fits on one screen: the first line is the Dune model, firmware, Android and the plugin version, then one line per item: the app name, its version (if installed) and the verdict, for example "NUM 2.1 — OK", "Lampa 1.13.1 — hidden", "Prisma — not installed", "Filmix — OK (through the Filmix_API plugin)", "FreeZona 3.0.74 — the app will not take the link", "NUM 1.0.150 — the item script is missing". On models where the Dune runs as an app on Android TV, every installed item may show "could not check the launch": Android hides other apps from it.
+**Check: Open…** fits on one screen: the first line is the Dune model, firmware, Android and the plugin version, then one line per item: the app name, its version (if installed) and the verdict, for example "NUM 2.1 — OK", "Lampa 1.13.1 — hidden", "Prisma — not installed", "Filmix — OK (through the Dune plugin Filmix_API)", "FreeZona 3.0.74 — the app will not take the link", "NUM 1.0.150 — the item script is missing". On models where the Dune runs as an app on Android TV, every installed item may show "could not check the launch": Android hides other apps from it.
 
 The check looks at whether the app is installed, whether the item is hidden, whether it is in the menu and not another plugin's (for example, an old "Open in …" one), what the item answers for the movie "Cars" and whether the app takes that link (Android is asked which app would open it; the app itself is not started). The details — the launch command, Android's answer, the Dune's last records about launching items — go to the logs only. An app that takes too long to open or closes at once is not seen by the check, only in the logs.
 
@@ -137,6 +138,11 @@ For all items:
 - The results open in SeasonHit's mobile search screen, not in its TV interface.
 - Works on Dune HD players; on models where the Dune runs as an app on Android TV, SeasonHit will most likely not open (not checked).
 - No account is needed.
+
+**Bazinga** is the Bazinga Dune plugin (`Bazinga3`, by TrippyCat): the Kinopoisk catalog, with sources for a title (trackers, Jackett and others). It is not an Android app: Bazinga is installed into Dune, like this plugin, and is not included in this zip. You can install it, for example, from the "Plugin collection" of Dune BackUp.
+- If the card has a Kinopoisk ID, the title page opens in Bazinga right away.
+- Without a Kinopoisk ID, Bazinga's Kinopoisk search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
+- From there it is Bazinga as usual: watch through "Источники" (Sources) on its title page. Which sources there are and whether they work depends on Bazinga itself and its settings.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.
