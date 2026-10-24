@@ -1773,6 +1773,105 @@ if [ "$php_ok" = 1 ]; then
     printf '%s\n' '{"handler_id":"filmix_api","movie_str":{"title":"obj"}}' >"$work/ui.json"
     error "$work/ui.json" "movie_str is an object" filmix_api_err_no_title
 
+    # --- Bazinga play_action: the Bazinga3 plugin's Kinopoisk card by kp_id,
+    # else its Kinopoisk search by title.
+    # bz_input <file>: the device's play_action input with handler_id bazinga.
+    bz_input() {
+        python3 -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+d.update(handler_id="bazinga", supplier_id="bazinga")
+print(json.dumps(d))' "$1" >"$work/bz.json"
+        mv -f "$work/bz.json" "$work/ui.json"
+    }
+    # bz_movie <movie_str JSON or raw value for movie_str>
+    bz_movie() {
+        user_input "$1"
+        bz_input "$work/ui.json"
+    }
+    # bz_card_json <kp_id> <caption> [<caption_original> [<year>]]; "" or none: no field.
+    bz_card_json() {
+        python3 -c 'import json, sys
+a = sys.argv[1:] + ["", ""]
+url = {"movie_id": a[0], "screen_id": "vod_movie", "class_name": "Kinopoisk_Class", "caption": a[1]}
+if a[2]:
+    url["caption_original"] = a[2]
+if a[3]:
+    url["year"] = a[3]
+print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Bazinga3",
+    "data": {"media_url": url, "caption": a[1]}}))' "$@"
+    }
+    bz_search_json() {
+        python3 -c 'import json, sys
+url = {"searchStr": sys.argv[1], "screen_id": "vod_list", "class_name": "Kinopoisk_Class"}
+print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Bazinga3",
+    "data": {"media_url": url, "caption": sys.argv[1]}}))' "$1"
+    }
+    bz_card() {
+        bzf=$1 bzd=$2
+        shift 2
+        handler "$bzf" "bazinga $bzd" "$(bz_card_json "$@")"
+    }
+    bz_search() { handler "$1" "bazinga $2" "$(bz_search_json "$3")"; }
+    bz_error() { handler "$1" "bazinga $2" "$(error_json "$3")"; }
+
+    rm -rf "$plugins/Bazinga3"
+    bz_input "$fx/play_action_movie.json"
+    bz_error "$work/ui.json" "no Bazinga3" bazinga_err_not_installed
+    mkdir -p "$plugins/Bazinga3"
+    bz_error "$work/ui.json" "Bazinga3 dir without manifest" bazinga_err_not_installed
+    : >"$plugins/Bazinga3/dune_plugin.xml"
+
+    # Real inputs from the device: the movie has kp_id, the series has none.
+    bz_card "$work/ui.json" "movie with kp_id: card" 1236583 'Прошлой ночью в Сохо' 'Last Night in Soho' 2021
+    check "main.php bazinga logs the card" grep -qx 'play_in_apps: bazinga card: 1236583' "$o.err"
+    check "main.php bazinga card: Cyrillic as \\u escapes in media_url" python3 -c 'import json, sys
+u = json.load(open(sys.argv[1]))["data"]["data"]["media_url"]
+sys.exit("\\u041f" not in u or not u.isascii())' "$o"
+    bz_input "$fx/play_action_series.json"
+    bz_search "$work/ui.json" "series without kp_id: search" 'Дом Дракона'
+    check "main.php bazinga logs the search" grep -qx 'play_in_apps: bazinga search: Дом Дракона' "$o.err"
+
+    # kp_id: digits only after trim, a string or an integer.
+    bz_movie '{"kp_id":" 409424 ","title":"Дюна","native_title":"Dune","year":"2021"}'
+    bz_card "$work/ui.json" "kp_id trimmed" 409424 'Дюна' Dune 2021
+    bz_movie '{"kp_id":409424,"title":"Дюна","year":2021}'
+    bz_card "$work/ui.json" "kp_id and year as numbers, no native_title" 409424 'Дюна' '' 2021
+    bz_movie '{"kp_id":"409424","title":"Дюна","native_title":"","year":""}'
+    bz_card "$work/ui.json" "empty native_title and year: no fields" 409424 'Дюна'
+    bz_movie '{"kp_id":"409424","title":"","native_title":"Dune"}'
+    bz_card "$work/ui.json" "empty title: caption from native_title" 409424 Dune Dune
+    bz_movie '{"kp_id":"409424","title":"  ","year":"2021"}'
+    bz_card "$work/ui.json" "no titles: card with kp_id as caption" 409424 409424 '' 2021
+    # shellcheck disable=SC2016 # literal $(...) on purpose
+    bz_movie '{"kp_id":"1","title":"\"},\"plugin_name\":\"evil\" ; $(reboot) `id` \\ /&?#%"}'
+    # shellcheck disable=SC2016 # literal $(...) on purpose
+    bz_card "$work/ui.json" "hostile title stays text" 1 '"},"plugin_name":"evil" ; $(reboot) `id` \ /&?#%'
+    for kp in '"tt9639470"' '"12a"' '"-1"' '"+1"' '"1.5"' '"12 3"' '"0x1A"' '""' '1.5' 'true' '["1"]' '{"a":"1"}' 'null'; do
+        bz_movie "{\"kp_id\":$kp,\"title\":\"Дюна\",\"native_title\":\"Dune\",\"year\":\"2021\"}"
+        bz_search "$work/ui.json" "kp_id $kp: search" 'Дюна'
+    done
+    bz_movie '{"title":"","native_title":"Dune"}'
+    bz_search "$work/ui.json" "no kp_id, empty title: search by native_title" Dune
+    bz_movie '{"kp_id":"tt1","title":"ab\ud800cd","native_title":"Dune"}'
+    if [ "$("$php_bin" -r 'echo PHP_MAJOR_VERSION;')" -lt 7 ]; then
+        bz_search "$work/ui.json" "lone surrogate title: search by native_title" Dune
+        bz_movie '{"kp_id":"7","title":"T","native_title":"x\udc00","year":"y\ud800"}'
+        bz_card "$work/ui.json" "lone surrogates in native_title and year: fields left out" 7 T
+    else
+        # PHP 7+ json_decode rejects the whole movie_str.
+        bz_error "$work/ui.json" "lone surrogate title (PHP 7+)" bazinga_err_no_title
+    fi
+    bz_movie '{"kp_id":"","title":" ","native_title":""}'
+    bz_error "$work/ui.json" "no kp_id, no titles" bazinga_err_no_title
+    for raw in 'not json' '"just a string"' '["kp_id","title"]' ''; do
+        bz_movie "$raw"
+        bz_error "$work/ui.json" "movie_str '$raw'" bazinga_err_no_title
+    done
+    printf '%s\n' '{"handler_id":"bazinga","control_id":"play"}' >"$work/ui.json"
+    bz_error "$work/ui.json" "no movie_str" bazinga_err_no_title
+    printf '%s\n' '{"handler_id":"bazinga","movie_str":{"kp_id":"1","title":"obj"}}' >"$work/ui.json"
+    bz_error "$work/ui.json" "movie_str is an object" bazinga_err_no_title
+
     # Not our call: no action, no error.
     printf '%s\n' '{"handler_id":"other","movie_str":"{\"title\":\"x\"}"}' >"$work/ui.json"
     handler "$work/ui.json" "other handler" none

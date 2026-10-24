@@ -116,3 +116,7 @@ seasonhit_caption = SeasonHit
 seasonhit_err_not_installed = SeasonHit is not installed
 seasonhit_err_no_title = This title has no name, SeasonHit cannot search for it
 seasonhit_err_unsupported = Open in SeasonHit: unsupported request
+bazinga_caption = Bazinga
+bazinga_err_not_installed = The Bazinga plugin is not installed
+bazinga_err_no_title = This title has neither a Kinopoisk ID nor a name, Bazinga cannot open it
+bazinga_err_unsupported = Open in Bazinga: unsupported request

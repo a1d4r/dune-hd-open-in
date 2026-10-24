@@ -1,5 +1,5 @@
 <?php
-// The plugin screens and the play_action handler of the Filmix item:
+// The plugin screens and the play_action handlers of the Filmix and Bazinga items:
 //  - "setup": a short controls screen with three buttons — the item choice
 //    (the shell's dialog with checkmarks), "Check" and logs for the author;
 //  - "check": the brief report of bin/diag.sh (a line per item) as a list.
@@ -110,6 +110,67 @@ function filmix_play($user_input)
         return filmix_search_action($title, $media_url);
     }
     return pia_error_action('filmix_api_err_no_title');
+}
+
+// --- Bazinga: play_action of the supplier, as Filmix's. Opens the Bazinga3
+// Dune plugin: its Kinopoisk card by kp_id, else its Kinopoisk search by
+// title. Bazinga3 json_decodes media_url, so key order does not matter.
+
+// A trimmed scalar field of the movie; '' if there is none or it is not valid
+// UTF-8 (a lone \ud800 after json_decode, see filmix_play).
+function bazinga_field($movie, $k)
+{
+    if (!isset($movie[$k]) || !is_scalar($movie[$k]))
+        return '';
+    $s = trim(strval($movie[$k]));
+    $json = json_encode($s);
+    return $json === false || json_last_error() !== JSON_ERROR_NONE ? '' : $s;
+}
+
+function bazinga_open($media_url, $caption)
+{
+    return array(
+        'handler_string_id' => PLUGIN_OPEN_FOLDER_ACTION_ID,
+        'plugin_name' => 'Bazinga3',
+        'data' => array('media_url' => json_encode($media_url), 'caption' => $caption));
+}
+
+function bazinga_play($user_input)
+{
+    if (!is_file(pia_plugins_dir() . '/Bazinga3/dune_plugin.xml'))
+        return pia_error_action('bazinga_err_not_installed');
+
+    // Arrays, not objects, as in filmix_play.
+    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
+        json_decode($user_input->movie_str, true) : null;
+    if (!is_array($movie))
+        $movie = array();
+    $title = bazinga_field($movie, 'title');
+    $native = bazinga_field($movie, 'native_title');
+    $kp = isset($movie['kp_id']) && (is_string($movie['kp_id']) || is_int($movie['kp_id'])) ?
+        trim(strval($movie['kp_id'])) : '';
+
+    if (preg_match('/^[0-9]+$/D', $kp))
+    {
+        // The card shows these titles when kinopoiskapiunofficial does not answer.
+        $caption = $title !== '' ? $title : ($native !== '' ? $native : $kp);
+        $url = array('movie_id' => $kp, 'screen_id' => 'vod_movie',
+            'class_name' => 'Kinopoisk_Class', 'caption' => $caption);
+        if ($native !== '')
+            $url['caption_original'] = $native;
+        $year = bazinga_field($movie, 'year');
+        if ($year !== '')
+            $url['year'] = $year;
+        pia_log("bazinga card: $kp");
+        return bazinga_open($url, $caption);
+    }
+
+    $caption = $title !== '' ? $title : $native;
+    if ($caption === '')
+        return pia_error_action('bazinga_err_no_title');
+    pia_log("bazinga search: $caption");
+    return bazinga_open(array('searchStr' => $caption, 'screen_id' => 'vod_list',
+        'class_name' => 'Kinopoisk_Class'), $caption);
 }
 
 // --- Translations.
@@ -731,6 +792,8 @@ function pia_handle_user_input($user_input)
     $handler = isset($user_input->handler_id) ? $user_input->handler_id : null;
     if ($handler === 'filmix_api')
         return filmix_play($user_input);
+    if ($handler === 'bazinga')
+        return bazinga_play($user_input);
 
     $id = isset($user_input->control_id) ? $user_input->control_id : null;
     if ($handler !== 'setup' || !is_string($id))
