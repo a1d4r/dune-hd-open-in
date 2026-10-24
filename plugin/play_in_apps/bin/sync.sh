@@ -91,13 +91,14 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     pkg=${app#*:}
 
     if [ -z "$pkg" ]; then
-        # The Dune plugin's folder.
+        # The Dune plugin's folder; an unknown id: none, not installed.
+        dplug=''
         case $id in
+            filmix_api) dplug=Filmix_api ;;
             bazinga) dplug=Bazinga3 ;;
-            *) dplug=Filmix_api ;;
         esac
         installed=0
-        [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
+        [ -n "$dplug" ] && [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
     elif [ "$apps_known" = 1 ]; then
         installed=0
         grep -q "\"package_name\": *\"$(printf '%s' "$pkg" | sed 's/\./\\./g')\"" "$apps" && installed=1

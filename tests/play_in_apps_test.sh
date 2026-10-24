@@ -1316,6 +1316,22 @@ check "diag Bazinga3 not installed: reason" in_item Bazinga "  installed: no (Ba
 rm -f "$data/hidden"
 cp "$fx/app_data.json" "$apps"
 run sync.sh
+# Each Dune plugin item looks at its own plugin's folder only.
+rm -f "$plugins/Bazinga3/dune_plugin.xml"
+run sync.sh
+diag
+check "diag only Filmix_API installed: verdicts" verdicts_are OK Bazinga="-- not installed"
+check "diag only Filmix_API installed: Filmix installed" in_item Filmix "  installed: yes (Filmix_API)"
+check "diag only Filmix_API installed: Bazinga not" in_item Bazinga "  installed: no (Bazinga3)"
+: >"$plugins/Bazinga3/dune_plugin.xml"
+rm -f "$plugins/Filmix_api/dune_plugin.xml"
+run sync.sh
+diag
+check "diag only Bazinga3 installed: verdicts" verdicts_are OK Filmix="-- not installed"
+check "diag only Bazinga3 installed: Bazinga installed" in_item Bazinga "  installed: yes (Bazinga3)"
+check "diag only Bazinga3 installed: Filmix not" in_item Filmix "  installed: no (Filmix_API)"
+: >"$plugins/Filmix_api/dune_plugin.xml"
+run sync.sh
 
 # The menu file of an item: someone else's, a missing or relative bin, none.
 printf '{"plugin":"num_supplier","bin":"sh %s/num.sh"}\n' "$bin" >"$menu/num"
@@ -1854,6 +1870,8 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     # kp_id: digits only after trim, a string or an integer.
     bz_movie '{"kp_id":" 409424 ","title":"Дюна","native_title":"Dune","year":"2021"}'
     bz_card "$work/ui.json" "kp_id trimmed" 409424 'Дюна' Dune 2021
+    bz_movie '{"kp_id":"1234567890","title":"Дюна"}'
+    bz_card "$work/ui.json" "kp_id of 10 digits: card" 1234567890 'Дюна'
     bz_movie '{"kp_id":409424,"title":"Дюна","year":2021}'
     bz_card "$work/ui.json" "kp_id and year as numbers, no native_title" 409424 'Дюна' '' 2021
     bz_movie '{"kp_id":"409424","title":"Дюна","native_title":"","year":""}'
@@ -1866,7 +1884,8 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     bz_movie '{"kp_id":"1","title":"\"},\"plugin_name\":\"evil\" ; $(reboot) `id` \\ /&?#%"}'
     # shellcheck disable=SC2016 # literal $(...) on purpose
     bz_card "$work/ui.json" "hostile title stays text" 1 '"},"plugin_name":"evil" ; $(reboot) `id` \ /&?#%'
-    for kp in '"tt9639470"' '"12a"' '"-1"' '"+1"' '"1.5"' '"12 3"' '"0x1A"' '""' '1.5' 'true' '["1"]' '{"a":"1"}' 'null'; do
+    for kp in '"tt9639470"' '"12a"' '"-1"' '"+1"' '"1.5"' '"12 3"' '"0x1A"' '""' '1.5' 'true' '["1"]' '{"a":"1"}' 'null' \
+        '"0"' '0' '"0409424"' '"12345678901"' '12345678901'; do
         bz_movie "{\"kp_id\":$kp,\"title\":\"Дюна\",\"native_title\":\"Dune\",\"year\":\"2021\"}"
         bz_search "$work/ui.json" "kp_id $kp: search" 'Дюна'
     done

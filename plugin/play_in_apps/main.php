@@ -151,7 +151,7 @@ function bazinga_play($user_input)
     $kp = isset($movie['kp_id']) && (is_string($movie['kp_id']) || is_int($movie['kp_id'])) ?
         trim(strval($movie['kp_id'])) : '';
 
-    if (preg_match('/^[0-9]+$/D', $kp))
+    if (preg_match('/^[1-9][0-9]{0,9}$/D', $kp))
     {
         // The card shows these titles when kinopoiskapiunofficial does not answer.
         $caption = $title !== '' ? $title : ($native !== '' ? $native : $kp);

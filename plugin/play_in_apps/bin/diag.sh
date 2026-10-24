@@ -161,13 +161,14 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     v=
 
     if [ -z "$pkg" ]; then
-        # The Dune plugin: its folder, its name.
+        # The Dune plugin: its folder, its name; an unknown id: none, not installed.
+        dplug='' dname=''
         case $id in
+            filmix_api) dplug=Filmix_api dname=Filmix_API ;;
             bazinga) dplug=Bazinga3 dname=Bazinga3 ;;
-            *) dplug=Filmix_api dname=Filmix_API ;;
         esac
         installed=0
-        [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
+        [ -n "$dplug" ] && [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
         if [ "$installed" = 1 ]; then
             add "$(t diag_installed): $yes_ ($dname)"
         else
