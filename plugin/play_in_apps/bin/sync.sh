@@ -80,18 +80,24 @@ hide() {
     echo "$name: $1 hidden"
 }
 
-# id:package; Filmix is the Filmix_API Dune plugin, not an Android app.
+# id:package; an empty package: a Dune plugin, not an Android app (Filmix:
+# Filmix_API, Bazinga: Bazinga3).
 for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     lampa_atv:top.rootu.lumpa prisma:top.rootu.prisma vokino:ru.vokino.web \
     lazymedia:com.lazycatsoftware.lmd filmix_api: stremio:com.stremio.one \
     nuvio:com.nuvio.tv freezona:free.zona alpac:cc.alcopa.tv flux:app.flux.tv \
-    seasonhit:com.jimdo.xakerd.season2hit; do
+    seasonhit:com.jimdo.xakerd.season2hit bazinga:; do
     id=${app%%:*}
     pkg=${app#*:}
 
     if [ -z "$pkg" ]; then
+        # The Dune plugin's folder.
+        case $id in
+            bazinga) dplug=Bazinga3 ;;
+            *) dplug=Filmix_api ;;
+        esac
         installed=0
-        [ -f "$plugins/Filmix_api/dune_plugin.xml" ] && installed=1
+        [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
     elif [ "$apps_known" = 1 ]; then
         installed=0
         grep -q "\"package_name\": *\"$(printf '%s' "$pkg" | sed 's/\./\\./g')\"" "$apps" && installed=1
@@ -105,9 +111,9 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         hide "$id"
     elif [ -z "$pkg" ]; then
         # Choosing the item runs play_action (main.php); bin only answers if
-        # the shell ever ignores play_action. The icon is Filmix_API's own.
-        show "$id" "$(printf '{"plugin":"%s","caption":"%%tr%%%s_caption","langs":"any","supported_video_types":"video","bin":"sh %s/%s.sh","playback_type":"app","icon_url":"plugin_file://%%Filmix_api%%/icons/logo.png","play_action":{"handler_string_id":"plugin_handle_user_input","plugin_name":"%s","params":{"handler_id":"%s","control_id":"play"}}}' \
-            "$name" "$id" "$mydir" "$id" "$name" "$id")"
+        # the shell ever ignores play_action. The icon is the plugin's own.
+        show "$id" "$(printf '{"plugin":"%s","caption":"%%tr%%%s_caption","langs":"any","supported_video_types":"video","bin":"sh %s/%s.sh","playback_type":"app","icon_url":"plugin_file://%%%s%%/icons/logo.png","play_action":{"handler_string_id":"plugin_handle_user_input","plugin_name":"%s","params":{"handler_id":"%s","control_id":"play"}}}' \
+            "$name" "$id" "$mydir" "$id" "$dplug" "$name" "$id")"
     else
         show "$id" "$(printf '{"plugin":"%s","caption":"%%tr%%%s_caption","langs":"any","supported_video_types":"video","bin":"sh %s/%s.sh","playback_type":"app","icon_url":"file://%s"}' \
             "$name" "$id" "$mydir" "$id" "$(icon "$pkg")")"

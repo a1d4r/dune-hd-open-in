@@ -147,12 +147,13 @@ else
     say "$(t diag_plugin): $name ${version:-?} (uid ${uid:-?})"
 fi
 
-# --- The items. id:package; Filmix is the Filmix_API Dune plugin.
+# --- The items. id:package; an empty package: a Dune plugin (Filmix:
+# Filmix_API, Bazinga: Bazinga3).
 for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     lampa_atv:top.rootu.lumpa prisma:top.rootu.prisma vokino:ru.vokino.web \
     lazymedia:com.lazycatsoftware.lmd filmix_api: stremio:com.stremio.one \
     nuvio:com.nuvio.tv freezona:free.zona alpac:cc.alcopa.tv flux:app.flux.tv \
-    seasonhit:com.jimdo.xakerd.season2hit; do
+    seasonhit:com.jimdo.xakerd.season2hit bazinga:; do
     id=${app%%:*}
     pkg=${app#*:}
     body=
@@ -160,12 +161,17 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     v=
 
     if [ -z "$pkg" ]; then
+        # The Dune plugin: its folder, its name.
+        case $id in
+            bazinga) dplug=Bazinga3 dname=Bazinga3 ;;
+            *) dplug=Filmix_api dname=Filmix_API ;;
+        esac
         installed=0
-        [ -f "$plugins/Filmix_api/dune_plugin.xml" ] && installed=1
+        [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
         if [ "$installed" = 1 ]; then
-            add "$(t diag_installed): $yes_ (Filmix_API)"
+            add "$(t diag_installed): $yes_ ($dname)"
         else
-            add "$(t diag_installed): $no_ (Filmix_API)"
+            add "$(t diag_installed): $no_ ($dname)"
         fi
     elif grep -q "\"package_name\": *\"$(re "$pkg")\"" "$apps" 2>/dev/null; then
         installed=1
@@ -223,7 +229,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         fi
     else
         res=yes
-        add "$(t diag_launch): $(t diag_play_action)"
+        add "$(t diag_launch): $(t diag_v_via_plugin) $dname, $(t diag_play_action)"
     fi
 
     # mark: the full report's sign before the verdict.
@@ -258,7 +264,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     if [ "$brief" = 1 ]; then
         if [ -z "$mark" ]; then
             verdict=$(t diag_v_ok)
-            [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_filmix_api))"
+            [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_plugin) $dname)"
         fi
         # A version over 20 bytes: 19 characters and "…". Bytes past ASCII
         # become "?" first, so no UTF-8 character is cut in two.

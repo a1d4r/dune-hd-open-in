@@ -8,8 +8,8 @@
 
 class PlayInApps
 {
-    // id => array(caption, Android package; null: the Filmix_API Dune plugin).
-    // Same ids and packages as bin/sync.sh.
+    // id => array(caption, Android package; null: a Dune plugin, its folder
+    // name third). Same ids and packages as bin/sync.sh.
     public static $apps = array(
         'num' => array('NUM', 'ru.yourok.num'),
         'lampa' => array('Lampa', 'top.rootu.lampa'),
@@ -18,13 +18,14 @@ class PlayInApps
         'prisma' => array('Prisma', 'top.rootu.prisma'),
         'vokino' => array('VoKino', 'ru.vokino.web'),
         'lazymedia' => array('LazyMedia', 'com.lazycatsoftware.lmd'),
-        'filmix_api' => array('Filmix', null),
+        'filmix_api' => array('Filmix', null, 'Filmix_api'),
         'stremio' => array('Stremio', 'com.stremio.one'),
         'nuvio' => array('Nuvio', 'com.nuvio.tv'),
         'freezona' => array('FreeZona', 'free.zona'),
         'alpac' => array('ALPAC', 'cc.alcopa.tv'),
         'flux' => array('Flux', 'app.flux.tv'),
-        'seasonhit' => array('SeasonHit', 'com.jimdo.xakerd.season2hit'));
+        'seasonhit' => array('SeasonHit', 'com.jimdo.xakerd.season2hit'),
+        'bazinga' => array('Bazinga', null, 'Bazinga3'));
 
     // Per call: the Dune's language. Per php_server: translations by
     // language, the rows of the last check.
@@ -320,10 +321,11 @@ function pia_sync()
         pia_log("sync.sh failed ($rc): " . implode(' | ', $out));
 }
 
-function pia_installed($pkg, $app_list)
+function pia_installed($app, $app_list)
 {
+    $pkg = $app[1];
     if (is_null($pkg))
-        return is_file(pia_plugins_dir() . '/Filmix_api/dune_plugin.xml');
+        return is_file(pia_plugins_dir() . "/{$app[2]}/dune_plugin.xml");
     // Same check as bin/sync.sh and the item scripts.
     return is_string($app_list) &&
         preg_match('/"package_name": *"' . preg_quote($pkg, '/') . '"/', $app_list) === 1;
@@ -444,11 +446,12 @@ function pia_app_icons($app_list)
 }
 
 // The item's icon in the dialog: the app's from the app list, else the
-// shell's icon cache under tmp; Filmix: the logo of the Filmix_API plugin.
-function pia_icon($pkg, $icons)
+// shell's icon cache under tmp; a Dune plugin's item: the plugin's logo.
+function pia_icon($app, $icons)
 {
+    $pkg = $app[1];
     if (is_null($pkg))
-        $paths = array(pia_plugins_dir() . '/Filmix_api/icons/logo.png');
+        $paths = array(pia_plugins_dir() . "/{$app[2]}/icons/logo.png");
     else
         $paths = array(isset($icons[$pkg]) ? $icons[$pkg] : '',
             pia_tmp_root() . "/applications/icon_cache/icon_$pkg.png");
@@ -474,9 +477,9 @@ function pia_items_dialog()
     {
         $items[] = array(
             GuiItem::id => $id,
-            GuiItem::caption => pia_installed($app[1], $app_list) ?
+            GuiItem::caption => pia_installed($app, $app_list) ?
                 $app[0] : $app[0] . ' (' . pia_tr('not_installed') . ')',
-            GuiItem::icon_url => pia_icon($app[1], $icons),
+            GuiItem::icon_url => pia_icon($app, $icons),
             GuiItem::group_id => 'apps');
     }
     if (!pia_write_lcfg(pia_read_hidden()))
