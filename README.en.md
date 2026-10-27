@@ -4,7 +4,7 @@
 
 > Android-based Dune HD models only. It will not work on older non-Android models (Sigma chips): they have no Android apps.
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps** (it is also in **Applications → Dune HD** and **All**).
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. Besides, every installed IPTV Channel Editor plugin with movies (for example, Mir Kino) gets an item of its own. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps** (it is also in **Applications → Dune HD** and **All**).
 
 <img src="screenshots/play-menu.png" alt="Play... menu with the plugin items" width="49%"> <img src="screenshots/settings.png" alt="Plugin screen: choosing the Play... menu items" width="49%">
 
@@ -25,6 +25,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Flux | TMDB ID |
 | SeasonHit | no ID, search by title only |
 | Bazinga | Kinopoisk ID, else search by title; in the Bazinga Dune plugin |
+| IPTV Channel Editor plugins, for example Mir Kino | not by ID, search by title in the plugin itself; sign in to the provider's account there; empty results — open the plugin once and try again |
 
 Details on each item are in the [plugin README](plugin/play_in_apps/README.en.md). The apps themselves (for Filmix and Bazinga, the Filmix_API and Bazinga Dune plugins; Bazinga is, for example, in the "Plugin collection" of Dune BackUp) must be installed and set up (addons, accounts, sources) separately.
 

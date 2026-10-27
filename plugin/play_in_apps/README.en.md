@@ -2,7 +2,7 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and a logs download.
+A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. Besides, every installed IPTV Channel Editor plugin with movies (for example, Mir Kino) gets an item of its own. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and a logs download.
 
 | Menu item | App | Opens the title by |
 |---|---|---|
@@ -21,6 +21,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
 | SeasonHit | SeasonHit 2.4.4.2 (`com.jimdo.xakerd.season2hit`) | no ID, search by title only |
 | Bazinga | Bazinga Dune plugin (`Bazinga3`) 2023031100_patch | Kinopoisk ID, else search by title |
+| the plugin's name, for example Mir Kino | a Dune plugin made with IPTV Channel Editor, with movies (Mir Kino 9.4.2548) | not by ID, search by title |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -143,6 +144,14 @@ For all items:
 - If the card has a Kinopoisk ID, the title page opens in Bazinga right away.
 - Without a Kinopoisk ID, Bazinga's Kinopoisk search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
 - From there it is Bazinga as usual: watch through "Источники" (Sources) on its title page. Which sources there are and whether they work depends on Bazinga itself and its settings.
+
+### IPTV Channel Editor plugins
+IPTV Channel Editor is a builder of Dune plugins for IPTV providers. If such a plugin has movies (VOD), for example Mir Kino, it gets an item of its own in the "Play..." menu, with that plugin's name and icon. The plugins themselves are not in this zip: providers give them out.
+- The item opens that plugin's search results for the card's title in the Dune UI language, or the original title if there is none. The year and IDs are not passed, so pick the right title from the results. Back from the results returns to the Dune card.
+- Sign in to your provider's account in that plugin first: without it there are no results.
+- If the results are empty though the provider has the title, open that plugin once and try again: with some providers the search only looks through a list already loaded. Results are also empty when the provider spells the title differently; then search in the plugin itself.
+- A plugin installed later shows up in the menu after the Dune wakes from standby or reboots, or at once when the "Play in apps" screen is opened.
+- Checked only with Mir Kino; plugins of other providers were not checked.
 
 ### Remove
 Uninstall the plugin in the Dune plugin list — all its items go away.
