@@ -6,6 +6,8 @@
 # /tmp/movie_suppliers/<id> (the menu rereads it for every card).
 # Runs from movie_suppliers_update.sh, on early_gui_start and from the screen
 # (main.php). Output is for running it by hand.
+# IPTV Channel Editor builds with VOD (iptvce_builds.sh) get an item each,
+# iptvce_<name>, after the fixed ones; their ids are not in dune_plugin.xml.
 
 name=play_in_apps
 
@@ -31,6 +33,9 @@ tmp=${PLAY_IN_APPS_TMP:-$FS_PREFIX/tmp}
 data="${PLAY_IN_APPS_FLASHDATA:-$FS_PREFIX/flashdata}/plugins_data/$name"
 apps="$tmp/applications/app_data.json"
 plugins=$(dirname "$(dirname "$mydir")")
+
+# shellcheck source=iptvce_builds.sh
+. "$mydir/iptvce_builds.sh"
 
 # Without the shell's app list (missing, empty or not written yet) nothing is
 # known about Android apps: their items stay as they are. A list read while the
@@ -119,6 +124,28 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         show "$id" "$(printf '{"plugin":"%s","caption":"%%tr%%%s_caption","langs":"any","supported_video_types":"video","bin":"sh %s/%s.sh","playback_type":"app","icon_url":"file://%s"}' \
             "$name" "$id" "$mydir" "$id" "$(icon "$pkg")")"
     fi
+done
+
+# IPTV Channel Editor builds. Choosing the item runs play_action, as
+# Bazinga's; the handler (main.php) takes the build from handler_id. The
+# caption and the icon are the build's own.
+shown=
+for b in $(iptvce_builds "$plugins"); do
+    id=iptvce_$b
+    grep -qxF "$id" "$data/hidden" 2>/dev/null && continue
+    cap=$(iptvce_caption "$plugins/$b" "$b" | LC_ALL=C sed 's/\\/\\\\/g; s/"/\\"/g')
+    icon=$(iptvce_icon "$plugins/$b")
+    [ -z "$icon" ] || icon=$(printf '"icon_url":"plugin_file://%%%s%%/%s",' "$b" "$icon")
+    show "$id" "$(printf '{"plugin":"%s","caption":"%s","langs":"any","supported_video_types":"video","bin":"sh %s/iptvce.sh","playback_type":"app",%s"play_action":{"handler_string_id":"plugin_handle_user_input","plugin_name":"%s","params":{"handler_id":"%s","control_id":"play"}}}' \
+        "$name" "$cap" "$mydir" "$icon" "$name" "$id")"
+    shown="$shown $id"
+done
+# The items of builds that are gone or hidden.
+for f in "$data/movie_suppliers"/iptvce_* "$tmp/movie_suppliers"/iptvce_*; do
+    case " $shown " in
+        *" ${f##*/} "*) ;;
+        *) [ ! -f "$f" ] || hide "${f##*/}" ;;
+    esac
 done
 
 exit "$failed"

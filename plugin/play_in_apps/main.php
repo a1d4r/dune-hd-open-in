@@ -1,5 +1,6 @@
 <?php
-// The plugin screens and the play_action handlers of the Filmix and Bazinga items:
+// The plugin screens and the play_action handlers of the Filmix and Bazinga
+// items and of the items of IPTV Channel Editor builds:
 //  - "setup": a short controls screen with three buttons — the item choice
 //    (the shell's dialog with checkmarks), "Check" and logs for the author;
 //  - "check": the brief report of bin/diag.sh (a line per item) as a list.
@@ -119,7 +120,7 @@ function filmix_play($user_input)
 
 // A trimmed scalar field of the movie; '' if there is none or it is not valid
 // UTF-8 (a lone \ud800 after json_decode, see filmix_play).
-function bazinga_field($movie, $k)
+function pia_movie_field($movie, $k)
 {
     if (!isset($movie[$k]) || !is_scalar($movie[$k]))
         return '';
@@ -146,8 +147,8 @@ function bazinga_play($user_input)
         json_decode($user_input->movie_str, true) : null;
     if (!is_array($movie))
         $movie = array();
-    $title = bazinga_field($movie, 'title');
-    $native = bazinga_field($movie, 'native_title');
+    $title = pia_movie_field($movie, 'title');
+    $native = pia_movie_field($movie, 'native_title');
     $kp = isset($movie['kp_id']) && (is_string($movie['kp_id']) || is_int($movie['kp_id'])) ?
         trim(strval($movie['kp_id'])) : '';
 
@@ -159,7 +160,7 @@ function bazinga_play($user_input)
             'class_name' => 'Kinopoisk_Class', 'caption' => $caption);
         if ($native !== '')
             $url['caption_original'] = $native;
-        $year = bazinga_field($movie, 'year');
+        $year = pia_movie_field($movie, 'year');
         if ($year !== '')
             $url['year'] = $year;
         pia_log("bazinga card: $kp");
@@ -172,6 +173,106 @@ function bazinga_play($user_input)
     pia_log("bazinga search: $caption");
     return bazinga_open(array('searchStr' => $caption, 'screen_id' => 'vod_list',
         'class_name' => 'Kinopoisk_Class'), $caption);
+}
+
+// --- IPTV Channel Editor builds: Dune plugins made by its builder that have
+// VOD. bin/sync.sh shows an item iptvce_<name> for each, with play_action
+// handler_id iptvce_<name>; the handler opens the build's search results for
+// the title. The same checks as bin/iptvce_builds.sh; everything read from a
+// build is untrusted.
+
+function iptvce_valid_name($name)
+{
+    return is_string($name) && preg_match('/^[A-Za-z0-9_]{1,40}$/D', $name) === 1;
+}
+
+// The builder's files and VOD on ("vod_engine" in config.json, other than "None").
+function iptvce_is_build($name)
+{
+    if (!iptvce_valid_name($name))
+        return false;
+    $d = pia_plugins_dir() . "/$name";
+    if (!is_file("$d/starnet_plugin.php") || !is_file("$d/screens_vod/starnet_vod_list_screen.php") ||
+        !is_file("$d/config.json"))
+        return false;
+    $text = file_get_contents("$d/config.json");
+    return is_string($text) && preg_match('/"vod_engine": *"([^"]*)"/', $text, $m) === 1 && $m[1] !== 'None';
+}
+
+// array(caption, icon file or '') of a build, from its dune_plugin.xml: the
+// first <caption> (entities decoded, spaces trimmed, at most 40 characters;
+// the name if there is none or it has control characters, bad UTF-8 or a
+// leading %) and the first <icon_url> if it is plugin_file://<safe path> of an
+// existing file. One line each, as sed reads them in iptvce_builds.sh.
+function iptvce_info($name)
+{
+    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
+    $xml = is_file($f) ? file_get_contents($f) : false;
+    if (!is_string($xml))
+        $xml = '';
+    $caption = $name;
+    if (preg_match('/<caption>([^<\n]*)<\/caption>/', $xml, $m))
+    {
+        $c = trim(strtr($m[1], array('&lt;' => '<', '&gt;' => '>', '&quot;' => '"', '&apos;' => "'",
+            '&amp;' => '&')), ' ');
+        if ($c !== '' && $c[0] !== '%' && !preg_match('/[\x00-\x1f\x7f]/', $c) && pia_utf8_clean($c) === $c)
+            $caption = mb_substr($c, 0, 40, 'UTF-8');
+    }
+    $icon = '';
+    if (preg_match('/<icon_url>([^<\n]*)<\/icon_url>/', $xml, $m) &&
+        preg_match('#^plugin_file://([A-Za-z0-9/._-]+)$#D', $m[1], $p) &&
+        $p[1][0] !== '/' && strpos($p[1], '..') === false &&
+        is_file(pia_plugins_dir() . "/$name/{$p[1]}"))
+        $icon = pia_plugins_dir() . "/$name/{$p[1]}";
+    return array($caption, $icon);
+}
+
+// name => iptvce_info() of every build, in name order.
+function iptvce_builds()
+{
+    $builds = array();
+    foreach ((array) glob(pia_plugins_dir() . '/*', GLOB_ONLYDIR) as $d)
+    {
+        $name = is_string($d) ? basename($d) : '';
+        if (iptvce_is_build($name))
+            $builds[$name] = iptvce_info($name);
+    }
+    ksort($builds, SORT_STRING);
+    return $builds;
+}
+
+function iptvce_play($user_input, $name)
+{
+    if (!iptvce_is_build($name))
+    {
+        // The name never shown as is: our items only have valid ones.
+        $caption = iptvce_valid_name($name) ? iptvce_info($name) :
+            array(preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40)));
+        return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $caption[0]));
+    }
+    $info = iptvce_info($name);
+
+    // Arrays, not objects, as in filmix_play.
+    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
+        json_decode($user_input->movie_str, true) : null;
+    if (!is_array($movie))
+        $movie = array();
+    $q = pia_movie_field($movie, 'title');
+    if ($q === '')
+        $q = pia_movie_field($movie, 'native_title');
+    if ($q === '')
+        return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $info[0]));
+
+    // The builder's own media_url after its search dialog:
+    // Starnet_Vod_List_Screen::get_media_url_string(Vod_Category::FLAG_SEARCH, $q).
+    pia_log("iptvce $name search: $q");
+    return array(
+        'handler_string_id' => PLUGIN_OPEN_FOLDER_ACTION_ID,
+        'plugin_name' => $name,
+        'data' => array(
+            'media_url' => json_encode(array('screen_id' => 'vod_list',
+                'category_id' => '##search##', 'genre_id' => $q)),
+            'caption' => "{$info[0]}: $q"));
 }
 
 // --- Translations.
@@ -278,6 +379,35 @@ function pia_utf8_keep($m)
 
 // --- The hidden items.
 
+// Ids of the fixed items and of the builds' ones (iptvce_<name>, also of a
+// build not installed now: hidden stays hidden if it comes back).
+function pia_item_id($id)
+{
+    return isset(PlayInApps::$apps[$id]) ||
+        (strpos($id, 'iptvce_') === 0 && iptvce_valid_name((string) substr($id, 7)));
+}
+
+// The ids of $hidden that are item ids: the fixed items in their order, then
+// the builds' ones in name order.
+function pia_hidden_ids($hidden)
+{
+    $ids = array();
+    foreach (PlayInApps::$apps as $id => $app)
+    {
+        if (isset($hidden[$id]))
+            $ids[] = $id;
+    }
+    $builds = array();
+    foreach ($hidden as $id => $on)
+    {
+        $id = (string) $id;
+        if (!isset(PlayInApps::$apps[$id]) && pia_item_id($id))
+            $builds[] = $id;
+    }
+    sort($builds, SORT_STRING);
+    return array_merge($ids, $builds);
+}
+
 // Hidden ids, one per line in data_dir/hidden; bin/sync.sh reads the same
 // file. Any other line is ignored.
 function pia_read_hidden()
@@ -289,7 +419,7 @@ function pia_read_hidden()
         return $hidden;
     foreach (explode("\n", $text) as $line)
     {
-        if (isset(PlayInApps::$apps[$line]))
+        if (pia_item_id($line))
             $hidden[$line] = true;
     }
     return $hidden;
@@ -301,11 +431,8 @@ function pia_write_hidden($hidden)
     if ($dir === '' || (!is_dir($dir) && !mkdir($dir, 0755, true)))
         return false;
     $text = '';
-    foreach (PlayInApps::$apps as $id => $app)
-    {
-        if (isset($hidden[$id]))
-            $text .= "$id\n";
-    }
+    foreach (pia_hidden_ids($hidden) as $id)
+        $text .= "$id\n";
     // tmp + rename: never a half-written file.
     $path = "$dir/hidden";
     return file_put_contents("$path.tmp", $text) !== false && rename("$path.tmp", $path);
@@ -412,11 +539,8 @@ function pia_write_lcfg($hidden)
     if (!is_dir($dir))
         return false;
     $text = '';
-    foreach (PlayInApps::$apps as $id => $app)
-    {
-        if (isset($hidden[$id]))
-            $text .= "-$id\n";
-    }
+    foreach (pia_hidden_ids($hidden) as $id)
+        $text .= "-$id\n";
     $tmp = "$dir/.lcfg_play_in_apps." . substr(md5(uniqid('', true)), 0, 8) . '.tmp';
     $fp = @fopen($tmp, 'x');
     if (!$fp)
@@ -482,6 +606,17 @@ function pia_items_dialog()
             GuiItem::icon_url => pia_icon($app, $icons),
             GuiItem::group_id => 'apps');
     }
+    // The builds found now, after the fixed items, with their own icons.
+    $checked = array_keys(PlayInApps::$apps);
+    foreach (iptvce_builds() as $name => $b)
+    {
+        $items[] = array(
+            GuiItem::id => "iptvce_$name",
+            GuiItem::caption => $b[0],
+            GuiItem::icon_url => $b[1] !== '' ? $b[1] : 'gui_skin://small_icons/apps.aai',
+            GuiItem::group_id => 'apps');
+        $checked[] = "iptvce_$name";
+    }
     if (!pia_write_lcfg(pia_read_hidden()))
         pia_log('could not write ' . pia_lcfg_path());
 
@@ -493,7 +628,7 @@ function pia_items_dialog()
             EditListConfigActionData::config_id => 'play_in_apps',
             EditListConfigActionData::title => pia_tr('items_dialog_title'),
             EditListConfigActionData::all_items => $items,
-            EditListConfigActionData::checked_ids => array_keys(PlayInApps::$apps),
+            EditListConfigActionData::checked_ids => $checked,
             EditListConfigActionData::groups => array(array(
                 GuiItem::id => 'apps', GuiItem::caption => pia_tr('items_group'))),
             EditListConfigActionData::options => EDIT_LIST_CONFIG_OPT_ALLOW_EMPTY,
@@ -518,6 +653,17 @@ function pia_list_apply($in)
         return null;
     }
     $text = file_get_contents($path);
+    // The dialog's items: the fixed ones and the builds found now. A hidden
+    // build that is not installed now stays hidden.
+    $known = PlayInApps::$apps;
+    foreach (iptvce_builds() as $name => $b)
+        $known["iptvce_$name"] = true;
+    $hidden = array();
+    foreach (pia_read_hidden() as $id => $on)
+    {
+        if (!isset($known[$id]))
+            $hidden[$id] = true;
+    }
     $state = array();
     foreach (explode("\n", is_string($text) ? $text : '') as $line)
     {
@@ -527,10 +673,9 @@ function pia_list_apply($in)
         if (strpos($line, '---') === 0)
             break;
         $id = (string) substr($line, 1);
-        if (($line[0] === '+' || $line[0] === '-') && isset(PlayInApps::$apps[$id]))
+        if (($line[0] === '+' || $line[0] === '-') && isset($known[$id]))
             $state[$id] = $line[0];
     }
-    $hidden = array();
     foreach ($state as $id => $sign)
     {
         if ($sign === '-')
@@ -797,6 +942,8 @@ function pia_handle_user_input($user_input)
         return filmix_play($user_input);
     if ($handler === 'bazinga')
         return bazinga_play($user_input);
+    if (is_string($handler) && strpos($handler, 'iptvce_') === 0)
+        return iptvce_play($user_input, (string) substr($handler, 7));
 
     $id = isset($user_input->control_id) ? $user_input->control_id : null;
     if ($handler !== 'setup' || !is_string($id))

@@ -16,6 +16,9 @@ data="${PLAY_IN_APPS_FLASHDATA:-$FS_PREFIX/flashdata}/plugins_data/$name"
 apps="$tmp/applications/app_data.json"
 plugins=$(dirname "$(dirname "$mydir")")
 
+# shellcheck source=iptvce_builds.sh
+. "$mydir/iptvce_builds.sh"
+
 lang=english
 [ "${1-}" = russian ] && lang=russian
 brief=0
@@ -148,12 +151,14 @@ else
 fi
 
 # --- The items. id:package; an empty package: a Dune plugin (Filmix:
-# Filmix_API, Bazinga: Bazinga3).
+# Filmix_API, Bazinga: Bazinga3, iptvce_<name>: the IPTV Channel Editor build
+# <name>, found by iptvce_builds.sh, after the fixed items).
 for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     lampa_atv:top.rootu.lumpa prisma:top.rootu.prisma vokino:ru.vokino.web \
     lazymedia:com.lazycatsoftware.lmd filmix_api: stremio:com.stremio.one \
     nuvio:com.nuvio.tv freezona:free.zona alpac:cc.alcopa.tv flux:app.flux.tv \
-    seasonhit:com.jimdo.xakerd.season2hit bazinga:; do
+    seasonhit:com.jimdo.xakerd.season2hit bazinga: \
+    $(iptvce_builds "$plugins" | sed 's/^\(.*\)$/iptvce_\1:/'); do
     id=${app%%:*}
     pkg=${app#*:}
     body=
@@ -166,6 +171,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         case $id in
             filmix_api) dplug=Filmix_api dname=Filmix_API ;;
             bazinga) dplug=Bazinga3 dname=Bazinga3 ;;
+            iptvce_*) dplug=${id#iptvce_} dname=${id#iptvce_} ;;
         esac
         installed=0
         [ -n "$dplug" ] && [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
@@ -233,6 +239,11 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         add "$(t diag_launch): $(t diag_v_via_plugin) $dname, $(t diag_play_action)"
     fi
 
+    case $id in
+        iptvce_*) cap=$(iptvce_caption "$plugins/$dplug" "$dplug") ;;
+        *) cap=$(t "${id}_caption") ;;
+    esac
+
     # mark: the full report's sign before the verdict.
     if [ "$installed" = 0 ]; then
         mark=--
@@ -272,9 +283,9 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         if [ "$(printf '%s' "$v" | wc -c)" -gt 20 ]; then
             v="$(printf '%s' "$v" | LC_ALL=C tr -c ' -~' '?' | cut -c 1-19)…"
         fi
-        say "$(t "${id}_caption")${v:+ $v} — $verdict"
+        say "$cap${v:+ $v} — $verdict"
     else
-        say "$(t "${id}_caption"): ${mark:+$mark }$verdict$body"
+        say "$cap: ${mark:+$mark }$verdict$body"
     fi
 done
 

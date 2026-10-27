@@ -1,6 +1,6 @@
 # Фикстуры
 
-Входы скриптов пунктов (`start_playback_app`, stdin) и список приложений оболочки; для пункта Filmix — `user_input` обработчика `play_action`.
+Входы скриптов пунктов (`start_playback_app`, stdin) и список приложений оболочки; для пунктов Filmix, Bazinga и сборок IPTV Channel Editor — `user_input` обработчика `play_action`.
 
 | Файл | Откуда |
 |---|---|
@@ -29,5 +29,6 @@
 | `app_data_no_seasonhit.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona, BYLAMPA, LAMPA ATV, ALPAC и Flux |
 | `play_action_movie.json` | `user_input` обработчика `play_action` («Прошлой ночью в Сохо»): ключи и поля фильма — из лога пробника на устройстве 03.10.2026; значения полей, которые лог не писал, — `null` |
 | `play_action_series.json` | то же для сериала («Дом Дракона», нет `kp_id`/`tmdb_id`) |
+| `iptvce_mirkino/` | плагин Дюны Mir Kino (IPTV Channel Editor 9.4.2548), только то, по чему пункт узнаёт сборку: начало `dune_plugin.xml` (корневые `caption`, `icon_url`) и одна точка входа; из `config.json` — `vod_engine` и несколько полей без адресов; `starnet_plugin.php`, `screens_vod/starnet_vod_list_screen.php`, `img/logo_mirkino.png` — пустые файлы-маркеры |
 
 Пустой stdin, мусор и враждебные входы генерирует сам тест.

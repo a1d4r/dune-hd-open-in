@@ -120,3 +120,7 @@ bazinga_caption = Bazinga
 bazinga_err_not_installed = Плагин Bazinga не установлен
 bazinga_err_no_title = У этой карточки нет ни ID Кинопоиска, ни названия, Bazinga не сможет её открыть
 bazinga_err_unsupported = Открыть в Bazinga: неподдерживаемый запрос
+
+iptvce_err_not_installed = Плагин %s не установлен
+iptvce_err_no_title = У этой карточки нет названия, %s не сможет её найти
+iptvce_err_unsupported = Открыть в плагине IPTV Channel Editor: неподдерживаемый запрос

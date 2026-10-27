@@ -597,8 +597,8 @@ check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and c
         grep -qx "\. \"\${0%/\*}/search\.sh\"" "$1/$s.sh" && grep -q "q=\$(search_query \"\$input\")" "$1/$s.sh" || exit 1
     done' _ "$src/bin"
 
-# --- filmix_api.sh, bazinga.sh: answer only if play_action was ignored
-for id in filmix_api bazinga; do
+# --- filmix_api.sh, bazinga.sh, iptvce.sh: answer only if play_action was ignored
+for id in filmix_api bazinga iptvce; do
     for args in start_playback_app '' get_stream_url; do
         # shellcheck disable=SC2086 # split on purpose
         run "$id.sh" $args <"$fx/movie.json"
@@ -823,6 +823,163 @@ check "update: exit 0" rc_is 0
 check "update: all items, nothing else" shown $all
 check "update: nothing outside" listing_is "$data" movie_suppliers
 
+# --- sync: IPTV Channel Editor builds (iptvce_builds.sh), an item each
+
+# build <name> [<caption XML text> [<icon_url XML text>]]: plugins/<name> made
+# of the Mir Kino fixture (tests/fixtures/iptvce_mirkino); a caption or an
+# icon_url given goes first in its dune_plugin.xml, an empty one removes all
+# of them. Bytes of the arguments are written as they are.
+build() {
+    rm -rf "${plugins:?}/$1"
+    cp -R "$fx/iptvce_mirkino" "$plugins/$1"
+    [ $# -gt 1 ] || return 0
+    # Through files: bytes in argv reach Python decoded by the locale.
+    printf '%s' "$2" >"$work/build_caption"
+    printf '%s' "${3-plugin_file://img/logo_mirkino.png}" >"$work/build_icon"
+    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/build_caption" "$work/build_icon" <<'EOF'
+import re, sys
+x = open(sys.argv[1], "rb").read()
+for tag, v in ((b"icon_url", open(sys.argv[4], "rb").read()), (b"caption", open(sys.argv[3], "rb").read())):
+    if v == b"":
+        x = re.sub(rb"\s*<" + tag + rb">[^<]*</" + tag + rb">", b"", x)
+    else:
+        x = x.replace(b"<dune_plugin>", b"<dune_plugin>\n\t<" + tag + b">" + v + b"</" + tag + b">", 1)
+open(sys.argv[2], "wb").write(x)
+EOF
+}
+# build_item_is <name> <caption> [<icon path in the build>]: the item JSON of
+# a build in plugins_data, one line.
+build_item_is() {
+    [ "$(wc -l <"$reg/iptvce_$1" | tr -d ' ')" = 1 ] || return 1
+    python3 - "$reg/iptvce_$1" "$1" "$2" "${3-}" "$bin" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+name, cap, icon, bindir = sys.argv[2:6]
+want = {"plugin": "play_in_apps", "caption": cap, "langs": "any", "supported_video_types": "video",
+        "bin": "sh %s/iptvce.sh" % bindir, "playback_type": "app",
+        "play_action": {"handler_string_id": "plugin_handle_user_input", "plugin_name": "play_in_apps",
+                        "params": {"handler_id": "iptvce_" + name, "control_id": "play"}}}
+if icon:
+    want["icon_url"] = "plugin_file://%%%s%%/%s" % (name, icon)
+sys.exit(d != want)
+EOF
+}
+
+build mirkino
+run sync.sh
+check "sync build: exit 0" rc_is 0
+# shellcheck disable=SC2086 # one word per id
+check "sync build: its item after the fixed ones" shown $all iptvce_mirkino
+check "sync build: item JSON, caption and icon of the build" build_item_is mirkino 'Mir Kino' img/logo_mirkino.png
+cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/iptvce_mirkino")
+(cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/movie.json" >"$o" 2>"$o.err")
+id=iptvce
+check "registered bin of a build: err_unsupported" error_is err_unsupported
+
+# Captions: Cyrillic, entities, " and \ as they are, spaces trimmed, cut at 40
+# characters; anything unsafe -> the folder name.
+build kino ' Кино &quot;Мир&quot; "x" \ &amp;lt; &lt;b&gt; '
+build long "$(printf 'Ж%.0s' $(seq 1 39))Юя"
+build ascii40 "$(printf 'a%.0s' $(seq 1 40))"
+build tab "$(printf 'Mir\tKino')"
+build badutf "$(printf 'Mir \377 Kino')"
+build surrogate "$(printf 'Mir \355\240\200 Kino')"
+build overlong "$(printf 'Mir \300\257 Kino')"
+build trkey '%tr%plugin_caption'
+build blank '   '
+build nocap ''
+run sync.sh
+check "sync captions: exit 0" rc_is 0
+check "sync caption: Cyrillic, entities, quote and backslash" build_item_is kino 'Кино "Мир" "x" \ &lt; <b>' img/logo_mirkino.png
+check "sync caption: cut at 40 characters" build_item_is long "$(printf 'Ж%.0s' $(seq 1 39))Ю" img/logo_mirkino.png
+check "sync caption: 40 characters kept" build_item_is ascii40 "$(printf 'a%.0s' $(seq 1 40))" img/logo_mirkino.png
+for b in tab badutf surrogate overlong trkey blank nocap; do
+    check "sync caption $b: the folder name" build_item_is "$b" "$b" img/logo_mirkino.png
+done
+check "sync captions: valid JSON for PHP too (one line, no raw control bytes)" sh -c \
+    '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"/iptvce_*' _ "$reg"
+for b in kino long ascii40 tab badutf surrogate overlong trkey blank nocap; do rm -rf "${plugins:?}/$b"; done
+
+# Icons: only plugin_file:// with a safe path of an existing file.
+build icon_up 'Up' 'plugin_file://../play_in_apps/icons/logo.png'
+build icon_space 'Space' 'plugin_file://img/logo mirkino.png'
+build icon_abs 'Abs' "plugin_file://$plugins/mirkino/img/logo_mirkino.png"
+build icon_http 'Http' 'http://example.com/logo.png'
+build icon_skin 'Skin' 'gui_skin://small_icons/tv.aai'
+build icon_missing 'Missing' 'plugin_file://img/none.png'
+build icon_dir 'Dir' 'plugin_file://img'
+build icon_quote 'Quote' 'plugin_file://img/a"b.png'
+build icon_none 'None' ''
+run sync.sh
+check "sync icons: exit 0" rc_is 0
+for b in up:Up space:Space abs:Abs http:Http skin:Skin missing:Missing dir:Dir quote:Quote none:None; do
+    check "sync icon ${b%%:*}: no icon" build_item_is "icon_${b%%:*}" "${b#*:}"
+done
+for b in up space abs http skin missing dir quote none; do rm -rf "${plugins:?}/icon_$b"; done
+
+# Not a build with VOD, or an unsafe folder name: no item.
+build novod
+sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/novod/config.json"
+build noengine
+sed '/vod_engine/d' "$fx/iptvce_mirkino/config.json" >"$plugins/noengine/config.json"
+build noconfig
+rm -f "$plugins/noconfig/config.json"
+build nostarnet
+rm -f "$plugins/nostarnet/starnet_plugin.php"
+build novodlist
+rm -f "$plugins/novodlist/screens_vod/starnet_vod_list_screen.php"
+build nostarnetfile
+rm -f "$plugins/nostarnetfile/starnet_plugin.php"
+mkdir "$plugins/nostarnetfile/starnet_plugin.php"
+for b in 'mir kino' mir.kino mir-kino 'мир' "$(printf 'n%.0s' $(seq 1 41))"; do
+    build "$b"
+done
+build "$(printf 'n%.0s' $(seq 1 40))"
+: >"$plugins/notadir"
+run sync.sh
+check "sync not builds, unsafe names: exit 0" rc_is 0
+# shellcheck disable=SC2086 # one word per id
+check "sync not builds, unsafe names: only mirkino and the 40-character name" \
+    shown $all iptvce_mirkino "iptvce_$(printf 'n%.0s' $(seq 1 40))"
+for b in novod noengine noconfig nostarnet novodlist nostarnetfile 'mir kino' mir.kino mir-kino 'мир' \
+    "$(printf 'n%.0s' $(seq 1 41))" "$(printf 'n%.0s' $(seq 1 40))" notadir; do
+    rm -rf "${plugins:?}/$b"
+done
+
+# Hidden, removed, two builds; the copies in /tmp follow.
+build kino 'Кино'
+printf 'iptvce_mirkino\n' >"$data/hidden"
+run sync.sh
+# shellcheck disable=SC2086 # one word per id
+check "sync build hidden: its item removed, the other shown" shown $all iptvce_kino
+printf 'iptvce_mirkino \niptvce_*\nIPTVCE_KINO\n' >"$data/hidden"
+run sync.sh
+# shellcheck disable=SC2086 # one word per id
+check "sync build, garbage in hidden: both shown" shown $all iptvce_kino iptvce_mirkino
+rm -f "$data/hidden"
+rm -rf "${plugins:?}/kino"
+run sync.sh
+# shellcheck disable=SC2086 # one word per id
+check "sync build removed: its item removed" shown $all iptvce_mirkino
+# Left by an older state: a copy only in /tmp, odd names; other files stay.
+printf '{"plugin":"play_in_apps"}\n' >"$menu/iptvce_gone"
+: >"$menu/iptvce_a b"
+: >"$menu/YouTube"
+run sync.sh
+# shellcheck disable=SC2086 # one word per id
+check "sync: stale build copies in /tmp removed, others kept" listing_is "$menu" $all iptvce_mirkino YouTube
+rm -f "$menu/YouTube"
+
+# Other device classes: the builds are found next to the plugin, whatever
+# FS_PREFIX is; the icon is the build's plugin_file://.
+rm -rf "$reg"
+(cd "$work" && FS_PREFIX='' PLAY_IN_APPS_FLASHDATA="$work/fs/flashdata" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err")
+check "sync FS_PREFIX empty: build item" build_item_is mirkino 'Mir Kino' img/logo_mirkino.png
+rm -rf "${plugins:?}/mirkino"
+run sync.sh
+# shellcheck disable=SC2086 # one word per id
+check "sync builds gone: fixed items only" shown $all
+
 # --- sync: icon_url is "file://" + the app's "icon" from app_data.json
 
 # apps_icon <icon template> [flat]: app_data.json with every app's "icon" set
@@ -966,6 +1123,14 @@ run uninstall.sh
 check "uninstall: choice file symlink removed, target kept" \
     sh -c '[ ! -e "$1" ] && [ ! -L "$1" ] && [ "$(cat "$2")" = keep ]' _ "$lcfg" "$work/lcfg_target"
 rm -f "$cfg/lcfg_other.txt"
+# The items of builds: ours removed, a file of another plugin with that name kept.
+printf '{"plugin":"play_in_apps","caption":"Mir Kino"}\n' >"$menu/iptvce_mirkino"
+printf '{"plugin":"play_in_apps"}\n' >"$menu/iptvce_kino"
+printf '{"plugin":"other"}\n' >"$menu/iptvce_other"
+: >"$menu/iptvce_a b"
+run uninstall.sh
+check "uninstall: build items removed, others kept" listing_is "$menu" YouTube iptvce_other "iptvce_a b"
+rm -f "$menu/iptvce_other" "$menu/iptvce_a b"
 
 # --- diag.sh: the "Check" report. cmd, getprop, ifconfig and logcat are stand-ins.
 sbin="$work/sbin"
@@ -1422,6 +1587,47 @@ export STUB_MODEL
 diag
 check "diag bad UTF-8 in getprop: exit 0" rc_is 0
 unset STUB_MODEL
+
+# IPTV Channel Editor builds: a line each after the fixed items, in name
+# order, with the build's caption; nothing to query.
+build mirkino
+build kino 'Кино "Мир"'
+cp "$fx/app_data.json" "$apps"
+rm -f "$data/hidden"
+run sync.sh
+: >"$STUB_LOG"
+diag english brief
+check "diag brief builds: 18 lines" test "$(wc -l <"$o" | tr -d ' ')" = 18
+check "diag brief builds: after Bazinga, in name order" sh -c \
+    '[ "$(sed -n "16,18p" "$1")" = "$(printf "%s\n" "Bazinga — OK (through the Dune plugin Bazinga3)" \
+        "Кино \"Мир\" — OK (through the Dune plugin kino)" "Mir Kino — OK (through the Dune plugin mirkino)")" ]' _ "$o"
+check "diag builds: no queries for them" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 13
+diag
+check "diag build: verdict" in_item "Mir Kino" "Mir Kino: OK"
+check "diag build: installed" in_item "Mir Kino" "  installed: yes (mirkino)"
+check "diag build: not hidden" in_item "Mir Kino" "  hidden: no"
+check "diag build: menu file ours" in_item "Mir Kino" "  menu item: yes, plugin play_in_apps"
+check "diag build: not checked" in_item "Mir Kino" "  launch: through the Dune plugin mirkino, not checked"
+diag russian brief
+check "diag brief russian build" grep -qxF "Mir Kino — ОК (через плагин mirkino)" "$o"
+printf 'iptvce_mirkino\n' >"$data/hidden"
+run sync.sh
+diag english brief
+check "diag brief build hidden" grep -qxF "Mir Kino — hidden" "$o"
+rm -f "$data/hidden"
+diag english brief
+check "diag brief build not in the menu" grep -qxF "Mir Kino — the item is not in the menu" "$o"
+run sync.sh
+printf '{"plugin":"other","bin":"sh %s/iptvce.sh"}\n' "$bin" >"$menu/iptvce_mirkino"
+diag english brief
+check "diag brief build, another plugin's file" grep -qxF "Mir Kino — the item is from another plugin: other" "$o"
+sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
+diag english brief
+check "diag build without VOD: no line" sh -c '! grep -q "Mir Kino" "$1" && [ "$(wc -l <"$1" | tr -d " ")" = 17 ]' _ "$o"
+rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
+run sync.sh
+diag english brief
+check "diag builds gone: 16 lines" test "$(wc -l <"$o" | tr -d ' ')" = 16
 
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
 cat >"$work/fw_stub.php" <<'EOF'
@@ -1911,6 +2117,126 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     printf '%s\n' '{"handler_id":"bazinga","movie_str":{"kp_id":"1","title":"obj"}}' >"$work/ui.json"
     bz_error "$work/ui.json" "movie_str is an object" bazinga_err_no_title
 
+    # --- IPTV Channel Editor builds: play_action with handler_id
+    # iptvce_<name> opens the build's search results for the title.
+    # ic_input <file> [handler_id]: the device's play_action input with this handler_id.
+    ic_input() {
+        python3 -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+d.update(handler_id=sys.argv[2], supplier_id=sys.argv[2])
+print(json.dumps(d))' "$1" "${2:-iptvce_mirkino}" >"$work/ic.json"
+        mv -f "$work/ic.json" "$work/ui.json"
+    }
+    # ic_movie <movie_str JSON or raw value> [handler_id]
+    ic_movie() {
+        user_input "$1"
+        ic_input "$work/ui.json" "${2-}"
+    }
+    # ic_search_json <build> <caption> <query>
+    ic_search_json() {
+        python3 -c 'import json, sys
+name, cap, q = sys.argv[1:4]
+url = {"screen_id": "vod_list", "category_id": "##search##", "genre_id": q}
+print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": name,
+    "data": {"media_url": url, "caption": cap + ": " + q}}))' "$@"
+    }
+    ic_message_json() {
+        python3 -c 'import json, sys
+print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": False, "title": sys.argv[1]}}))' "$1"
+    }
+    ic_search() { handler "$1" "iptvce $2" "$(ic_search_json mirkino 'Mir Kino' "$3")"; }
+    ic_msg() { handler "$1" "iptvce $2" "$(ic_message_json "$3")"; }
+    ic_no_title='This title has no name, Mir Kino cannot search for it'
+
+    build mirkino
+    # Real inputs from the device, the Mir Kino fixture.
+    ic_input "$fx/play_action_movie.json"
+    ic_search "$work/ui.json" "movie: search by title" 'Прошлой ночью в Сохо'
+    check "main.php iptvce logs the search" grep -qx 'play_in_apps: iptvce mirkino search: Прошлой ночью в Сохо' "$o.err"
+    check "main.php iptvce: media_url as the probe's, Cyrillic as \\u escapes" python3 -c 'import json, sys
+u = json.load(open(sys.argv[1]))["data"]["data"]["media_url"]
+sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category_id": "##search##",
+    "genre_id": "Прошлой ночью в Сохо"} or not u.startswith("{\"screen_id\""))' "$o"
+    ic_input "$fx/play_action_series.json"
+    ic_search "$work/ui.json" "series: search by title" 'Дом Дракона'
+
+    # Titles: title, else native_title; no year, no IDs.
+    ic_movie '{"title":"","native_title":"Last Night in Soho","year":"2021","kp_id":"1236583"}'
+    ic_search "$work/ui.json" "empty title: native_title" 'Last Night in Soho'
+    ic_movie '{"title":"  Дом  ","native_title":"x"}'
+    ic_search "$work/ui.json" "title trimmed" 'Дом'
+    # shellcheck disable=SC2016 # literal $(...) on purpose
+    ic_movie '{"title":"\"},\"plugin_name\":\"evil\" ; $(reboot) `id` \\ /&?#% ##search##"}'
+    # shellcheck disable=SC2016 # literal $(...) on purpose
+    ic_search "$work/ui.json" "hostile title stays text" '"},"plugin_name":"evil" ; $(reboot) `id` \ /&?#% ##search##'
+    ic_movie '{"title":2049}'
+    ic_search "$work/ui.json" "numeric title" 2049
+    ic_movie '{"title":{"ru":"x"},"native_title":"Nested"}'
+    ic_search "$work/ui.json" "object title skipped" Nested
+    ic_movie '{"title":"ab\ud800cd","native_title":"Good"}'
+    if [ "$("$php_bin" -r 'echo PHP_MAJOR_VERSION;')" -lt 7 ]; then
+        ic_search "$work/ui.json" "lone surrogate title: native_title" Good
+    else
+        ic_msg "$work/ui.json" "lone surrogate title (PHP 7+)" "$ic_no_title"
+    fi
+    ic_movie '{"title":" ","native_title":""}'
+    ic_msg "$work/ui.json" "no titles" "$ic_no_title"
+    for raw in 'not json' '"just a string"' '["title"]' ''; do
+        ic_movie "$raw"
+        ic_msg "$work/ui.json" "movie_str '$raw'" "$ic_no_title"
+    done
+    printf '%s\n' '{"handler_id":"iptvce_mirkino","control_id":"play"}' >"$work/ui.json"
+    ic_msg "$work/ui.json" "no movie_str" "$ic_no_title"
+    printf '%s\n' '{"handler_id":"iptvce_mirkino","movie_str":{"title":"obj"}}' >"$work/ui.json"
+    ic_msg "$work/ui.json" "movie_str is an object" "$ic_no_title"
+
+    # The build's caption in the folder caption and the messages.
+    build kino "Кино &quot;Мир&quot; \\"
+    ic_movie '{"title":"Дюна"}' iptvce_kino
+    handler "$work/ui.json" "iptvce caption of the build" "$(ic_search_json kino "Кино \"Мир\" \\" 'Дюна')"
+    build tabcap "$(printf 'Mir\tKino')"
+    ic_movie '{"title":""}' iptvce_tabcap
+    ic_msg "$work/ui.json" "unsafe caption: the folder name" 'This title has no name, tabcap cannot search for it'
+    build trcap '%tr%plugin_caption'
+    ic_movie '{"title":""}' iptvce_trcap
+    ic_msg "$work/ui.json" "%tr% caption: the folder name" 'This title has no name, trcap cannot search for it'
+    build badcap "$(printf 'Mir \355\240\200')"
+    ic_movie '{"title":""}' iptvce_badcap
+    ic_msg "$work/ui.json" "surrogate in the caption: the folder name" 'This title has no name, badcap cannot search for it'
+    build longcap "$(printf 'Ж%.0s' $(seq 1 39))Юя"
+    ic_movie '{"title":""}' iptvce_longcap
+    ic_msg "$work/ui.json" "long caption: 40 characters" "This title has no name, $(printf 'Ж%.0s' $(seq 1 39))Ю cannot search for it"
+    rm -rf "${plugins:?}/kino" "${plugins:?}/tabcap" "${plugins:?}/trcap" "${plugins:?}/badcap" "${plugins:?}/longcap"
+
+    # Not a build now, or not a valid name: not installed, named by its caption.
+    ic_movie '{"title":"Дюна"}' iptvce_nosuch
+    ic_msg "$work/ui.json" "no such build" 'The nosuch plugin is not installed'
+    sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
+    ic_movie '{"title":"Дюна"}'
+    ic_msg "$work/ui.json" "VOD off" 'The Mir Kino plugin is not installed'
+    build mirkino
+    rm -f "$plugins/mirkino/screens_vod/starnet_vod_list_screen.php"
+    ic_msg "$work/ui.json" "no VOD list screen" 'The Mir Kino plugin is not installed'
+    build mirkino
+    mkdir -p "$plugins/mir.kino" "$plugins/mir kino"
+    cp -R "$fx/iptvce_mirkino/." "$plugins/mir.kino/"
+    for h in iptvce_ iptvce_mir.kino 'iptvce_mir kino' iptvce_../mirkino 'iptvce_mirkino ' "iptvce_$(printf 'n%.0s' $(seq 1 41))"; do
+        ic_movie '{"title":"Дюна"}' "$h"
+        name=${h#iptvce_}
+        shown_name=$(printf '%s' "$name" | cut -c 1-40 | sed 's/[^A-Za-z0-9_]/?/g')
+        ic_msg "$work/ui.json" "handler_id '$h'" "The $shown_name plugin is not installed"
+    done
+    rm -rf "${plugins:?}/mir.kino" "${plugins:?}/mir kino"
+    # The message in the Dune's language.
+    mkdir -p "$cfg"
+    printf 'interface_language = russian\n' >"$cfg/settings.properties"
+    ic_movie '{"title":"Дюна"}' iptvce_nosuch
+    ic_msg "$work/ui.json" "no such build, Russian Dune" 'Плагин nosuch не установлен'
+    ic_movie '{"title":""}'
+    ic_msg "$work/ui.json" "no titles, Russian Dune" 'У этой карточки нет названия, Mir Kino не сможет её найти'
+    rm -f "$cfg/settings.properties"
+    rm -rf "${plugins:?}/mirkino"
+
     # Not our call: no action, no error.
     printf '%s\n' '{"handler_id":"other","movie_str":"{\"title\":\"x\"}"}' >"$work/ui.json"
     handler "$work/ui.json" "other handler" none
@@ -2166,6 +2492,38 @@ EOF
         "nuvio=$work/atv_icons/icon_com.nuvio.tv.png"
     cp "$fx/app_data.json" "$apps"
 
+    # Builds: after the fixed items, in name order, with their captions and
+    # icons (apps.aai without one), checked by default.
+    # items_builds_are <id>=<caption>=<icon or ""> ...: the dialog's items
+    # after the 15 fixed ones, and checked_ids the same.
+    items_builds_are() {
+        python3 - "$o" "$@" <<'EOF'
+import json, sys
+a = json.load(open(sys.argv[1]))["data"]["data"]
+want = []
+for x in sys.argv[2:]:
+    i, c, icon = x.split("=", 2)
+    want.append({"id": i, "caption": c, "icon_url": icon or "gui_skin://small_icons/apps.aai", "group_id": "apps"})
+ids = [w["id"] for w in want]
+sys.exit(len(a["all_items"]) != 15 + len(want) or a["all_items"][15:] != want or a["checked_ids"][15:] != ids
+         or len(a["checked_ids"]) != 15 + len(want))
+EOF
+    }
+    build mirkino
+    build kino 'Кино &amp; "Мир"' ''
+    build zeta "$(printf 'bad \377')" 'plugin_file://img/logo_mirkino.png'
+    build novod
+    sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/novod/config.json"
+    printf 'iptvce_mirkino\nnuvio\niptvce_gone\n' >"$data/hidden"
+    press items
+    check "items builds: exit 0" rc_is 0
+    check "items builds: stderr has only own log lines" only_own_log
+    check "items builds: after the fixed items, captions, icons" items_builds_are \
+        'iptvce_kino=Кино & "Мир"=' "iptvce_mirkino=Mir Kino=$plugins/mirkino/img/logo_mirkino.png" \
+        "iptvce_zeta=zeta=$plugins/zeta/img/logo_mirkino.png"
+    check "items builds: choice file, fixed items then builds" file_is "$lcfg" "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_mirkino)"
+    rm -rf "${plugins:?}/novod" "${plugins:?}/zeta" "${plugins:?}/mirkino" "${plugins:?}/kino"
+
     # --- post_action of the dialog: list_apply
 
     # apply <list_config_changed JSON or none> <list_config_id JSON or none> [desc]
@@ -2234,6 +2592,22 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     php_run "$work/ctx.json"
     unset T_DATA_DIR
     check "list_apply data dir not writable: err_save" out_is "$(error_json err_save)"
+    # Builds: the ones found now by their -/+; a hidden build not installed
+    # now stays hidden; garbage ids are dropped.
+    build mirkino
+    build kino
+    printf 'iptvce_gone\nnuvio\niptvce_kino\n' >"$data/hidden"
+    printf '%s\n' -iptvce_mirkino +iptvce_kino -iptvce_nosuch '-iptvce_../x' '-iptvce_mir kino' -IPTVCE_KINO -num >"$lcfg"
+    apply '"1"' '"play_in_apps"' builds
+    check "list_apply builds: hidden" hidden_is "$(printf '%s\n' num iptvce_gone iptvce_mirkino)"
+    # shellcheck disable=SC2046 # one word per id
+    check "list_apply builds: sync" shown $(echo "$all" | sed 's/^num //') iptvce_kino
+    : >"$lcfg"
+    apply '"1"' '"play_in_apps"' 'builds, empty file'
+    check "list_apply builds, empty file: the gone build stays hidden" hidden_is iptvce_gone
+    # shellcheck disable=SC2086 # one word per id
+    check "list_apply builds, empty file: all shown" shown $all iptvce_kino iptvce_mirkino
+    rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
     rm -f "$data/hidden" "$lcfg"
     run sync.sh
 
@@ -2545,6 +2919,8 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     printf 'FLUX_SUPPLIER_MARK\n' >"$cgi_tmp/run/flux__supplier.log"
     printf 'SEASONHIT_SUPPLIER_MARK\n' >"$cgi_tmp/run/seasonhit__supplier.log"
     printf 'OTHER_SUPPLIER_MARK\n' >"$cgi_tmp/run/youtube__supplier.log"
+    printf 'IPTVCE_SUPPLIER_MARK\n' >"$cgi_tmp/run/iptvce_mirkino__supplier.log"
+    printf 'IPTVCE_BAD_NAME_MARK\n' >"$cgi_tmp/run/iptvce_mir.kino__supplier.log"
     printf 'PIA_LOG_MARK\n' >"$cgi_tmp/run/play_in_apps.log"
     printf 'SHELL_EXT_MARK\n' >"$cgi_tmp/run/shell_ext.log"
     printf 'ASYNC_MARK\n' >"$cgi_tmp/plugins/shell_ext/async_worker.log"
@@ -2572,6 +2948,9 @@ EOF
     check "cgi download: diag report whole" sh -c 'grep -qx "NUM: OK" "$1" && grep -qx "FreeZona: OK" "$1"' _ "$o.body"
     check "cgi download: shell.log tail only" sh -c '! grep -q SHELL_LOG_FIRST_LINE "$1"' _ "$o.body"
     check "cgi download: other suppliers' logs left out" sh -c '! grep -q OTHER_SUPPLIER_MARK "$1"' _ "$o.body"
+    check "cgi download: a build's supplier log after the fixed ones" sh -c \
+        'grep -q IPTVCE_SUPPLIER_MARK "$1" && [ "$(grep -n -e SEASONHIT_SUPPLIER_MARK -e IPTVCE_SUPPLIER_MARK -e PIA_LOG_MARK "$1" | cut -d: -f2 | tr "\n" " ")" = "SEASONHIT_SUPPLIER_MARK IPTVCE_SUPPLIER_MARK PIA_LOG_MARK " ]' _ "$o.body"
+    check "cgi download: a log with a bad build name left out" sh -c '! grep -q IPTVCE_BAD_NAME_MARK "$1"' _ "$o.body"
     check "cgi download: no PHP errors" quiet
     req GET "t=$tok&dl=1"
     check "cgi download again with the same token: whole" sh -c 'tail -n 1 "$1" | grep -qx END' _ "$o.body"
@@ -2686,13 +3065,14 @@ for i in $all; do
 done
 scripts=$(for i in $all; do echo "$i.sh"; done)
 # shellcheck disable=SC2086 # one word per script
-check "no other item scripts" listing_is "$src/bin" diag.sh movie_suppliers_update.sh search.sh sync.sh uninstall.sh $scripts
+check "no other item scripts" listing_is "$src/bin" diag.sh movie_suppliers_update.sh search.sh sync.sh uninstall.sh \
+    iptvce.sh iptvce_builds.sh $scripts
 
 keys="plugin_caption"
 for i in $all; do
     keys="$keys ${i}_caption $(grep -ho 'fail err_[a-z_]*' "$src/bin/$i.sh" | sed "s/^fail /${i}_/" | sort -u)"
 done
-keys="$keys filmix_api_err_unsupported bazinga_err_unsupported $(grep -o "%tr%[a-z_]*\|pia_error_action('[a-z_]*')\|pia_tr('[a-z_]*')\|play_in_apps_plugin_[a-z_0-9]*" "$src/main.php" |
+keys="$keys filmix_api_err_unsupported bazinga_err_unsupported iptvce_err_unsupported $(grep -o "%tr%[a-z_]*\|pia_error_action('[a-z_]*')\|pia_tr('[a-z_]*')\|play_in_apps_plugin_[a-z_0-9]*" "$src/main.php" |
     sed "s/^%tr%//; s/^pia_error_action('//; s/^pia_tr('//; s/')\$//; s/^play_in_apps_plugin_//" | sort -u)"
 # diag.sh: $(t <key>); cgi/logs.php: lp_tr('<key>').
 keys="$keys $(grep -o '(t [a-z_]*)' "$src/bin/diag.sh" | sed 's/^(t //; s/)$//' | sort -u)"

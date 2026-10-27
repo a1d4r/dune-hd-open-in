@@ -1,0 +1,23 @@
+<dune_plugin>
+	<type>php</type>
+	<type_name>mirkino</type_name>
+	<name>mirkino</name>
+	<caption>Mir Kino</caption>
+	<class_name>mirkino_config</class_name>
+	<icon_url>plugin_file://img/logo_mirkino.png</icon_url>
+	<version_index>2026102113</version_index>
+	<version>9.4.2548.2026102113</version>
+	<entry_points>
+		<entry_point>
+			<parent_media_url>setup://applications</parent_media_url>
+			<media_url>setup</media_url>
+			<caption>Mir Kino</caption>
+			<icon_url>plugin_file://img/logo_mirkino.png</icon_url>
+			<actions>
+				<key_enter>
+					<type>plugin_open_folder</type>
+				</key_enter>
+			</actions>
+		</entry_point>
+	</entry_points>
+</dune_plugin>

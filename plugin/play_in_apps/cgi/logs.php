@@ -214,6 +214,12 @@ function lp_download()
     lp_cmd('bin/diag.sh', 'sh ' . escapeshellarg("$dir/bin/diag.sh") . ' ' . lp_lang());
     foreach ($GLOBALS['lp_ids'] as $id)
         lp_file("$tmp/run/{$id}__supplier.log");
+    // The items of IPTV Channel Editor builds (iptvce_<name>), if they ran.
+    foreach ((array) glob("$tmp/run/iptvce_*__supplier.log") as $p)
+    {
+        if (is_string($p) && preg_match('/^iptvce_[A-Za-z0-9_]{1,40}__supplier\.log$/D', basename($p)))
+            lp_file($p);
+    }
     lp_file("$tmp/run/play_in_apps.log");
     lp_file("$tmp/run/shell_ext.log");
     lp_file("$tmp/plugins/shell_ext/async_worker.log");

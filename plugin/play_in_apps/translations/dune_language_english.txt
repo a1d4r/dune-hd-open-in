@@ -120,3 +120,7 @@ bazinga_caption = Bazinga
 bazinga_err_not_installed = The Bazinga plugin is not installed
 bazinga_err_no_title = This title has neither a Kinopoisk ID nor a name, Bazinga cannot open it
 bazinga_err_unsupported = Open in Bazinga: unsupported request
+
+iptvce_err_not_installed = The %s plugin is not installed
+iptvce_err_no_title = This title has no name, %s cannot search for it
+iptvce_err_unsupported = Open in an IPTV Channel Editor plugin: unsupported request

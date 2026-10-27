@@ -1,0 +1,7 @@
+{
+  "class_name": "mirkino_config",
+  "name": "mirkino",
+  "title": "Mir Kino",
+  "vod_engine": "Json",
+  "vod_filter": true
+}

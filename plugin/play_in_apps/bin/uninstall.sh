@@ -9,5 +9,9 @@ dir=${PLAY_IN_APPS_TMP:-$FS_PREFIX/tmp}/movie_suppliers
 for id in num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit bazinga; do
     grep -q '"plugin":"play_in_apps"' "$dir/$id" 2>/dev/null && rm -f "$dir/$id"
 done
+# The items of IPTV Channel Editor builds (sync.sh).
+for f in "$dir"/iptvce_*; do
+    grep -q '"plugin":"play_in_apps"' "$f" 2>/dev/null && rm -f "$f"
+done
 rm -f "$FS_PREFIX/config/lcfg_play_in_apps.txt"
 exit 0
