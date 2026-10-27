@@ -140,11 +140,17 @@ for b in $(iptvce_builds "$plugins"); do
         "$name" "$cap" "$mydir" "$icon" "$name" "$id")"
     shown="$shown $id"
 done
-# The items of builds that are gone or hidden.
+# The items of builds that are gone or hidden; only our own copies, as in
+# uninstall.sh.
 for f in "$data/movie_suppliers"/iptvce_* "$tmp/movie_suppliers"/iptvce_*; do
     case " $shown " in
         *" ${f##*/} "*) ;;
-        *) [ ! -f "$f" ] || hide "${f##*/}" ;;
+        *)
+            if grep -q '"plugin":"play_in_apps"' "$f" 2>/dev/null; then
+                rm -f "$f"
+                echo "$name: ${f##*/} hidden"
+            fi
+            ;;
     esac
 done
 

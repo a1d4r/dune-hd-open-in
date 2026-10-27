@@ -876,8 +876,8 @@ cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "
 id=iptvce
 check "registered bin of a build: err_unsupported" error_is err_unsupported
 
-# Captions: Cyrillic, entities, " and \ as they are, spaces trimmed, cut at 40
-# characters; anything unsafe -> the folder name.
+# Captions: Cyrillic, entities, " and \ as they are, < and > dropped, spaces
+# trimmed, cut at 40 characters; anything unsafe -> the folder name.
 build kino ' Кино &quot;Мир&quot; "x" \ &amp;lt; &lt;b&gt; '
 build long "$(printf 'Ж%.0s' $(seq 1 39))Юя"
 build ascii40 "$(printf 'a%.0s' $(seq 1 40))"
@@ -890,7 +890,7 @@ build blank '   '
 build nocap ''
 run sync.sh
 check "sync captions: exit 0" rc_is 0
-check "sync caption: Cyrillic, entities, quote and backslash" build_item_is kino 'Кино "Мир" "x" \ &lt; <b>' img/logo_mirkino.png
+check "sync caption: Cyrillic, entities, quote and backslash, no < >" build_item_is kino 'Кино "Мир" "x" \ &lt; b' img/logo_mirkino.png
 check "sync caption: cut at 40 characters" build_item_is long "$(printf 'Ж%.0s' $(seq 1 39))Ю" img/logo_mirkino.png
 check "sync caption: 40 characters kept" build_item_is ascii40 "$(printf 'a%.0s' $(seq 1 40))" img/logo_mirkino.png
 for b in tab badutf surrogate overlong trkey blank nocap; do
@@ -961,14 +961,21 @@ rm -rf "${plugins:?}/kino"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync build removed: its item removed" shown $all iptvce_mirkino
-# Left by an older state: a copy only in /tmp, odd names; other files stay.
+# Left by an older state: a copy only in /tmp; files of others stay, also
+# with our prefix.
 printf '{"plugin":"play_in_apps"}\n' >"$menu/iptvce_gone"
+printf '{"plugin":"other"}\n' >"$menu/iptvce_foreign"
+printf '{"plugin":"other"}\n' >"$reg/iptvce_foreign2"
 : >"$menu/iptvce_a b"
 : >"$menu/YouTube"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
-check "sync: stale build copies in /tmp removed, others kept" listing_is "$menu" $all iptvce_mirkino YouTube
-rm -f "$menu/YouTube"
+check "sync: stale build copies in /tmp removed, others kept" \
+    listing_is "$menu" $all iptvce_mirkino YouTube iptvce_foreign "iptvce_a b"
+check "sync: a file of another plugin with our prefix kept as is" \
+    grep -qxF '{"plugin":"other"}' "$menu/iptvce_foreign"
+check "sync: not our file in plugins_data kept" test -f "$reg/iptvce_foreign2"
+rm -f "$menu/YouTube" "$menu/iptvce_foreign" "$menu/iptvce_a b" "$reg/iptvce_foreign2"
 
 # Other device classes: the builds are found next to the plugin, whatever
 # FS_PREFIX is; the icon is the build's plugin_file://.
@@ -2220,13 +2227,16 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     build mirkino
     mkdir -p "$plugins/mir.kino" "$plugins/mir kino"
     cp -R "$fx/iptvce_mirkino/." "$plugins/mir.kino/"
-    for h in iptvce_ iptvce_mir.kino 'iptvce_mir kino' iptvce_../mirkino 'iptvce_mirkino ' "iptvce_$(printf 'n%.0s' $(seq 1 41))"; do
+    for h in iptvce_mir.kino 'iptvce_mir kino' iptvce_../mirkino 'iptvce_mirkino ' "iptvce_$(printf 'n%.0s' $(seq 1 41))"; do
         ic_movie '{"title":"Дюна"}' "$h"
         name=${h#iptvce_}
         shown_name=$(printf '%s' "$name" | cut -c 1-40 | sed 's/[^A-Za-z0-9_]/?/g')
         ic_msg "$work/ui.json" "handler_id '$h'" "The $shown_name plugin is not installed"
     done
     rm -rf "${plugins:?}/mir.kino" "${plugins:?}/mir kino"
+    # No name: not an item id, not our call.
+    ic_movie '{"title":"Дюна"}' iptvce_
+    handler "$work/ui.json" "iptvce handler_id 'iptvce_'" none
     # The message in the Dune's language.
     mkdir -p "$cfg"
     printf 'interface_language = russian\n' >"$cfg/settings.properties"
@@ -2523,6 +2533,72 @@ EOF
         "iptvce_zeta=zeta=$plugins/zeta/img/logo_mirkino.png"
     check "items builds: choice file, fixed items then builds" file_is "$lcfg" "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_mirkino)"
     rm -rf "${plugins:?}/novod" "${plugins:?}/zeta" "${plugins:?}/mirkino" "${plugins:?}/kino"
+
+    # Parity: bin/iptvce_builds.sh (sync.sh) and main.php (items dialog) find
+    # the same builds, with the same captions and icons.
+    build mirkino
+    build two 'First</caption><caption>Second' \
+        'plugin_file://img/logo_mirkino.png</icon_url><icon_url>plugin_file://img/other.png'
+    : >"$plugins/two/img/other.png"
+    build twoicon 'Two icons' 'plugin_file://img/none.png</icon_url><icon_url>plugin_file://img/logo_mirkino.png'
+    build lt '&lt;b&gt;Mir&lt;/b&gt; Kino'
+    build ltonly ' &lt;&gt; '
+    build ltpct '&lt;%tr%plugin_caption'
+    build ltspace '&lt; Mir &gt;'
+    build multiline "$(printf 'Mir\nKino')"
+    build long "$(printf 'Ж%.0s' $(seq 1 39))Юя"
+    build badutf "$(printf 'Mir \377 Kino')"
+    build vodnl
+    printf '{\n  "vod_engine":\n  "Json"\n}\n' >"$plugins/vodnl/config.json"
+    build vodnl2
+    printf '{\n  "vod_engine": "Js\non"\n}\n' >"$plugins/vodnl2/config.json"
+    rm -f "$data/hidden"
+    run sync.sh
+    check "parity: sync exit 0" rc_is 0
+    press items
+    check "parity: items exit 0" rc_is 0
+    check "parity: items stderr has only own log lines" only_own_log
+    # parity_is <id>=<caption>=<icon in the build or ""> ...: these items, the
+    # same in sync.sh's and in the dialog's.
+    parity_is() {
+        python3 - "$o" "$reg" "$plugins" "$@" <<'EOF'
+import glob, json, os, sys
+out, reg, plugins = sys.argv[1:4]
+want = []
+for x in sys.argv[4:]:
+    i, c, icon = x.split("=", 2)
+    want.append((i, c, "%s/%s/%s" % (plugins, i[7:], icon) if icon else ""))
+sh = []
+for f in sorted(glob.glob(reg + "/iptvce_*")):
+    d = json.load(open(f, encoding="utf-8"))
+    u = d.get("icon_url", "")
+    name = os.path.basename(f)[7:]
+    pre = "plugin_file://%%%s%%/" % name
+    sh.append((os.path.basename(f), d["caption"], plugins + "/" + name + "/" + u[len(pre):] if u.startswith(pre) else u))
+php = []
+for it in json.load(open(out))["data"]["data"]["all_items"][15:]:
+    u = it["icon_url"]
+    php.append((it["id"], it["caption"], "" if u == "gui_skin://small_icons/apps.aai" else u))
+if sh != want or php != want:
+    print("sh:", sh, "\nphp:", php, "\nwant:", want, file=sys.stderr)
+    sys.exit(1)
+EOF
+    }
+    check "parity: builds, captions and icons the same in sync.sh and main.php" parity_is \
+        'iptvce_badutf=badutf=img/logo_mirkino.png' \
+        "iptvce_long=$(printf 'Ж%.0s' $(seq 1 39))Ю=img/logo_mirkino.png" \
+        'iptvce_lt=bMir/b Kino=img/logo_mirkino.png' \
+        'iptvce_ltonly=ltonly=img/logo_mirkino.png' \
+        'iptvce_ltpct=ltpct=img/logo_mirkino.png' \
+        'iptvce_ltspace=Mir=img/logo_mirkino.png' \
+        'iptvce_mirkino=Mir Kino=img/logo_mirkino.png' \
+        'iptvce_multiline=Mir Kino=img/logo_mirkino.png' \
+        'iptvce_two=First=img/logo_mirkino.png' \
+        'iptvce_twoicon=Two icons='
+    for b in mirkino two twoicon lt ltonly ltpct ltspace multiline long badutf vodnl vodnl2; do
+        rm -rf "${plugins:?}/$b"
+    done
+    run sync.sh
 
     # --- post_action of the dialog: list_apply
 

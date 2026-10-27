@@ -59,6 +59,31 @@ function pia_error_action($key)
         'data' => array('fatal' => false, 'title' => "%tr%$key"));
 }
 
+// --- play_action of the supplier: the shell passes the whole movie in
+// user_input.movie_str.
+
+// movie_str as an array; empty if there is none or it is not a JSON object.
+// Arrays, not objects: before PHP 7.1 a key starting with "\0" is a fatal
+// error in json_decode to objects.
+function pia_movie($user_input)
+{
+    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
+        json_decode($user_input->movie_str, true) : null;
+    return is_array($movie) ? $movie : array();
+}
+
+// A trimmed scalar field of the movie; '' if there is none or it is not valid
+// UTF-8: json_decode turns a lone \ud800 into invalid UTF-8; json_encode then
+// fails: false on PHP 5.5+, null in place of the string on PHP 5.3.
+function pia_movie_field($movie, $k)
+{
+    if (!isset($movie[$k]) || !is_scalar($movie[$k]))
+        return '';
+    $s = trim(strval($movie[$k]));
+    $json = json_encode($s);
+    return $json === false || json_last_error() !== JSON_ERROR_NONE ? '' : $s;
+}
+
 // --- Filmix: play_action of the supplier. The shell calls it when "Filmix" is
 // chosen in the "Play..." menu and passes the whole movie in
 // user_input.movie_str. Replies with a GUI action that opens Filmix_API's
@@ -89,25 +114,15 @@ function filmix_play($user_input)
     if (!is_file(pia_plugins_dir() . '/Filmix_api/dune_plugin.xml'))
         return pia_error_action('filmix_api_err_not_installed');
 
-    // Arrays, not objects: before PHP 7.1 a key starting with "\0" is a fatal
-    // error in json_decode to objects.
-    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
-        json_decode($user_input->movie_str, true) : null;
+    $movie = pia_movie($user_input);
     // "title" is in the Dune UI language, "native_title" is the original one.
     foreach (array('title', 'native_title') as $k)
     {
-        if (!is_array($movie) || !isset($movie[$k]) || !is_scalar($movie[$k]))
-            continue;
-        $title = trim(strval($movie[$k]));
+        $title = pia_movie_field($movie, $k);
         if ($title === '')
             continue;
-        // json_decode turns a lone \ud800 into invalid UTF-8; json_encode then
-        // fails: false on PHP 5.5+, null in place of the string on PHP 5.3.
         $media_url = json_encode(array(
             'screen_id' => 'vod_list', 'category_id' => 'search', 'genre_id' => $title));
-        if ($media_url === false || json_last_error() !== JSON_ERROR_NONE)
-            continue;
-
         pia_log("filmix search: $title");
         return filmix_search_action($title, $media_url);
     }
@@ -117,17 +132,6 @@ function filmix_play($user_input)
 // --- Bazinga: play_action of the supplier, as Filmix's. Opens the Bazinga3
 // Dune plugin: its Kinopoisk card by kp_id, else its Kinopoisk search by
 // title. Bazinga3 json_decodes media_url, so key order does not matter.
-
-// A trimmed scalar field of the movie; '' if there is none or it is not valid
-// UTF-8 (a lone \ud800 after json_decode, see filmix_play).
-function pia_movie_field($movie, $k)
-{
-    if (!isset($movie[$k]) || !is_scalar($movie[$k]))
-        return '';
-    $s = trim(strval($movie[$k]));
-    $json = json_encode($s);
-    return $json === false || json_last_error() !== JSON_ERROR_NONE ? '' : $s;
-}
 
 function bazinga_open($media_url, $caption)
 {
@@ -142,11 +146,7 @@ function bazinga_play($user_input)
     if (!is_file(pia_plugins_dir() . '/Bazinga3/dune_plugin.xml'))
         return pia_error_action('bazinga_err_not_installed');
 
-    // Arrays, not objects, as in filmix_play.
-    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
-        json_decode($user_input->movie_str, true) : null;
-    if (!is_array($movie))
-        $movie = array();
+    $movie = pia_movie($user_input);
     $title = pia_movie_field($movie, 'title');
     $native = pia_movie_field($movie, 'native_title');
     $kp = isset($movie['kp_id']) && (is_string($movie['kp_id']) || is_int($movie['kp_id'])) ?
@@ -181,9 +181,16 @@ function bazinga_play($user_input)
 // the title. The same checks as bin/iptvce_builds.sh; everything read from a
 // build is untrusted.
 
+// The same pattern as in bin/iptvce_builds.sh and cgi/logs.php.
 function iptvce_valid_name($name)
 {
     return is_string($name) && preg_match('/^[A-Za-z0-9_]{1,40}$/D', $name) === 1;
+}
+
+// The <name> of an item id iptvce_<name>, not checked; '' if $id is not one.
+function iptvce_name_of($id)
+{
+    return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
 // The builder's files and VOD on ("vod_engine" in config.json, other than "None").
@@ -196,14 +203,15 @@ function iptvce_is_build($name)
         !is_file("$d/config.json"))
         return false;
     $text = file_get_contents("$d/config.json");
-    return is_string($text) && preg_match('/"vod_engine": *"([^"]*)"/', $text, $m) === 1 && $m[1] !== 'None';
+    return is_string($text) && preg_match('/"vod_engine": *"([^"\n]*)"/', $text, $m) === 1 && $m[1] !== 'None';
 }
 
 // array(caption, icon file or '') of a build, from its dune_plugin.xml: the
-// first <caption> (entities decoded, spaces trimmed, at most 40 characters;
-// the name if there is none or it has control characters, bad UTF-8 or a
-// leading %) and the first <icon_url> if it is plugin_file://<safe path> of an
-// existing file. One line each, as sed reads them in iptvce_builds.sh.
+// first <caption> (entities decoded, then < and > dropped, spaces trimmed, at
+// most 40 characters; the name if there is none or it has control
+// characters, bad UTF-8 or a leading %) and the first <icon_url> if it is
+// plugin_file://<safe path> of an existing file. One line each, as grep reads
+// them in iptvce_builds.sh.
 function iptvce_info($name)
 {
     $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
@@ -213,8 +221,9 @@ function iptvce_info($name)
     $caption = $name;
     if (preg_match('/<caption>([^<\n]*)<\/caption>/', $xml, $m))
     {
-        $c = trim(strtr($m[1], array('&lt;' => '<', '&gt;' => '>', '&quot;' => '"', '&apos;' => "'",
-            '&amp;' => '&')), ' ');
+        $c = strtr($m[1], array('&lt;' => '<', '&gt;' => '>', '&quot;' => '"', '&apos;' => "'",
+            '&amp;' => '&'));
+        $c = trim(str_replace(array('<', '>'), '', $c), ' ');
         if ($c !== '' && $c[0] !== '%' && !preg_match('/[\x00-\x1f\x7f]/', $c) && pia_utf8_clean($c) === $c)
             $caption = mb_substr($c, 0, 40, 'UTF-8');
     }
@@ -245,18 +254,16 @@ function iptvce_play($user_input, $name)
 {
     if (!iptvce_is_build($name))
     {
-        // The name never shown as is: our items only have valid ones.
-        $caption = iptvce_valid_name($name) ? iptvce_info($name) :
-            array(preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40)));
-        return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $caption[0]));
+        // An invalid name never shown as is: our items only have valid ones.
+        if (iptvce_valid_name($name))
+            $info = iptvce_info($name);
+        else
+            $info = array(preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40)));
+        return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $info[0]));
     }
     $info = iptvce_info($name);
 
-    // Arrays, not objects, as in filmix_play.
-    $movie = isset($user_input->movie_str) && is_string($user_input->movie_str) ?
-        json_decode($user_input->movie_str, true) : null;
-    if (!is_array($movie))
-        $movie = array();
+    $movie = pia_movie($user_input);
     $q = pia_movie_field($movie, 'title');
     if ($q === '')
         $q = pia_movie_field($movie, 'native_title');
@@ -384,7 +391,7 @@ function pia_utf8_keep($m)
 function pia_item_id($id)
 {
     return isset(PlayInApps::$apps[$id]) ||
-        (strpos($id, 'iptvce_') === 0 && iptvce_valid_name((string) substr($id, 7)));
+        iptvce_valid_name(iptvce_name_of($id));
 }
 
 // The ids of $hidden that are item ids: the fixed items in their order, then
@@ -942,8 +949,8 @@ function pia_handle_user_input($user_input)
         return filmix_play($user_input);
     if ($handler === 'bazinga')
         return bazinga_play($user_input);
-    if (is_string($handler) && strpos($handler, 'iptvce_') === 0)
-        return iptvce_play($user_input, (string) substr($handler, 7));
+    if (iptvce_name_of($handler) !== '')
+        return iptvce_play($user_input, iptvce_name_of($handler));
 
     $id = isset($user_input->control_id) ? $user_input->control_id : null;
     if ($handler !== 'setup' || !is_string($id))
