@@ -175,12 +175,13 @@ function bazinga_play($user_input)
         'class_name' => 'Kinopoisk_Class'), $caption);
 }
 
-// --- IPTV Channel Editor builds: Dune plugins made by its builder that have
-// VOD, and any plugin that declares the vod_search action. bin/sync.sh shows
-// an item iptvce_<name> for each, with play_action handler_id iptvce_<name>;
-// the handler calls the plugin's vod_search with the titles and the year, or,
-// without one, opens the build's search results for the title. The same
-// checks as bin/iptvce_builds.sh; everything read from a build is untrusted.
+// --- iptvce_ is an item of a plugin with the vod_search entry or of an IPTV
+// Channel Editor build with VOD; the prefix is kept for the ids of 0.10.x.
+// bin/sync.sh shows an item iptvce_<name> for each, with play_action
+// handler_id iptvce_<name>; the handler calls the plugin's vod_search with
+// the titles and the year, or, without one, opens the build's search results
+// for the title. The same checks as bin/iptvce_builds.sh; everything read
+// from a build is untrusted.
 
 // 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
 // pattern as in bin/iptvce_builds.sh.
@@ -201,13 +202,15 @@ function iptvce_name_of($id)
 // same parse as iptvce_vod_search in bin/iptvce_builds.sh: the first action
 // with id vod_search inside a <public_actions>, its first <type>
 // plugin_handle_user_input, its first <handler_id> and <control_id> 1-64 of
-// [A-Za-z0-9_.-].
+// [A-Za-z0-9_.-], not one of ours; null too if the file is over 32768 bytes
+// or has no "vod_search" (before NUL bytes are dropped, as grep sees it).
 function iptvce_vod_search($name)
 {
     $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
-    $x = is_file($f) ? file_get_contents($f) : false;
-    if (!is_string($x))
+    $x = is_file($f) && filesize($f) <= 32768 ? file_get_contents($f) : false;
+    if (!is_string($x) || strpos($x, 'vod_search') === false)
         return null;
+    $x = str_replace("\0", '', $x);
     $x = preg_replace('/<!--.*?(?:-->|\z)/s', ' ', strtr($x, "\n\r\t", '   '));
     $x = preg_replace('#</ *#', '</', preg_replace('/ *([<>=]) */', '$1', preg_replace('/  +/', ' ', $x)));
     preg_match_all('#<public_actions>(.*?)</public_actions>#s', $x, $blocks);
@@ -223,7 +226,7 @@ function iptvce_vod_search($name)
         foreach (array('type', 'handler_id', 'control_id') as $tag)
             $v[] = preg_match("#<$tag>(.*?)</$tag>#s", $act[2], $m) ? $m[1] : '';
         if ($v[0] !== 'plugin_handle_user_input' || !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[1]) ||
-            !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[2]))
+            !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[2]) || iptvce_own_handler($v[1]))
             return null;
         return array($v[1], $v[2]);
     }
@@ -1003,6 +1006,15 @@ function pia_logs_closed($control_id)
 function pia_folder_view($media_url)
 {
     return $media_url === 'check' ? pia_check_view() : pia_setup_view();
+}
+
+// The handler_ids pia_handle_user_input takes, and check (the check screen):
+// if the shell turns down another plugin's name, it calls ours with that
+// plugin's ids. The other copy: iptvce_vod_search in bin/iptvce_builds.sh.
+function iptvce_own_handler($id)
+{
+    return in_array($id, array('setup', 'check', 'filmix_api', 'bazinga'), true) ||
+        strpos($id, 'iptvce_') === 0;
 }
 
 function pia_handle_user_input($user_input)

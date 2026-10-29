@@ -1,8 +1,7 @@
-# Dune plugins made by IPTV Channel Editor (the builder by sharky72) that
-# have VOD, and any plugin that declares the vod_search action (the builder's
-# entry for other plugins): each is an item iptvce_<name> of the "Play..."
-# menu. Shared by sync.sh and diag.sh; only function definitions. main.php has
-# the same checks (iptvce_is_build, iptvce_vod_search, iptvce_info).
+# iptvce_ is an item of a plugin with the vod_search entry or of an IPTV
+# Channel Editor build with VOD; the prefix is kept for the ids of 0.10.x.
+# Shared by sync.sh and diag.sh; only function definitions. main.php has the
+# same checks (iptvce_is_build, iptvce_vod_search, iptvce_info).
 # Everything read from a build is untrusted: only printed, never run.
 # shellcheck shell=sh
 
@@ -45,11 +44,21 @@ iptvce_is_build() {
 # Only the first action with id vod_search (" or ') inside a <public_actions>
 # counts; its first <type> must be plugin_handle_user_input, its first
 # <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
-# not. The text is read as one line, comments dropped, spaces around < > =
-# and after </ removed. Variables are prefixed: callers keep theirs. The same
+# not, or if the file is over 32768 bytes, has no "vod_search" (not parsed:
+# sync.sh checks every plugin) or the handler_id is one of ours. The text is
+# read as one line, NUL bytes, comments dropped, spaces around < > = and
+# after </ removed. Variables are prefixed: callers keep theirs. The same
 # parse: iptvce_vod_search in main.php.
 iptvce_vod_search() {
     [ -f "$1/dune_plugin.xml" ] || return 1
+    # -z: toybox grep does not see past a NUL in a line.
+    LC_ALL=C grep -qzF vod_search "$1/dune_plugin.xml" 2>/dev/null || return 1
+    ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
+    ivs_n=${ivs_n##* }
+    case "$ivs_n" in
+        '' | *[!0-9]*) return 1 ;;
+    esac
+    [ "$ivs_n" -le 32768 ] || return 1
     ivs_x=$(LC_ALL=C tr '\n\r\t' '   ' <"$1/dune_plugin.xml" 2>/dev/null)
     ivs_o='<!--'
     ivs_e='-->'
@@ -116,6 +125,12 @@ iptvce_vod_search() {
             esac
             [ "${#ivs_v}" -le 64 ] || return 1
         done
+        # The handler_ids of main.php (pia_handle_user_input; the other copy:
+        # iptvce_own_handler there): if the shell turns down plugin_name, it
+        # calls ours with them.
+        case "$ivs_h" in
+            setup | check | filmix_api | bazinga | iptvce_*) return 1 ;;
+        esac
         printf '%s %s\n' "$ivs_h" "$ivs_c"
         return 0
     done

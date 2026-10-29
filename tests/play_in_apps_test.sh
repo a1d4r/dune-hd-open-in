@@ -966,9 +966,10 @@ vs_xml() {
         "${3-$vs_id}" "${4-plugin_handle_user_input}" "${1-entry_handler}" "${2-external_search}"
 }
 VS=$(vs_xml)
-# vs_build <name> <text> [files]: plugins/<name> with the Mir Kino fixture's
-# dune_plugin.xml, <text> added before </dune_plugin>, and its icon only;
-# "files": all of the fixture (the builder's files, VOD on).
+# vs_build <name> <text> [files [<size>]]: plugins/<name> with the Mir Kino
+# fixture's dune_plugin.xml, <text> added before </dune_plugin> (@NUL@: a NUL
+# byte), and its icon only; "files": all of the fixture (the builder's files,
+# VOD on); <size>: a comment pads the file to this many bytes.
 vs_build() {
     rm -rf "${plugins:?}/$1"
     if [ "${3-}" = files ]; then
@@ -978,11 +979,16 @@ vs_build() {
         cp "$fx/iptvce_mirkino/img/logo_mirkino.png" "$plugins/$1/img/"
     fi
     printf '%s' "$2" >"$work/vs_text"
-    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/vs_text" <<'EOF'
+    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/vs_text" "${4-0}" <<'EOF'
 import sys
 x = open(sys.argv[1], "rb").read()
-t = open(sys.argv[3], "rb").read()
-open(sys.argv[2], "wb").write(x.replace(b"</dune_plugin>", t + b"\n</dune_plugin>"))
+t = open(sys.argv[3], "rb").read().replace(b"@NUL@", b"\0")
+x = x.replace(b"</dune_plugin>", t + b"\n</dune_plugin>")
+n = int(sys.argv[4])
+if n:
+    x = x.replace(b"</dune_plugin>", b"<!--" + b"x" * (n - len(x) - 7) + b"--></dune_plugin>")
+    assert len(x) == n
+open(sys.argv[2], "wb").write(x)
 EOF
 }
 vs_64=$(printf 'a%.0s' $(seq 1 64))
@@ -1026,6 +1032,27 @@ vs_cases() {
     vs_build vs_attrs "$(vs_xml h c 'type="x" id="vod_search" n="1"')"
     vs_build vs_twoblocks "<public_actions></public_actions>$(vs_xml h c)"
     vs_build vs.dot-x "$VS"
+    # Over 32768 bytes: not parsed.
+    vs_build vs_32768 "$VS" '' 32768
+    vs_build vs_32769 "$VS" '' 32769
+    vs_build vs_32769files "$VS" files 32769
+    # No "vod_search" anywhere: not parsed (vs_nosubstr_sh).
+    vs_build vs_nosubstr '<public_actions><action id="vod_play"><type>plugin_handle_user_input</type><handler_id>h</handler_id><control_id>c</control_id></action></public_actions>'
+    vs_build vs_nosubstrfiles '<public_actions></public_actions>' files
+    # NUL bytes: dropped before the parse, but "vod_search" is looked for in
+    # the raw text.
+    vs_build vs_nulid "$(vs_xml h c 'id="vod_@NUL@search"')"
+    vs_build vs_nulidcomment "<!-- vod_search -->$(vs_xml h c 'id="vod_@NUL@search"')"
+    vs_build vs_nulline "@NUL@ $(vs_xml 'entry@NUL@_handler' 'c@NUL@')"
+    # Our own handler_ids.
+    vs_build vs_own_setup "$(vs_xml setup)"
+    vs_build vs_own_setupfiles "$(vs_xml setup)" files
+    vs_build vs_own_check "$(vs_xml check)"
+    vs_build vs_own_filmix "$(vs_xml filmix_api)"
+    vs_build vs_own_bazinga "$(vs_xml bazinga)"
+    vs_build vs_own_iptvce "$(vs_xml iptvce_x)"
+    vs_build vs_own_iptvce_ "$(vs_xml iptvce_)"
+    vs_build vs_own_not "$(vs_xml setupx)"
 }
 vs_want="vs.dot-x=entry_handler external_search
 vs_64=$vs_64 external_search
@@ -1052,7 +1079,23 @@ vs_type=none
 vs_typefiles=old
 vs_unclosed=none
 vs_unclosedcomment=none
-vs_xid=none"
+vs_xid=none
+vs_32768=entry_handler external_search
+vs_32769=none
+vs_32769files=old
+vs_nosubstr=none
+vs_nosubstrfiles=old
+vs_nulid=none
+vs_nulidcomment=h c
+vs_nulline=entry_handler c
+vs_own_setup=none
+vs_own_setupfiles=old
+vs_own_check=none
+vs_own_filmix=none
+vs_own_bazinga=none
+vs_own_iptvce=none
+vs_own_iptvce_=none
+vs_own_not=setupx external_search"
 # vs_rm: remove the builds of vs_cases.
 vs_rm() {
     printf '%s\n' "$vs_want" | while IFS='=' read -r b _; do rm -rf "${plugins:?}/$b"; done
@@ -1086,6 +1129,24 @@ vs_sh_is() {
     done
 }
 check "iptvce_vod_search: each case" vs_sh_is
+# vs_nosubstr_sh: without "vod_search" in the file, no tr or sed runs (a
+# PATH whose tr and sed fail loudly).
+vs_nosubstr_sh() {
+    mkdir -p "$work/vs_path"
+    for c in tr sed; do
+        printf '#!/bin/sh\necho "%s ran" >&2\nexit 99\n' "$c" >"$work/vs_path/$c"
+        chmod +x "$work/vs_path/$c"
+    done
+    for b in vs_nosubstr vs_nosubstrfiles; do
+        got=$(PATH="$work/vs_path:$PATH" "$sh_bin" -c '. "$1"; iptvce_vod_search "$2"; echo "rc=$?"' \
+            _ "$bin/iptvce_builds.sh" "$plugins/$b" 2>&1)
+        [ "$got" = rc=1 ] || {
+            echo "$b: $got" >&2
+            return 1
+        }
+    done
+}
+check "iptvce_vod_search: no vod_search in the file, no parse" vs_nosubstr_sh
 vs_rm
 
 # Hidden, removed, two builds; the copies in /tmp follow.
