@@ -3090,7 +3090,7 @@ EOF
     check "cgi download: other suppliers' logs left out" sh -c '! grep -q OTHER_SUPPLIER_MARK "$1"' _ "$o.body"
     check "cgi download: builds' supplier logs after the fixed ones, a name with a dot too" sh -c \
         'grep -q IPTVCE_SUPPLIER_MARK "$1" && [ "$(grep -n -e SEASONHIT_SUPPLIER_MARK -e IPTVCE_DOT_MARK -e IPTVCE_SUPPLIER_MARK -e PIA_LOG_MARK "$1" | cut -d: -f2 | tr "\n" " ")" = "SEASONHIT_SUPPLIER_MARK IPTVCE_DOT_MARK IPTVCE_SUPPLIER_MARK PIA_LOG_MARK " ]' _ "$o.body"
-    check "cgi download: logs with bad build names left out" sh -c '! grep -q IPTVCE_BAD_NAME_MARK "$1"' _ "$o.body"
+    check "cgi download: any iptvce_*__supplier.log in, whatever the name" sh -c 'grep -q IPTVCE_BAD_NAME_MARK "$1"' _ "$o.body"
     check "cgi download: no PHP errors" quiet
     req GET "t=$tok&dl=1"
     check "cgi download again with the same token: whole" sh -c 'tail -n 1 "$1" | grep -qx END' _ "$o.body"

@@ -182,7 +182,7 @@ function bazinga_play($user_input)
 // build is untrusted.
 
 // 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
-// pattern as in bin/iptvce_builds.sh and cgi/logs.php.
+// pattern as in bin/iptvce_builds.sh.
 function iptvce_valid_name($name)
 {
     return is_string($name) && preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,39}$/D', $name) === 1 &&

@@ -19,8 +19,7 @@ iptvce_builds() {
 # iptvce_is_build <plugins dir> <name>: a safe folder name, the builder's
 # files and VOD on ("vod_engine" in config.json, other than "None" in any
 # case). A safe name: 1-40 of [A-Za-z0-9_.-], not starting with . or -, no
-# "..". The name pattern has two more copies: iptvce_valid_name in main.php
-# and the log name in cgi/logs.php.
+# "..". The name pattern has one more copy: iptvce_valid_name in main.php.
 iptvce_is_build() {
     case "$2" in
         '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
