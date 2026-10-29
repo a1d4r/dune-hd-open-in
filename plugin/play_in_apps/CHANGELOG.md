@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.10.1
+- Fixed: IPTV Channel Editor plugins with a dot or a hyphen in their name (for example iEdem/iLook TV — `iedem.tv`) did not show up in the "Play..." menu.
+
 ## 0.10.0
 - Items of IPTV Channel Editor plugins: every installed Dune plugin made with IPTV Channel Editor that has movies (VOD), for example Mir Kino, is an item of its own in the "Play..." menu, with that plugin's name and icon. It opens that plugin's search results for the title (in the Dune UI language, else the original one). Sign in to your provider's account in that plugin first. If the results are empty, open the plugin once and try again. A plugin installed later shows up after standby or a reboot, or at once when the plugin screen is opened. These items can be hidden and are shown in "Check", like the others.
 
@@ -56,6 +59,9 @@
 ---
 
 **Russian version**
+
+## 0.10.1
+- Исправлено: плагины IPTV Channel Editor с точкой или дефисом в имени (например, iEdem/iLook TV — `iedem.tv`) не появлялись в меню «Смотреть…».
 
 ## 0.10.0
 - Пункты плагинов IPTV Channel Editor: каждый установленный плагин Дюны, собранный в IPTV Channel Editor, в котором есть фильмы (VOD), например Mir Kino, — отдельный пункт меню «Смотреть…» с названием и иконкой этого плагина. Пункт открывает в нём выдачу поиска по названию карточки (на языке интерфейса Дюны, а если его нет — по оригинальному). Сначала войдите в аккаунт провайдера в самом плагине. Если выдача пустая — откройте плагин один раз и повторите. Плагин, поставленный позже, появится в меню после выхода из режима ожидания или перезагрузки, а сразу — если открыть экран плагина. Такие пункты можно скрыть, они есть в «Проверке», как и остальные.
