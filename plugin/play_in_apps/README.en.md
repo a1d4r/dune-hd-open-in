@@ -21,7 +21,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
 | SeasonHit | SeasonHit 2.4.4.2 (`com.jimdo.xakerd.season2hit`) | no ID, search by title only |
 | Bazinga | Bazinga Dune plugin (`Bazinga3`) 2023031100_patch | Kinopoisk ID, else search by title |
-| the plugin's name, for example Mir Kino | a Dune plugin made with IPTV Channel Editor, with movies (Mir Kino 9.4.2548), or any with the `vod_search` entry | not by ID, search by title; with `vod_search` the plugin searches itself by title, original title and year |
+| the plugin's name, for example Mir Kino | a Dune plugin made with IPTV Channel Editor, with movies (Mir Kino 9.4.2548), or any with the `vod_search` entry | not by ID, search by title; with `vod_search` the plugin gets the title, original title and year |
 
 Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
 
@@ -151,7 +151,7 @@ IPTV Channel Editor is a builder of Dune plugins for IPTV providers. If such a p
 - Sign in to your provider's account in that plugin first: without it there are no results.
 - If the results are empty though the provider has the title, open that plugin once and try again: with some providers the search only looks through a list already loaded. Results are also empty when the provider spells the title differently; then search in the plugin itself.
 - A plugin installed later shows up in the menu after the Dune wakes from standby or reboots, or at once when the "Play in apps" screen is opened.
-- Plugins with the new search entry (`vod_search`, see below) search by themselves: the item passes them the card's title, original title and year. How to search — by one title or both, whether to open the title page right away when there is just one — is up to the plugin. Any Dune plugin that declares the entry gets such an item, not only one made with IPTV Channel Editor. "Check" shows `vod_search` for it.
+- To plugins with the new search entry (`vod_search`, see below) the item passes the card's title, original title and year. How to search — by one title or both, whether to open the title page right away when there is just one — is up to the plugin. Any Dune plugin that declares the entry gets such an item, not only one made with IPTV Channel Editor. "Check" shows `vod_search` for it.
 - Checked only with Mir Kino; plugins of other providers were not checked.
 
 ### For plugin developers
@@ -167,7 +167,8 @@ To give your plugin an item of its own in "Play..." that searches for the card's
   </action>
 </public_actions>
 ```
-- `handler_id` and `control_id` are yours, 1-64 characters of `A-Z a-z 0-9 _ . -`; other values or another `type` are not taken. Only the first `vod_search` action inside `<public_actions>` counts. The IPTV Channel Editor template files are not needed for this.
+- The plugin's folder name: 1-40 characters of `A-Z a-z 0-9 _ . -`, not starting with `.` or `-`, no `..`; `dune_plugin.xml`: at most 32 KB (32768 bytes).
+- `handler_id` and `control_id` are yours, 1-64 characters of `A-Z a-z 0-9 _ . -`; `handler_id` must not be one of the play_in_apps handler ids (`setup`, `check`, `filmix_api`, `bazinga`, `iptvce_…`). Other values or another `type` are not taken. Only the first `vod_search` action inside `<public_actions>` counts. The IPTV Channel Editor template files are not needed for this.
 - When the item is chosen, the Dune calls your plugin's `handle_user_input` with this `handler_id` and `control_id`; `$user_input` also has the field `search`, a JSON string: `{"title":"…","original_title":"…","year":"…"}`. `title` is the card's title in the Dune UI language, `original_title` the original one, `year` the year. Empty fields are left out; at least one of the titles is always there. All values are strings, non-ASCII as `\uXXXX` in the JSON: parse it with `json_decode`. The other fields of `$user_input` come from the Dune shell.
 - The Dune runs the handler's answer (a folder, a dialog) as your plugin's; Back from your folder returns to the Dune card.
 - The item, with the name and icon from `<caption>` and `<icon_url>` of the manifest, shows up after the Dune wakes from standby or reboots, or when the "Play in apps" screen is opened.
