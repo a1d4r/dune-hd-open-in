@@ -2,6 +2,10 @@
 
 **English version**
 
+## 0.11.0
+- IPTV Channel Editor plugins with the new search entry (`vod_search`): the item passes the card's title, original title and year to the plugin, and the plugin runs the search itself. Such a plugin can look for both titles and open the title page right away when it finds just one, if it supports that. Plugins without the entry work as before. Any Dune plugin that declares the entry gets an item, even one not made with IPTV Channel Editor. "Check" shows which items use the entry.
+- README: a section for plugin developers — how to declare the entry and what the plugin receives.
+
 ## 0.10.1
 - Fixed: IPTV Channel Editor plugins with a dot or a hyphen in their name (for example iEdem/iLook TV — `iedem.tv`) did not show up in the "Play..." menu.
 - Fixed: IPTV Channel Editor plugins with movies (VOD) turned off (`vod_engine` `none`/`NONE`) no longer get an item; before, the item showed up but did not work.
@@ -60,6 +64,10 @@
 ---
 
 **Russian version**
+
+## 0.11.0
+- Плагины IPTV Channel Editor с новым входом для поиска (`vod_search`): пункт передаёт плагину название карточки, оригинальное название и год, а поиск плагин запускает сам. Такой плагин может искать по обоим названиям и, если нашёлся один фильм, сразу открыть его карточку — если он это умеет. Плагины без этого входа работают как раньше. Пункт получает любой плагин Дюны, объявивший этот вход, даже не из IPTV Channel Editor. «Проверка» показывает, какие пункты идут через него.
+- README: раздел для разработчиков плагинов — как объявить вход и что придёт в плагин.
 
 ## 0.10.1
 - Исправлено: плагины IPTV Channel Editor с точкой или дефисом в имени (например, iEdem/iLook TV — `iedem.tv`) не появлялись в меню «Смотреть…».
