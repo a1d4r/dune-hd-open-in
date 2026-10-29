@@ -931,18 +931,28 @@ rm -f "$plugins/novodlist/screens_vod/starnet_vod_list_screen.php"
 build nostarnetfile
 rm -f "$plugins/nostarnetfile/starnet_plugin.php"
 mkdir "$plugins/nostarnetfile/starnet_plugin.php"
-for b in 'mir kino' mir.kino mir-kino 'мир' "$(printf 'n%.0s' $(seq 1 41))"; do
+# "None" in any case is VOD off.
+build novodlow
+sed 's/"Json"/"none"/' "$fx/iptvce_mirkino/config.json" >"$plugins/novodlow/config.json"
+build novodup
+sed 's/"Json"/"NONE"/' "$fx/iptvce_mirkino/config.json" >"$plugins/novodup/config.json"
+for b in 'mir kino' a..b .x -x 'мир' "$(printf 'n%.0s' $(seq 1 41))"; do
     build "$b"
 done
-build "$(printf 'n%.0s' $(seq 1 40))"
+# Dots and hyphens inside a name: builds (the author's iedem.tv and others).
+for b in iedem.tv fox-fun.tv viplime.fun.tv "$(printf 'n%.0s' $(seq 1 40))"; do
+    build "$b"
+done
 : >"$plugins/notadir"
 run sync.sh
 check "sync not builds, unsafe names: exit 0" rc_is 0
 # shellcheck disable=SC2086 # one word per id
-check "sync not builds, unsafe names: only mirkino and the 40-character name" \
-    shown $all iptvce_mirkino "iptvce_$(printf 'n%.0s' $(seq 1 40))"
-for b in novod noengine noconfig nostarnet novodlist nostarnetfile 'mir kino' mir.kino mir-kino 'мир' \
-    "$(printf 'n%.0s' $(seq 1 41))" "$(printf 'n%.0s' $(seq 1 40))" notadir; do
+check "sync not builds, unsafe names: only mirkino, names with . and -, the 40-character name" \
+    shown $all iptvce_mirkino iptvce_iedem.tv iptvce_fox-fun.tv iptvce_viplime.fun.tv \
+    "iptvce_$(printf 'n%.0s' $(seq 1 40))"
+check "sync build iedem.tv: item JSON, icon of the build" build_item_is iedem.tv 'Mir Kino' img/logo_mirkino.png
+for b in novod noengine noconfig nostarnet novodlist nostarnetfile novodlow novodup 'mir kino' a..b .x -x 'мир' \
+    "$(printf 'n%.0s' $(seq 1 41))" iedem.tv fox-fun.tv viplime.fun.tv "$(printf 'n%.0s' $(seq 1 40))" notadir; do
     rm -rf "${plugins:?}/$b"
 done
 
@@ -1635,6 +1645,17 @@ rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
 run sync.sh
 diag english brief
 check "diag builds gone: 16 lines" test "$(wc -l <"$o" | tr -d ' ')" = 16
+# A name with a dot: a build like the others.
+build iedem.tv 'iLook TV'
+run sync.sh
+diag english brief
+check "diag brief build with a dot in its name" sh -c \
+    '[ "$(wc -l <"$1" | tr -d " ")" = 17 ] && [ "$(sed -n 17p "$1")" = "iLook TV — OK (through the Dune plugin iedem.tv)" ]' _ "$o"
+diag
+check "diag build with a dot: installed" in_item "iLook TV" "  installed: yes (iedem.tv)"
+check "diag build with a dot: menu file ours" in_item "iLook TV" "  menu item: yes, plugin play_in_apps"
+rm -rf "${plugins:?}/iedem.tv"
+run sync.sh
 
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
 cat >"$work/fw_stub.php" <<'EOF'
@@ -2225,15 +2246,34 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     rm -f "$plugins/mirkino/screens_vod/starnet_vod_list_screen.php"
     ic_msg "$work/ui.json" "no VOD list screen" 'The Mir Kino plugin is not installed'
     build mirkino
-    mkdir -p "$plugins/mir.kino" "$plugins/mir kino"
-    cp -R "$fx/iptvce_mirkino/." "$plugins/mir.kino/"
-    for h in iptvce_mir.kino 'iptvce_mir kino' iptvce_../mirkino 'iptvce_mirkino ' "iptvce_$(printf 'n%.0s' $(seq 1 41))"; do
+    for v in none NONE; do
+        sed "s/\"Json\"/\"$v\"/" "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
+        ic_movie '{"title":"Дюна"}'
+        ic_msg "$work/ui.json" "VOD off: $v" 'The Mir Kino plugin is not installed'
+    done
+    build mirkino
+    # Dots and hyphens inside a name: a build, opened by its folder name.
+    build iedem.tv 'iLook TV'
+    ic_movie '{"title":"Дюна"}' iptvce_iedem.tv
+    handler "$work/ui.json" "iptvce name with a dot" "$(ic_search_json iedem.tv 'iLook TV' 'Дюна')"
+    check "main.php iptvce name with a dot: logged" grep -qx 'play_in_apps: iptvce iedem.tv search: Дюна' "$o.err"
+    build fox-fun.tv
+    ic_movie '{"title":"Дюна"}' iptvce_fox-fun.tv
+    handler "$work/ui.json" "iptvce name with a hyphen" "$(ic_search_json fox-fun.tv 'Mir Kino' 'Дюна')"
+    rm -rf "${plugins:?}/iedem.tv" "${plugins:?}/fox-fun.tv"
+    # Unsafe names, also of a folder that is a build: not opened.
+    mkdir -p "$plugins/mir kino"
+    build a..b
+    build .x
+    build -x
+    for h in 'iptvce_mir kino' iptvce_../mirkino 'iptvce_mirkino ' "iptvce_$(printf 'n%.0s' $(seq 1 41))" \
+        iptvce_a..b iptvce_.x iptvce_-x; do
         ic_movie '{"title":"Дюна"}' "$h"
         name=${h#iptvce_}
         shown_name=$(printf '%s' "$name" | cut -c 1-40 | sed 's/[^A-Za-z0-9_]/?/g')
         ic_msg "$work/ui.json" "handler_id '$h'" "The $shown_name plugin is not installed"
     done
-    rm -rf "${plugins:?}/mir.kino" "${plugins:?}/mir kino"
+    rm -rf "${plugins:?}/mir kino" "${plugins:?}/a..b" "${plugins:?}/.x" "${plugins:?}/-x"
     # No name: not an item id, not our call.
     ic_movie '{"title":"Дюна"}' iptvce_
     handler "$work/ui.json" "iptvce handler_id 'iptvce_'" none
@@ -2524,15 +2564,20 @@ EOF
     build zeta "$(printf 'bad \377')" 'plugin_file://img/logo_mirkino.png'
     build novod
     sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/novod/config.json"
-    printf 'iptvce_mirkino\nnuvio\niptvce_gone\n' >"$data/hidden"
+    build iedem.tv 'iLook TV'
+    build a..b
+    printf 'iptvce_mirkino\nnuvio\niptvce_gone\niptvce_iedem.tv\niptvce_a..b\n' >"$data/hidden"
     press items
     check "items builds: exit 0" rc_is 0
     check "items builds: stderr has only own log lines" only_own_log
     check "items builds: after the fixed items, captions, icons" items_builds_are \
+        "iptvce_iedem.tv=iLook TV=$plugins/iedem.tv/img/logo_mirkino.png" \
         'iptvce_kino=Кино & "Мир"=' "iptvce_mirkino=Mir Kino=$plugins/mirkino/img/logo_mirkino.png" \
         "iptvce_zeta=zeta=$plugins/zeta/img/logo_mirkino.png"
-    check "items builds: choice file, fixed items then builds" file_is "$lcfg" "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_mirkino)"
-    rm -rf "${plugins:?}/novod" "${plugins:?}/zeta" "${plugins:?}/mirkino" "${plugins:?}/kino"
+    check "items builds: choice file, fixed items then builds" file_is "$lcfg" \
+        "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_iedem.tv -iptvce_mirkino)"
+    rm -rf "${plugins:?}/novod" "${plugins:?}/zeta" "${plugins:?}/mirkino" "${plugins:?}/kino" \
+        "${plugins:?}/iedem.tv" "${plugins:?}/a..b"
 
     # Parity: bin/iptvce_builds.sh (sync.sh) and main.php (items dialog) find
     # the same builds, with the same captions and icons.
@@ -2552,6 +2597,16 @@ EOF
     printf '{\n  "vod_engine":\n  "Json"\n}\n' >"$plugins/vodnl/config.json"
     build vodnl2
     printf '{\n  "vod_engine": "Js\non"\n}\n' >"$plugins/vodnl2/config.json"
+    build vodlow
+    sed 's/"Json"/"none"/' "$fx/iptvce_mirkino/config.json" >"$plugins/vodlow/config.json"
+    build vodup
+    sed 's/"Json"/"NONE"/' "$fx/iptvce_mirkino/config.json" >"$plugins/vodup/config.json"
+    build vodmixed
+    sed 's/"Json"/"nOnE"/' "$fx/iptvce_mirkino/config.json" >"$plugins/vodmixed/config.json"
+    build iedem.tv 'iLook TV'
+    build fox-fun.tv
+    build a..b
+    build -x
     rm -f "$data/hidden"
     run sync.sh
     check "parity: sync exit 0" rc_is 0
@@ -2586,6 +2641,8 @@ EOF
     }
     check "parity: builds, captions and icons the same in sync.sh and main.php" parity_is \
         'iptvce_badutf=badutf=img/logo_mirkino.png' \
+        'iptvce_fox-fun.tv=Mir Kino=img/logo_mirkino.png' \
+        'iptvce_iedem.tv=iLook TV=img/logo_mirkino.png' \
         "iptvce_long=$(printf 'Ж%.0s' $(seq 1 39))Ю=img/logo_mirkino.png" \
         'iptvce_lt=bMir/b Kino=img/logo_mirkino.png' \
         'iptvce_ltonly=ltonly=img/logo_mirkino.png' \
@@ -2595,7 +2652,8 @@ EOF
         'iptvce_multiline=Mir Kino=img/logo_mirkino.png' \
         'iptvce_two=First=img/logo_mirkino.png' \
         'iptvce_twoicon=Two icons='
-    for b in mirkino two twoicon lt ltonly ltpct ltspace multiline long badutf vodnl vodnl2; do
+    for b in mirkino two twoicon lt ltonly ltpct ltspace multiline long badutf vodnl vodnl2 vodlow vodup vodmixed \
+        iedem.tv fox-fun.tv a..b -x; do
         rm -rf "${plugins:?}/$b"
     done
     run sync.sh
@@ -2672,18 +2730,21 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     # now stays hidden; garbage ids are dropped.
     build mirkino
     build kino
-    printf 'iptvce_gone\nnuvio\niptvce_kino\n' >"$data/hidden"
-    printf '%s\n' -iptvce_mirkino +iptvce_kino -iptvce_nosuch '-iptvce_../x' '-iptvce_mir kino' -IPTVCE_KINO -num >"$lcfg"
+    build iedem.tv
+    build a..b
+    printf 'iptvce_gone\nnuvio\niptvce_kino\niptvce_a..b\n' >"$data/hidden"
+    printf '%s\n' -iptvce_mirkino +iptvce_kino -iptvce_nosuch '-iptvce_../x' '-iptvce_mir kino' -IPTVCE_KINO -num \
+        -iptvce_iedem.tv -iptvce_a..b >"$lcfg"
     apply '"1"' '"play_in_apps"' builds
-    check "list_apply builds: hidden" hidden_is "$(printf '%s\n' num iptvce_gone iptvce_mirkino)"
+    check "list_apply builds: hidden" hidden_is "$(printf '%s\n' num iptvce_gone iptvce_iedem.tv iptvce_mirkino)"
     # shellcheck disable=SC2046 # one word per id
     check "list_apply builds: sync" shown $(echo "$all" | sed 's/^num //') iptvce_kino
     : >"$lcfg"
     apply '"1"' '"play_in_apps"' 'builds, empty file'
     check "list_apply builds, empty file: the gone build stays hidden" hidden_is iptvce_gone
     # shellcheck disable=SC2086 # one word per id
-    check "list_apply builds, empty file: all shown" shown $all iptvce_kino iptvce_mirkino
-    rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
+    check "list_apply builds, empty file: all shown" shown $all iptvce_iedem.tv iptvce_kino iptvce_mirkino
+    rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino" "${plugins:?}/iedem.tv" "${plugins:?}/a..b"
     rm -f "$data/hidden" "$lcfg"
     run sync.sh
 
@@ -2996,7 +3057,10 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     printf 'SEASONHIT_SUPPLIER_MARK\n' >"$cgi_tmp/run/seasonhit__supplier.log"
     printf 'OTHER_SUPPLIER_MARK\n' >"$cgi_tmp/run/youtube__supplier.log"
     printf 'IPTVCE_SUPPLIER_MARK\n' >"$cgi_tmp/run/iptvce_mirkino__supplier.log"
-    printf 'IPTVCE_BAD_NAME_MARK\n' >"$cgi_tmp/run/iptvce_mir.kino__supplier.log"
+    printf 'IPTVCE_DOT_MARK\n' >"$cgi_tmp/run/iptvce_iedem.tv__supplier.log"
+    printf 'IPTVCE_BAD_NAME_MARK\n' >"$cgi_tmp/run/iptvce_a..b__supplier.log"
+    printf 'IPTVCE_BAD_NAME_MARK\n' >"$cgi_tmp/run/iptvce_.x__supplier.log"
+    printf 'IPTVCE_BAD_NAME_MARK\n' >"$cgi_tmp/run/iptvce_mir kino__supplier.log"
     printf 'PIA_LOG_MARK\n' >"$cgi_tmp/run/play_in_apps.log"
     printf 'SHELL_EXT_MARK\n' >"$cgi_tmp/run/shell_ext.log"
     printf 'ASYNC_MARK\n' >"$cgi_tmp/plugins/shell_ext/async_worker.log"
@@ -3024,9 +3088,9 @@ EOF
     check "cgi download: diag report whole" sh -c 'grep -qx "NUM: OK" "$1" && grep -qx "FreeZona: OK" "$1"' _ "$o.body"
     check "cgi download: shell.log tail only" sh -c '! grep -q SHELL_LOG_FIRST_LINE "$1"' _ "$o.body"
     check "cgi download: other suppliers' logs left out" sh -c '! grep -q OTHER_SUPPLIER_MARK "$1"' _ "$o.body"
-    check "cgi download: a build's supplier log after the fixed ones" sh -c \
-        'grep -q IPTVCE_SUPPLIER_MARK "$1" && [ "$(grep -n -e SEASONHIT_SUPPLIER_MARK -e IPTVCE_SUPPLIER_MARK -e PIA_LOG_MARK "$1" | cut -d: -f2 | tr "\n" " ")" = "SEASONHIT_SUPPLIER_MARK IPTVCE_SUPPLIER_MARK PIA_LOG_MARK " ]' _ "$o.body"
-    check "cgi download: a log with a bad build name left out" sh -c '! grep -q IPTVCE_BAD_NAME_MARK "$1"' _ "$o.body"
+    check "cgi download: builds' supplier logs after the fixed ones, a name with a dot too" sh -c \
+        'grep -q IPTVCE_SUPPLIER_MARK "$1" && [ "$(grep -n -e SEASONHIT_SUPPLIER_MARK -e IPTVCE_DOT_MARK -e IPTVCE_SUPPLIER_MARK -e PIA_LOG_MARK "$1" | cut -d: -f2 | tr "\n" " ")" = "SEASONHIT_SUPPLIER_MARK IPTVCE_DOT_MARK IPTVCE_SUPPLIER_MARK PIA_LOG_MARK " ]' _ "$o.body"
+    check "cgi download: logs with bad build names left out" sh -c '! grep -q IPTVCE_BAD_NAME_MARK "$1"' _ "$o.body"
     check "cgi download: no PHP errors" quiet
     req GET "t=$tok&dl=1"
     check "cgi download again with the same token: whole" sh -c 'tail -n 1 "$1" | grep -qx END' _ "$o.body"

@@ -215,9 +215,12 @@ function lp_download()
     foreach ($GLOBALS['lp_ids'] as $id)
         lp_file("$tmp/run/{$id}__supplier.log");
     // The items of IPTV Channel Editor builds (iptvce_<name>), if they ran.
+    // The name pattern as in bin/iptvce_builds.sh and main.php.
     foreach ((array) glob("$tmp/run/iptvce_*__supplier.log") as $p)
     {
-        if (is_string($p) && preg_match('/^iptvce_[A-Za-z0-9_]{1,40}__supplier\.log$/D', basename($p)))
+        if (is_string($p) &&
+            preg_match('/^iptvce_[A-Za-z0-9_][A-Za-z0-9_.-]{0,39}__supplier\.log$/D', basename($p)) &&
+            strpos(basename($p), '..') === false)
             lp_file($p);
     }
     lp_file("$tmp/run/play_in_apps.log");

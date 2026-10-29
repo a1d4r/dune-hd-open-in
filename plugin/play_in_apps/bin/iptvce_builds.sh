@@ -17,19 +17,20 @@ iptvce_builds() {
 }
 
 # iptvce_is_build <plugins dir> <name>: a safe folder name, the builder's
-# files and VOD on ("vod_engine" in config.json, other than "None").
-# The name pattern has two more copies: iptvce_valid_name in main.php and the
-# log name in cgi/logs.php.
+# files and VOD on ("vod_engine" in config.json, other than "None" in any
+# case). A safe name: 1-40 of [A-Za-z0-9_.-], not starting with . or -, no
+# "..". The name pattern has two more copies: iptvce_valid_name in main.php
+# and the log name in cgi/logs.php.
 iptvce_is_build() {
     case "$2" in
-        '' | *[!A-Za-z0-9_]*) return 1 ;;
+        '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
     esac
     [ "${#2}" -le 40 ] || return 1
     [ -f "$1/$2/starnet_plugin.php" ] && [ -f "$1/$2/screens_vod/starnet_vod_list_screen.php" ] &&
         [ -f "$1/$2/config.json" ] || return 1
     e=$(grep -o '"vod_engine": *"[^"]*"' "$1/$2/config.json" 2>/dev/null | head -n 1)
     case "$e" in
-        '' | *'"None"') return 1 ;;
+        '' | *'"'[Nn][Oo][Nn][Ee]'"') return 1 ;;
     esac
 }
 

@@ -181,10 +181,12 @@ function bazinga_play($user_input)
 // the title. The same checks as bin/iptvce_builds.sh; everything read from a
 // build is untrusted.
 
-// The same pattern as in bin/iptvce_builds.sh and cgi/logs.php.
+// 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
+// pattern as in bin/iptvce_builds.sh and cgi/logs.php.
 function iptvce_valid_name($name)
 {
-    return is_string($name) && preg_match('/^[A-Za-z0-9_]{1,40}$/D', $name) === 1;
+    return is_string($name) && preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,39}$/D', $name) === 1 &&
+        strpos($name, '..') === false;
 }
 
 // The <name> of an item id iptvce_<name>, not checked; '' if $id is not one.
@@ -193,7 +195,8 @@ function iptvce_name_of($id)
     return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
-// The builder's files and VOD on ("vod_engine" in config.json, other than "None").
+// The builder's files and VOD on ("vod_engine" in config.json, other than
+// "None" in any case).
 function iptvce_is_build($name)
 {
     if (!iptvce_valid_name($name))
@@ -203,7 +206,8 @@ function iptvce_is_build($name)
         !is_file("$d/config.json"))
         return false;
     $text = file_get_contents("$d/config.json");
-    return is_string($text) && preg_match('/"vod_engine": *"([^"\n]*)"/', $text, $m) === 1 && $m[1] !== 'None';
+    return is_string($text) && preg_match('/"vod_engine": *"([^"\n]*)"/', $text, $m) === 1 &&
+        strcasecmp($m[1], 'None') !== 0;
 }
 
 // array(caption, icon file or '') of a build, from its dune_plugin.xml: the
