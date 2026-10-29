@@ -166,12 +166,16 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     v=
 
     if [ -z "$pkg" ]; then
-        # The Dune plugin: its folder, its name; an unknown id: none, not installed.
-        dplug='' dname=''
+        # The Dune plugin: its folder, its name; an unknown id: none, not
+        # installed. vs: "<handler_id> <control_id>" of a build's vod_search.
+        dplug='' dname='' vs=''
         case $id in
             filmix_api) dplug=Filmix_api dname=Filmix_API ;;
             bazinga) dplug=Bazinga3 dname=Bazinga3 ;;
-            iptvce_*) dplug=${id#iptvce_} dname=${id#iptvce_} ;;
+            iptvce_*)
+                dplug=${id#iptvce_} dname=${id#iptvce_}
+                vs=$(iptvce_vod_search "$plugins/$dplug")
+                ;;
         esac
         installed=0
         [ -n "$dplug" ] && [ -f "$plugins/$dplug/dune_plugin.xml" ] && installed=1
@@ -236,7 +240,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
         fi
     else
         res=yes
-        add "$(t diag_launch): $(t diag_v_via_plugin) $dname, $(t diag_play_action)"
+        add "$(t diag_launch): $(t diag_v_via_plugin) $dname${vs:+, vod_search ${vs% *}/${vs#* }}, $(t diag_play_action)"
     fi
 
     case $id in
@@ -276,7 +280,7 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     if [ "$brief" = 1 ]; then
         if [ -z "$mark" ]; then
             verdict=$(t diag_v_ok)
-            [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_plugin) $dname)"
+            [ -n "$pkg" ] || verdict="$verdict ($(t diag_v_via_plugin) $dname${vs:+, vod_search})"
         fi
         # A version over 20 bytes: 19 characters and "…". Bytes past ASCII
         # become "?" first, so no UTF-8 character is cut in two.

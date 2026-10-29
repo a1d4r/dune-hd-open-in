@@ -1,7 +1,8 @@
 # Dune plugins made by IPTV Channel Editor (the builder by sharky72) that
-# have VOD: each is an item iptvce_<name> of the "Play..." menu. Shared by
-# sync.sh and diag.sh; only function definitions. main.php has the same checks
-# (iptvce_is_build, iptvce_info).
+# have VOD, and any plugin that declares the vod_search action (the builder's
+# entry for other plugins): each is an item iptvce_<name> of the "Play..."
+# menu. Shared by sync.sh and diag.sh; only function definitions. main.php has
+# the same checks (iptvce_is_build, iptvce_vod_search, iptvce_info).
 # Everything read from a build is untrusted: only printed, never run.
 # shellcheck shell=sh
 
@@ -16,20 +17,118 @@ iptvce_builds() {
     done
 }
 
-# iptvce_is_build <plugins dir> <name>: a safe folder name, the builder's
-# files and VOD on ("vod_engine" in config.json, other than "None" in any
-# case). A safe name: 1-40 of [A-Za-z0-9_.-], not starting with . or -, no
-# "..". The name pattern has one more copy: iptvce_valid_name in main.php.
+# iptvce_is_build <plugins dir> <name>: a safe folder name and either the
+# vod_search action (iptvce_vod_search) or the builder's files and VOD on
+# ("vod_engine" in config.json, other than "None" in any case). A safe name:
+# 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern
+# has one more copy: iptvce_valid_name in main.php.
 iptvce_is_build() {
     case "$2" in
         '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
     esac
     [ "${#2}" -le 40 ] || return 1
+    iptvce_vod_search "$1/$2" >/dev/null && return 0
     [ -f "$1/$2/starnet_plugin.php" ] && [ -f "$1/$2/screens_vod/starnet_vod_list_screen.php" ] &&
         [ -f "$1/$2/config.json" ] || return 1
     e=$(grep -o '"vod_engine": *"[^"]*"' "$1/$2/config.json" 2>/dev/null | head -n 1)
     case "$e" in
         '' | *'"'[Nn][Oo][Nn][Ee]'"') return 1 ;;
+    esac
+}
+
+# iptvce_vod_search <build dir>: "<handler_id> <control_id>" of the
+# plugin's search entry for other plugins, declared in its dune_plugin.xml:
+#   <public_actions><action id="vod_search">
+#     <type>plugin_handle_user_input</type>
+#     <params><handler_id>H</handler_id><control_id>C</control_id></params>
+#   </action></public_actions>
+# Only the first action with id vod_search (" or ') inside a <public_actions>
+# counts; its first <type> must be plugin_handle_user_input, its first
+# <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
+# not. The text is read as one line, comments dropped, spaces around < > =
+# and after </ removed. Variables are prefixed: callers keep theirs. The same
+# parse: iptvce_vod_search in main.php.
+iptvce_vod_search() {
+    [ -f "$1/dune_plugin.xml" ] || return 1
+    ivs_x=$(LC_ALL=C tr '\n\r\t' '   ' <"$1/dune_plugin.xml" 2>/dev/null)
+    ivs_o='<!--'
+    ivs_e='-->'
+    ivs_s=
+    while :; do
+        case "$ivs_x" in
+            *"$ivs_o"*)
+                ivs_p=${ivs_x%%"$ivs_o"*}
+                ivs_s="$ivs_s$ivs_p "
+                ivs_x=${ivs_x#*"$ivs_o"}
+                case "$ivs_x" in
+                    *"$ivs_e"*) ivs_x=${ivs_x#*"$ivs_e"} ;;
+                    *) ivs_x= ;;
+                esac
+                ;;
+            *)
+                ivs_s="$ivs_s$ivs_x"
+                break
+                ;;
+        esac
+    done
+    ivs_s=$(printf '%s' "$ivs_s" | LC_ALL=C sed 's/  */ /g; s/ *\([<>=]\) */\1/g; s:</ *:</:g')
+    # The <public_actions> blocks, each followed by a space.
+    ivs_o='<public_actions>'
+    ivs_e='</public_actions>'
+    ivs_a=
+    while :; do
+        case "$ivs_s" in
+            *"$ivs_o"*"$ivs_e"*) ;;
+            *) break ;;
+        esac
+        ivs_s=${ivs_s#*"$ivs_o"}
+        ivs_p=${ivs_s%%"$ivs_e"*}
+        ivs_a="$ivs_a$ivs_p "
+        ivs_s=${ivs_s#*"$ivs_e"}
+    done
+    # <action attributes>body</action>, in order.
+    ivs_o='<action '
+    ivs_e='</action>'
+    while :; do
+        case "$ivs_a" in
+            *"$ivs_o"*"$ivs_e"*) ;;
+            *) return 1 ;;
+        esac
+        ivs_a=${ivs_a#*"$ivs_o"}
+        ivs_t=${ivs_a%%'>'*}
+        ivs_b=${ivs_a#*'>'}
+        case "$ivs_b" in
+            *"$ivs_e"*) ;;
+            *) continue ;;
+        esac
+        ivs_a=${ivs_b#*"$ivs_e"}
+        case " $ivs_t " in
+            *' id="vod_search" '* | *" id='vod_search' "*) ;;
+            *) continue ;;
+        esac
+        ivs_b=${ivs_b%%"$ivs_e"*}
+        [ "$(iptvce_tag type "$ivs_b")" = plugin_handle_user_input ] || return 1
+        ivs_h=$(iptvce_tag handler_id "$ivs_b")
+        ivs_c=$(iptvce_tag control_id "$ivs_b")
+        for ivs_v in "$ivs_h" "$ivs_c"; do
+            case "$ivs_v" in
+                '' | *[!A-Za-z0-9_.-]*) return 1 ;;
+            esac
+            [ "${#ivs_v}" -le 64 ] || return 1
+        done
+        printf '%s %s\n' "$ivs_h" "$ivs_c"
+        return 0
+    done
+}
+
+# iptvce_tag <tag> <text>: what is between the first <tag> and the </tag>
+# after it; nothing if there are none.
+iptvce_tag() {
+    case "$2" in
+        *"<$1>"*"</$1>"*)
+            ivs_r=${2#*"<$1>"}
+            printf '%s' "${ivs_r%%"</$1>"*}"
+            ;;
     esac
 }
 

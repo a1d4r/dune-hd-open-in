@@ -176,10 +176,11 @@ function bazinga_play($user_input)
 }
 
 // --- IPTV Channel Editor builds: Dune plugins made by its builder that have
-// VOD. bin/sync.sh shows an item iptvce_<name> for each, with play_action
-// handler_id iptvce_<name>; the handler opens the build's search results for
-// the title. The same checks as bin/iptvce_builds.sh; everything read from a
-// build is untrusted.
+// VOD, and any plugin that declares the vod_search action. bin/sync.sh shows
+// an item iptvce_<name> for each, with play_action handler_id iptvce_<name>;
+// the handler calls the plugin's vod_search with the titles and the year, or,
+// without one, opens the build's search results for the title. The same
+// checks as bin/iptvce_builds.sh; everything read from a build is untrusted.
 
 // 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
 // pattern as in bin/iptvce_builds.sh.
@@ -195,12 +196,48 @@ function iptvce_name_of($id)
     return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
-// The builder's files and VOD on ("vod_engine" in config.json, other than
-// "None" in any case).
+// array(handler_id, control_id) of the plugin's search entry for other
+// plugins, the vod_search action of its dune_plugin.xml; null if none. The
+// same parse as iptvce_vod_search in bin/iptvce_builds.sh: the first action
+// with id vod_search inside a <public_actions>, its first <type>
+// plugin_handle_user_input, its first <handler_id> and <control_id> 1-64 of
+// [A-Za-z0-9_.-].
+function iptvce_vod_search($name)
+{
+    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
+    $x = is_file($f) ? file_get_contents($f) : false;
+    if (!is_string($x))
+        return null;
+    $x = preg_replace('/<!--.*?(?:-->|\z)/s', ' ', strtr($x, "\n\r\t", '   '));
+    $x = preg_replace('#</ *#', '</', preg_replace('/ *([<>=]) */', '$1', preg_replace('/  +/', ' ', $x)));
+    preg_match_all('#<public_actions>(.*?)</public_actions>#s', $x, $blocks);
+    $a = '';
+    foreach ($blocks[1] as $b)
+        $a .= "$b ";
+    preg_match_all('#<action ([^>]*)>(.*?)</action>#s', $a, $acts, PREG_SET_ORDER);
+    foreach ($acts as $act)
+    {
+        if (!preg_match('/ id=("vod_search"|\'vod_search\') /', " {$act[1]} "))
+            continue;
+        $v = array();
+        foreach (array('type', 'handler_id', 'control_id') as $tag)
+            $v[] = preg_match("#<$tag>(.*?)</$tag>#s", $act[2], $m) ? $m[1] : '';
+        if ($v[0] !== 'plugin_handle_user_input' || !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[1]) ||
+            !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[2]))
+            return null;
+        return array($v[1], $v[2]);
+    }
+    return null;
+}
+
+// The vod_search action, or the builder's files and VOD on ("vod_engine" in
+// config.json, other than "None" in any case).
 function iptvce_is_build($name)
 {
     if (!iptvce_valid_name($name))
         return false;
+    if (!is_null(iptvce_vod_search($name)))
+        return true;
     $d = pia_plugins_dir() . "/$name";
     if (!is_file("$d/starnet_plugin.php") || !is_file("$d/screens_vod/starnet_vod_list_screen.php") ||
         !is_file("$d/config.json"))
@@ -268,6 +305,28 @@ function iptvce_play($user_input, $name)
     $info = iptvce_info($name);
 
     $movie = pia_movie($user_input);
+    $vs = iptvce_vod_search($name);
+    if (!is_null($vs))
+    {
+        // The plugin's own search entry. params: strings only, the shell
+        // fails on the whole reply if one is an array.
+        $search = array();
+        foreach (array('title' => 'title', 'original_title' => 'native_title', 'year' => 'year') as $k => $f)
+        {
+            $v = pia_movie_field($movie, $f);
+            if ($v !== '')
+                $search[$k] = $v;
+        }
+        if (!isset($search['title']) && !isset($search['original_title']))
+            return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $info[0]));
+        $json = json_encode($search);
+        pia_log("iptvce $name vod_search: $json");
+        return array(
+            'handler_string_id' => PLUGIN_HANDLE_USER_INPUT_ACTION_ID,
+            'plugin_name' => $name,
+            'params' => array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json));
+    }
+
     $q = pia_movie_field($movie, 'title');
     if ($q === '')
         $q = pia_movie_field($movie, 'native_title');

@@ -956,6 +956,138 @@ for b in novod noengine noconfig nostarnet novodlist nostarnetfile novodlow novo
     rm -rf "${plugins:?}/$b"
 done
 
+# The vod_search action (the builder's entry for other plugins) in
+# <public_actions>: a build without the builder's files too.
+vs_id='id="vod_search"'
+# vs_xml [<handler_id> [<control_id> [<id attribute> [<type>]]]]: a
+# <public_actions> with this vod_search action, on one line.
+vs_xml() {
+    printf '<public_actions><action %s><type>%s</type><params><handler_id>%s</handler_id><control_id>%s</control_id></params></action></public_actions>' \
+        "${3-$vs_id}" "${4-plugin_handle_user_input}" "${1-entry_handler}" "${2-external_search}"
+}
+VS=$(vs_xml)
+# vs_build <name> <text> [files]: plugins/<name> with the Mir Kino fixture's
+# dune_plugin.xml, <text> added before </dune_plugin>, and its icon only;
+# "files": all of the fixture (the builder's files, VOD on).
+vs_build() {
+    rm -rf "${plugins:?}/$1"
+    if [ "${3-}" = files ]; then
+        cp -R "$fx/iptvce_mirkino" "$plugins/$1"
+    else
+        mkdir -p "$plugins/$1/img"
+        cp "$fx/iptvce_mirkino/img/logo_mirkino.png" "$plugins/$1/img/"
+    fi
+    printf '%s' "$2" >"$work/vs_text"
+    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/vs_text" <<'EOF'
+import sys
+x = open(sys.argv[1], "rb").read()
+t = open(sys.argv[3], "rb").read()
+open(sys.argv[2], "wb").write(x.replace(b"</dune_plugin>", t + b"\n</dune_plugin>"))
+EOF
+}
+vs_64=$(printf 'a%.0s' $(seq 1 64))
+# vs_cases: the builds below; vs_want: what each is, "<handler_id>
+# <control_id>" (vod_search), "old" (the builder's files only) or "none".
+vs_cases() {
+    vs_build vs_only "$VS"
+    vs_build vs_files "$VS" files
+    vs_build vs_space "$(vs_xml 'entry handler')"
+    vs_build vs_dollar "$(vs_xml 'entry$handler')" files
+    vs_build vs_65 "$(vs_xml "${vs_64}a")"
+    vs_build vs_64 "$(vs_xml "$vs_64")"
+    vs_build vs_type "$(vs_xml entry_handler external_search "$vs_id" plugin_open_folder)"
+    vs_build vs_typefiles "$(vs_xml entry_handler external_search "$vs_id" plugin_open_folder)" files
+    vs_build vs_second "<public_actions><action id=\"vod_play\"><type>plugin_handle_user_input</type><params><handler_id>other</handler_id><control_id>play</control_id></params></action><action $vs_id><type>plugin_handle_user_input</type><params><handler_id>h2</handler_id><control_id>c2</control_id></params></action></public_actions>"
+    vs_build vs_squote "$(vs_xml entry_handler external_search "id='vod_search'")"
+    vs_build vs_multi "$(printf '%s\n' \
+        "	<!-- not this one: $(vs_xml wrong wrong) -->" \
+        '	<public_actions>' \
+        '		<!-- the search, <action id="vod_search"> -->' \
+        '		<action  id = "vod_search" >' \
+        '			<type>plugin_handle_user_input</type>' \
+        '			<params>' \
+        '				<handler_id>entry_handler</handler_id>' \
+        '				<control_id>external_search</control_id>' \
+        '			</params>' \
+        '		</action >' \
+        '	</ public_actions>')"
+    vs_build vs_crlf "$(printf '<public_actions>\r\n<action id="vod_search">\r\n<type>plugin_handle_user_input</type>\r\n<handler_id>h</handler_id>\r\n<control_id>c</control_id>\r\n</action>\r\n</public_actions>\r')"
+    vs_build vs_outside "<actions><action $vs_id><type>plugin_handle_user_input</type><params><handler_id>entry_handler</handler_id><control_id>external_search</control_id></params></action></actions>"
+    vs_build vs_commented "<!-- $VS -->"
+    vs_build vs_unclosedcomment "<!-- $VS"
+    vs_build vs_noctl '<public_actions><action id="vod_search"><type>plugin_handle_user_input</type><params><handler_id>entry_handler</handler_id></params></action></public_actions>'
+    vs_build vs_emptyctl "$(vs_xml entry_handler '')"
+    vs_build vs_dotctl "$(vs_xml entry_handler a.b-c_9)"
+    vs_build vs_firstbad "<public_actions><action $vs_id><type>plugin_open_folder</type></action><action $vs_id><type>plugin_handle_user_input</type><handler_id>h</handler_id><control_id>c</control_id></action></public_actions>"
+    vs_build vs_unclosed "<public_actions><action $vs_id><type>plugin_handle_user_input</type><handler_id>h</handler_id><control_id>c</control_id></action>"
+    vs_build vs_otherid "$(vs_xml entry_handler external_search 'id="vod_search2"')"
+    vs_build vs_xid "$(vs_xml entry_handler external_search 'xid="vod_search"')"
+    vs_build vs_selfclose '<public_actions><action id="vod_search"/></public_actions>'
+    vs_build vs_attrs "$(vs_xml h c 'type="x" id="vod_search" n="1"')"
+    vs_build vs_twoblocks "<public_actions></public_actions>$(vs_xml h c)"
+    vs_build vs.dot-x "$VS"
+}
+vs_want="vs.dot-x=entry_handler external_search
+vs_64=$vs_64 external_search
+vs_65=none
+vs_attrs=h c
+vs_commented=none
+vs_crlf=h c
+vs_dollar=old
+vs_dotctl=entry_handler a.b-c_9
+vs_emptyctl=none
+vs_files=entry_handler external_search
+vs_firstbad=none
+vs_multi=entry_handler external_search
+vs_noctl=none
+vs_only=entry_handler external_search
+vs_otherid=none
+vs_outside=none
+vs_second=h2 c2
+vs_selfclose=none
+vs_space=none
+vs_squote=entry_handler external_search
+vs_twoblocks=h c
+vs_type=none
+vs_typefiles=old
+vs_unclosed=none
+vs_unclosedcomment=none
+vs_xid=none"
+# vs_rm: remove the builds of vs_cases.
+vs_rm() {
+    printf '%s\n' "$vs_want" | while IFS='=' read -r b _; do rm -rf "${plugins:?}/$b"; done
+}
+# vs_items: the item ids of the builds among them, in name order.
+vs_items() {
+    printf '%s\n' "$vs_want" | grep -v '=none$' | sed 's/=.*//; s/^/iptvce_/'
+}
+
+vs_cases
+run sync.sh
+check "sync vod_search: exit 0" rc_is 0
+# shellcheck disable=SC2046,SC2086 # one word per id
+check "sync vod_search: items of the plugins with it or with the builder's files" shown $all iptvce_mirkino $(vs_items)
+check "sync vod_search: item JSON as of a build, the plugin's caption and icon" \
+    build_item_is vs_only 'Mir Kino' img/logo_mirkino.png
+check "sync vod_search, a dot in the name: item JSON" build_item_is vs.dot-x 'Mir Kino' img/logo_mirkino.png
+# vs_sh_is: iptvce_vod_search of the shell under test (TEST_SH) gives vs_want
+# for every build ("old" and "none": no output, exit 1).
+vs_sh_is() {
+    printf '%s\n' "$vs_want" | while IFS='=' read -r b want; do
+        got=$("$sh_bin" -c '. "$1"; iptvce_vod_search "$2"; echo "rc=$?"' _ "$bin/iptvce_builds.sh" "$plugins/$b")
+        case "$want" in
+            old | none) want='rc=1' ;;
+            *) want=$(printf '%s\nrc=0' "$want") ;;
+        esac
+        if [ "$got" != "$want" ]; then
+            echo "$b: got '$got', want '$want'" >&2
+            return 1
+        fi
+    done
+}
+check "iptvce_vod_search: each case" vs_sh_is
+vs_rm
+
 # Hidden, removed, two builds; the copies in /tmp follow.
 build kino 'Кино'
 printf 'iptvce_mirkino\n' >"$data/hidden"
@@ -1655,6 +1787,23 @@ diag
 check "diag build with a dot: installed" in_item "iLook TV" "  installed: yes (iedem.tv)"
 check "diag build with a dot: menu file ours" in_item "iLook TV" "  menu item: yes, plugin play_in_apps"
 rm -rf "${plugins:?}/iedem.tv"
+# vod_search: the line says so, the full report names its handler.
+vs_build vs_only "$VS"
+build oldway 'Old Way'
+run sync.sh
+diag english brief
+check "diag brief vod_search build" sh -c \
+    '[ "$(wc -l <"$1" | tr -d " ")" = 18 ] && [ "$(sed -n 17,18p "$1")" = "$(printf "%s\n" \
+        "Old Way — OK (through the Dune plugin oldway)" "Mir Kino — OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
+diag russian brief
+check "diag brief russian vod_search build" grep -qxF "Mir Kino — ОК (через плагин vs_only, vod_search)" "$o"
+diag
+check "diag vod_search build: verdict" in_item "Mir Kino" "Mir Kino: OK"
+check "diag vod_search build: installed" in_item "Mir Kino" "  installed: yes (vs_only)"
+check "diag vod_search build: its handler" in_item "Mir Kino" \
+    "  launch: through the Dune plugin vs_only, vod_search entry_handler/external_search, not checked"
+check "diag build without vod_search: as before" in_item "Old Way" "  launch: through the Dune plugin oldway, not checked"
+rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway"
 run sync.sh
 
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
@@ -2286,6 +2435,81 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_msg "$work/ui.json" "no titles, Russian Dune" 'У этой карточки нет названия, Mir Kino не сможет её найти'
     rm -f "$cfg/settings.properties"
     rm -rf "${plugins:?}/mirkino"
+
+    # --- vod_search: the plugin's own search entry gets the titles and the
+    # year as one JSON string "search" (params hold strings only).
+    # vs_json <build> <handler_id> <control_id> <search>: the action.
+    vs_json() {
+        python3 -c 'import json, sys
+name, h, c, s = sys.argv[1:5]
+print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name": name,
+    "params": {"handler_id": h, "control_id": c, "search": s}}))' "$@"
+    }
+    # vs_enc <JSON>: as PHP's json_encode writes it: no spaces, non-ASCII as
+    # \u escapes, "/" as "\/", keys in this order.
+    vs_enc() {
+        python3 -c 'import json, sys
+print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\\/"))' "$1"
+    }
+    # vs_handler <movie_str JSON> <search, readable JSON> [desc]: vs_only
+    # answers with this exact search string.
+    vs_handler() {
+        ic_movie "$1" iptvce_vs_only
+        handler "$work/ui.json" "vod_search ${3-$1}" "$(vs_json vs_only entry_handler external_search "$(vs_enc "$2")")"
+    }
+    vs_cases
+    ic_input "$fx/play_action_movie.json" iptvce_vs_only
+    vs_soho=$(vs_enc '{"title":"Прошлой ночью в Сохо","original_title":"Last Night in Soho","year":"2021"}')
+    check "vs_enc: as PHP" test "$vs_soho" = \
+        '{"title":"\u041f\u0440\u043e\u0448\u043b\u043e\u0439 \u043d\u043e\u0447\u044c\u044e \u0432 \u0421\u043e\u0445\u043e","original_title":"Last Night in Soho","year":"2021"}'
+    handler "$work/ui.json" "vod_search: the device's input" "$(vs_json vs_only entry_handler external_search "$vs_soho")"
+    check "main.php vod_search: logged" grep -qxF "play_in_apps: iptvce vs_only vod_search: $vs_soho" "$o.err"
+    check "main.php vod_search: params are strings only" python3 -c 'import json, sys
+p = json.load(open(sys.argv[1]))["data"]["params"]
+sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
+    ic_input "$fx/play_action_series.json" iptvce_vs_only
+    ctx "$work/ui.json"
+    php_run "$work/ctx.json"
+    check "main.php vod_search: series" python3 -c 'import json, sys
+s = json.loads(json.load(open(sys.argv[1]))["data"]["params"]["search"])
+sys.exit(s.get("title") != "Дом Дракона")' "$o"
+    vs_handler '{"title":"Дюна","native_title":"","year":""}' '{"title":"Дюна"}' \
+        "empty native_title and year: no keys"
+    vs_handler '{"title":"","native_title":"Dune","year":"2021"}' '{"original_title":"Dune","year":"2021"}' \
+        "empty title: original_title only"
+    vs_handler '{"title":"  Дюна ","native_title":" Dune ","year":2021,"kp_id":"1"}' \
+        '{"title":"Дюна","original_title":"Dune","year":"2021"}' "trimmed, numeric year, no IDs"
+    # shellcheck disable=SC2016 # literal $(...) on purpose
+    vs_handler '{"title":"a \"b\" \\ /c $(id)","native_title":{"x":1}}' '{"title":"a \"b\" \\ \/c $(id)"}' \
+        "hostile title stays text, object native_title skipped"
+    if [ "$("$php_bin" -r 'echo PHP_MAJOR_VERSION;')" -lt 7 ]; then
+        vs_handler '{"title":"ab\ud800cd","native_title":"Good"}' '{"original_title":"Good"}' "lone surrogate title"
+    else
+        ic_movie '{"title":"ab\ud800cd","native_title":"Good"}' iptvce_vs_only
+        ic_msg "$work/ui.json" "vod_search lone surrogate title (PHP 7+)" "$ic_no_title"
+    fi
+    for raw in '{"title":" ","native_title":"","year":"2021"}' 'not json' ''; do
+        ic_movie "$raw" iptvce_vs_only
+        ic_msg "$work/ui.json" "vod_search no titles '$raw'" "$ic_no_title"
+    done
+    # Parity with bin/iptvce_builds.sh: each case of vs_cases is the same
+    # here — vod_search, the builder's search results ("old") or not a build.
+    check "parity: iptvce_vod_search of sh" vs_sh_is
+    printf '%s\n' "$vs_want" >"$work/vs_want"
+    while IFS='=' read -r b want; do
+        ic_movie '{"title":"Дюна"}' "iptvce_$b"
+        case "$want" in
+            old) handler "$work/ui.json" "parity $b: old way" "$(ic_search_json "$b" 'Mir Kino' 'Дюна')" ;;
+            none) ic_msg "$work/ui.json" "parity $b: not a build" 'The Mir Kino plugin is not installed' ;;
+            *) handler "$work/ui.json" "parity $b: vod_search $want" \
+                "$(vs_json "$b" "${want% *}" "${want#* }" "$(vs_enc '{"title":"Дюна"}')")" ;;
+        esac
+    done <"$work/vs_want"
+    vs_rm
+    # The plugin is gone, so the shell calls our own handler with its
+    # handler_id and control_id: no action, no error.
+    printf '%s\n' '{"handler_id":"entry_handler","control_id":"external_search","search":"{\"title\":\"x\"}","selected_media_url":"{}"}' >"$work/ui.json"
+    handler "$work/ui.json" "vod_search to a missing plugin comes back to us" none
 
     # Not our call: no action, no error.
     printf '%s\n' '{"handler_id":"other","movie_str":"{\"title\":\"x\"}"}' >"$work/ui.json"

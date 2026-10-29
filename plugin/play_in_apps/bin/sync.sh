@@ -6,8 +6,9 @@
 # /tmp/movie_suppliers/<id> (the menu rereads it for every card).
 # Runs from movie_suppliers_update.sh, on early_gui_start and from the screen
 # (main.php). Output is for running it by hand.
-# IPTV Channel Editor builds with VOD (iptvce_builds.sh) get an item each,
-# iptvce_<name>, after the fixed ones; their ids are not in dune_plugin.xml.
+# IPTV Channel Editor builds with VOD and plugins with the vod_search action
+# (iptvce_builds.sh) get an item each, iptvce_<name>, after the fixed ones;
+# their ids are not in dune_plugin.xml.
 
 name=play_in_apps
 
