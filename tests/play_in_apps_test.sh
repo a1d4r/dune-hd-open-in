@@ -839,17 +839,29 @@ run sync.sh
 check "params: the worker's file, exit 0" rc_is 0
 check "params: the worker's file replaced by a directory" test -d "$params"
 
-# Stand-ins: mkdir fails for the params directory only, mv always.
+# Stand-ins: mkdir fails for the params directory only; mv always, or only into
+# the menu; cp leaves half a file and fails.
 stub="$work/stub_bin"
-mkdir -p "$stub/mkdir_params" "$stub/mv"
+mkdir -p "$stub/mkdir_params" "$stub/mv" "$stub/mv_menu" "$stub/cp_cut"
 real_mkdir=$(command -v mkdir)
+real_mv=$(command -v mv)
 cat >"$stub/mkdir_params/mkdir" <<EOF
 #!/bin/sh
 case "\$*" in *movie_suppliers_params.txt*) exit 1 ;; esac
 exec "$real_mkdir" "\$@"
 EOF
 printf '#!/bin/sh\nexit 1\n' >"$stub/mv/mv"
-chmod +x "$stub/mkdir_params/mkdir" "$stub/mv/mv"
+cat >"$stub/mv_menu/mv" <<EOF
+#!/bin/sh
+case "\$*" in *"$menu/"*) exit 1 ;; esac
+exec "$real_mv" "\$@"
+EOF
+cat >"$stub/cp_cut/cp" <<'EOF'
+#!/bin/sh
+printf '{"cut' >"$3"
+exit 1
+EOF
+chmod +x "$stub/mkdir_params/mkdir" "$stub/mv/mv" "$stub/mv_menu/mv" "$stub/cp_cut/cp"
 
 rm -rf "$params" "$reg" "$menu"
 PATH="$stub/mkdir_params:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
@@ -904,15 +916,36 @@ rm -f "$flag"
 # --- sync: temp files of show(), two runs at once (on boot: early_gui_start
 # and the worker)
 no_temp() { [ -z "$(find "$reg" "$menu" -name '.*.tmp')" ]; }
+# no_menu_temp: nothing of show() next to the menu, no dot files in it (the
+# shell takes them for suppliers).
+no_menu_temp() {
+    [ -z "$(find "$PLAY_IN_APPS_TMP" -maxdepth 1 -name '.movie_suppliers.*')" ] &&
+        [ -z "$(find "$menu" -name '.*')" ]
+}
 rm -rf "$reg" "$menu"
 run sync.sh
 check "temp: none after a run" no_temp
+check "temp: none in or next to the menu after a run" no_menu_temp
+cp "$menu/num" "$work/menu_num"
 PATH="$stub/mv:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
 echo "$?" >"$o.rc"
 check "temp: mv fails, exit 1" rc_is 1
 check "temp: mv fails, none left" no_temp
-# Not the exit codes: cp of the same item at once may fail in one run ("File
-# exists"), the other one writes it.
+check "temp: mv fails, none in or next to the menu" no_menu_temp
+PATH="$stub/mv_menu:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
+echo "$?" >"$o.rc"
+check "temp: mv into the menu fails, exit 1" rc_is 1
+check "temp: mv into the menu fails, none left" no_temp
+check "temp: mv into the menu fails, none in or next to the menu" no_menu_temp
+check "temp: mv into the menu fails, the item stays" cmp -s "$work/menu_num" "$menu/num"
+PATH="$stub/cp_cut:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
+echo "$?" >"$o.rc"
+check "temp: cp cut short, exit 1" rc_is 1
+check "temp: cp cut short, none left" no_temp
+check "temp: cp cut short, none in or next to the menu" no_menu_temp
+check "temp: cp cut short, the item stays whole" cmp -s "$work/menu_num" "$menu/num"
+# Not the exit codes: GNU cp of an item the other run is replacing may fail in
+# one run ("replaced while being copied"), the other one writes it.
 items_whole() {
     python3 -c 'import json, sys
 for f in sys.argv[1:]:
@@ -927,6 +960,7 @@ for round in 1 2 3 4 5; do
     wait "$pid_a" "$pid_b"
     # shellcheck disable=SC2086 # one word per id
     check "two syncs at once, round $round: all items, no temp files" shown $all
+    check "two syncs at once, round $round: none next to the menu" no_menu_temp
     check "two syncs at once, round $round: items whole" items_whole
     check "two syncs at once, round $round: no clash of temp files" sh -c '! grep -q "mv: " "$1" "$2"' _ "$o.a" "$o.b"
 done
@@ -2463,7 +2497,9 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     printf '%s\n' '{"handler_id":"bazinga","movie_str":{"kp_id":"1","title":"obj"}}' >"$work/ui.json"
     bz_error "$work/ui.json" "movie_str is an object" bazinga_err_no_title
 
-    # --- The shell's async_worker: the decision of do_movie_suppliers_update.
+    # --- The shell's async_worker: a copy of the decision of r24/r25
+    # do_movie_suppliers_update. Green here does not prove the firmware does the same.
+    params="$data/movie_suppliers_params.txt"
     cat >"$work/worker.php" <<'PHP'
 <?php
 $params_path = $argv[1];

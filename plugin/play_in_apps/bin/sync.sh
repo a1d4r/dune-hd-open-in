@@ -68,24 +68,17 @@ icon() {
 
 failed=0
 
-# async_worker runs movie_suppliers_update.sh when this file's text differs
-# from its own. A directory here: is_file is false, so it runs the script on
-# every change of the plugin list, and its write fails with only a warning.
-params="$data/movie_suppliers_params.txt"
-if [ ! -d "$params" ]; then
-    rm -f "$params" 2>/dev/null
-    mkdir -p "$params" 2>/dev/null || echo "$name: failed to create $params"
-fi
-
 # show <id> <supplier JSON>
+# No temp file in $tmp/movie_suppliers: the shell takes any file there, a dot file too, for a supplier.
 show() {
     if mkdir -p "$data/movie_suppliers" "$tmp/movie_suppliers" &&
         printf '%s\n' "$2" >"$data/movie_suppliers/.$1.$$.tmp" &&
         mv -f "$data/movie_suppliers/.$1.$$.tmp" "$data/movie_suppliers/$1" &&
-        cp -f "$data/movie_suppliers/$1" "$tmp/movie_suppliers/$1"; then
+        cp -f "$data/movie_suppliers/$1" "$tmp/.movie_suppliers.$1.$$.tmp" &&
+        mv -f "$tmp/.movie_suppliers.$1.$$.tmp" "$tmp/movie_suppliers/$1"; then
         echo "$name: $1 shown"
     else
-        rm -f "$data/movie_suppliers/.$1.$$.tmp"
+        rm -f "$data/movie_suppliers/.$1.$$.tmp" "$tmp/.movie_suppliers.$1.$$.tmp"
         echo "$name: failed to write $1"
         failed=1
     fi
@@ -164,6 +157,20 @@ for f in "$data/movie_suppliers"/iptvce_* "$tmp/movie_suppliers"/iptvce_*; do
             ;;
     esac
 done
+
+# The shell does not call the plugin before the "Play..." menu, and nothing else
+# signals that another plugin was installed or removed. async_worker runs
+# movie_suppliers_update.sh on a change of the plugin list when this file's text
+# differs from its own. A directory here: is_file is false, so the text always
+# differs, and its write fails with only a warning. If the firmware changes
+# this, the script just stops running; early_gui_start, the screen and the press
+# on an item remain. To remove this, rmdir it: left behind, the worker keeps
+# running the script.
+params="$data/movie_suppliers_params.txt"
+if [ ! -d "$params" ]; then
+    rm -f "$params" 2>/dev/null
+    mkdir -p "$params" 2>/dev/null || echo "$name: failed to create $params"
+fi
 
 # r24 rereads the suppliers only on this flag.
 touch "$tmp/movie_suppliers_changed.flag" 2>/dev/null
