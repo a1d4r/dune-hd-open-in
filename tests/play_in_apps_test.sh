@@ -2725,6 +2725,108 @@ sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
 s = json.loads(json.load(open(sys.argv[1]))["data"]["params"]["search"])
 sys.exit(s.get("title") != "Дом Дракона")' "$o"
     check "main.php vod_search: series card, byte for byte" vs_card_same
+    # season and episode: chosen through "Seasons" in the card, -1 from the main
+    # card. In params only as strings of digits, each only if it is at least 1.
+    # vs_num_input <file> <season, raw JSON> <episode, raw JSON>; "-" drops the field.
+    vs_num_input() {
+        python3 -c 'import json, sys
+d = json.load(open(sys.argv[1]))
+d.update(handler_id="iptvce_vs_only", supplier_id="iptvce_vs_only")
+for k, raw in zip(("season", "episode"), sys.argv[2:]):
+    if raw == "-":
+        del d[k]
+    else:
+        d[k] = json.loads(raw)
+print(json.dumps(d))' "$@" >"$work/ic.json"
+        mv -f "$work/ic.json" "$work/ui.json"
+    }
+    # vs_num_json <search> <card> <season> <episode>: the action; "" leaves the key out.
+    vs_num_json() {
+        vs_json vs_only entry_handler external_search "$1" "$2" | python3 -c 'import json, sys
+a = json.load(sys.stdin)
+for k, v in zip(("season", "episode"), sys.argv[1:]):
+    if v:
+        a["params"][k] = v
+print(json.dumps(a))' "$3" "$4"
+    }
+    # vs_num <desc> <season, raw JSON> <episode, raw JSON> <want season> <want episode>
+    vs_num() {
+        vs_num_input "$fx/play_action_movie.json" "$2" "$3"
+        handler "$work/ui.json" "vod_search season, episode: $1" "$(vs_num_json "$vs_soho" "$vs_card" "$4" "$5")"
+        check "main.php vod_search season, episode: $1: params are strings only" vs_params_strings
+        check "main.php vod_search season, episode: $1: the card, byte for byte" vs_card_same
+    }
+    vs_params_strings() {
+        python3 -c 'import json, sys
+p = json.load(open(sys.argv[1]))["data"]["params"]
+sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
+    }
+    vs_series_card=$(python3 -c 'import json, sys
+print(json.load(open(sys.argv[1]))["movie_str"])' "$fx/play_action_series.json")
+    vs_series=$(vs_enc '{"title":"Дом Дракона","original_title":"House of the Dragon","year":"2022"}')
+    # The fixtures: -1, the main card.
+    ic_input "$fx/play_action_movie.json" iptvce_vs_only
+    handler "$work/ui.json" "vod_search season, episode: movie fixture" "$(vs_num_json "$vs_soho" "$vs_card" '' '')"
+    ic_input "$fx/play_action_series.json" iptvce_vs_only
+    handler "$work/ui.json" "vod_search season, episode: series fixture" "$(vs_num_json "$vs_series" "$vs_series_card" '' '')"
+    # A chosen episode of the series.
+    vs_num_input "$fx/play_action_series.json" 2 7
+    handler "$work/ui.json" "vod_search season, episode: series, chosen" "$(vs_num_json "$vs_series" "$vs_series_card" 2 7)"
+    vs_num "numbers" 2 7 2 7
+    vs_num "strings" '"2"' '"7"' 2 7
+    vs_num "leading zeros" '"02"' '"007"' 2 7
+    vs_num "9 digits" 999999999 '"999999999"' 999999999 999999999
+    vs_num "no fields" - - '' ''
+    # Only as a pair. Season 0 is the shell's "about the series": its items are
+    # numbered too, and the number alone would read as an episode.
+    vs_num "about the series" 0 4 '' ''
+    # A season without a number in the catalog: the shell's parse_season_num.
+    vs_num "season by year" '"year:2021"' 4 '' ''
+    vs_num "no season field" - 4 '' ''
+    vs_num "no episode field" 3 - '' ''
+    # Garbage: neither field, the reply is the usual one. One hostile value per
+    # line, the raw JSON of one field beside a good other one.
+    while IFS= read -r raw; do
+        vs_num "garbage season $raw" "$raw" 7 '' ''
+        vs_num "garbage episode $raw" 2 "$raw" '' ''
+    done <<'EOF'
+0
+-1
+-2
+"0"
+"000"
+""
+" "
+"-1"
+"+2"
+"abc"
+"1x"
+"x1"
+" 2"
+"2 "
+"2\n"
+"2\u0000"
+"1e3"
+"0x10"
+"2.0"
+"٣"
+"1; id"
+null
+[]
+[2]
+["2"]
+{}
+{"a":1}
+2.5
+2.0
+1e3
+true
+false
+1000000000
+"1000000000"
+"99999999999999999999999999999999999999"
+99999999999999999999999999999999999999
+EOF
     vs_handler '{"title":"Дюна","native_title":"","year":""}' '{"title":"Дюна"}' \
         "empty native_title and year: no keys"
     vs_handler '{"title":"","native_title":"Dune","year":"2021"}' '{"original_title":"Dune","year":"2021"}' \

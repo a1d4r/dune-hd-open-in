@@ -84,6 +84,18 @@ function pia_movie_field($movie, $k)
     return $json === false || json_last_error() !== JSON_ERROR_NONE ? '' : $s;
 }
 
+// A season or episode number, an integer or a string of digits, as a string of
+// digits; '' if it is below 1 or anything else. 9 digits fit a 32-bit intval.
+function pia_number($v)
+{
+    $s = is_int($v) ? strval($v) : $v;
+    // \z: $ also matches before a trailing newline.
+    if (!is_string($s) || !preg_match('/^[0-9]{1,9}\z/', $s))
+        return '';
+    $n = intval($s);
+    return $n >= 1 ? strval($n) : '';
+}
+
 // --- Filmix: play_action of the supplier. The shell calls it when "Filmix" is
 // chosen in the "Play..." menu and passes the whole movie in
 // user_input.movie_str. Replies with a GUI action that opens Filmix_API's
@@ -326,11 +338,22 @@ function iptvce_play($user_input, $name)
             return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $info[0]));
         $json = json_encode($search);
         pia_log("iptvce $name vod_search: $json");
+        $params = array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json,
+            'movie_str' => $user_input->movie_str);
+        // Chosen through "Seasons" in the card; the main card sends -1. Only as
+        // a pair: season 0 is the shell's "about the series", its items have
+        // numbers too, and such a number alone would read as an episode.
+        $season = isset($user_input->season) ? pia_number($user_input->season) : '';
+        $episode = isset($user_input->episode) ? pia_number($user_input->episode) : '';
+        if ($season !== '' && $episode !== '')
+        {
+            $params['season'] = $season;
+            $params['episode'] = $episode;
+        }
         return array(
             'handler_string_id' => PLUGIN_HANDLE_USER_INPUT_ACTION_ID,
             'plugin_name' => $name,
-            'params' => array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json,
-                'movie_str' => $user_input->movie_str));
+            'params' => $params);
     }
 
     $q = pia_movie_field($movie, 'title');
