@@ -179,9 +179,9 @@ function bazinga_play($user_input)
 // Channel Editor build with VOD; the prefix is kept for the ids of 0.10.x.
 // bin/sync.sh shows an item iptvce_<name> for each, with play_action
 // handler_id iptvce_<name>; the handler calls the plugin's vod_search with
-// the titles and the year, or, without one, opens the build's search results
-// for the title. The same checks as bin/iptvce_builds.sh; everything read
-// from a build is untrusted.
+// the titles, the year and the whole card, or, without one, opens the build's
+// search results for the title. The same checks as bin/iptvce_builds.sh;
+// everything read from a build is untrusted.
 
 // 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
 // pattern as in bin/iptvce_builds.sh.
@@ -329,7 +329,8 @@ function iptvce_play($user_input, $name)
         return array(
             'handler_string_id' => PLUGIN_HANDLE_USER_INPUT_ACTION_ID,
             'plugin_name' => $name,
-            'params' => array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json));
+            'params' => array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json,
+                'movie_str' => $user_input->movie_str));
     }
 
     $q = pia_movie_field($movie, 'title');

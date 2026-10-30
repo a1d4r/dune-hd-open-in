@@ -2672,14 +2672,26 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     rm -rf "${plugins:?}/mirkino"
 
     # --- vod_search: the plugin's own search entry gets the titles and the
-    # year as one JSON string "search" (params hold strings only).
-    # vs_json <build> <handler_id> <control_id> <search>: the action.
+    # year as one JSON string "search" and the card as the shell sent it,
+    # "movie_str" (params hold strings only).
+    # vs_json <build> <handler_id> <control_id> <search> <movie_str>: the action.
     vs_json() {
         python3 -c 'import json, sys
-name, h, c, s = sys.argv[1:5]
+name, h, c, s, m = sys.argv[1:6]
 print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name": name,
-    "params": {"handler_id": h, "control_id": c, "search": s}}))' "$@"
+    "params": {"handler_id": h, "control_id": c, "search": s, "movie_str": m}}))' "$@"
     }
+    # vs_card_same: params.movie_str of the reply has the bytes of movie_str in
+    # ui.json, whatever the JSON escapes around it.
+    vs_card_same() {
+        python3 -c 'import json, sys
+sent = json.load(open(sys.argv[1]))["movie_str"]
+got = json.load(open(sys.argv[2]))["data"]["params"]["movie_str"]
+sys.exit(got.encode("utf-8") != sent.encode("utf-8"))' "$work/ui.json" "$o"
+    }
+    # vs_log_no_card: the log line of the press has no field of the card but
+    # the titles and the year.
+    vs_log_no_card() { ! grep -qE 'imdb_id|kp_id|tmdb_id|description|tt[0-9]' "$o.err"; }
     # vs_enc <JSON>: as PHP's json_encode writes it: no spaces, non-ASCII as
     # \u escapes, "/" as "\/", keys in this order.
     vs_enc() {
@@ -2690,15 +2702,19 @@ print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\
     # answers with this exact search string.
     vs_handler() {
         ic_movie "$1" iptvce_vs_only
-        handler "$work/ui.json" "vod_search ${3-$1}" "$(vs_json vs_only entry_handler external_search "$(vs_enc "$2")")"
+        handler "$work/ui.json" "vod_search ${3-$1}" "$(vs_json vs_only entry_handler external_search "$(vs_enc "$2")" "$1")"
     }
     vs_cases
     ic_input "$fx/play_action_movie.json" iptvce_vs_only
     vs_soho=$(vs_enc '{"title":"Прошлой ночью в Сохо","original_title":"Last Night in Soho","year":"2021"}')
     check "vs_enc: as PHP" test "$vs_soho" = \
         '{"title":"\u041f\u0440\u043e\u0448\u043b\u043e\u0439 \u043d\u043e\u0447\u044c\u044e \u0432 \u0421\u043e\u0445\u043e","original_title":"Last Night in Soho","year":"2021"}'
-    handler "$work/ui.json" "vod_search: the device's input" "$(vs_json vs_only entry_handler external_search "$vs_soho")"
+    vs_card=$(python3 -c 'import json, sys
+print(json.load(open(sys.argv[1]))["movie_str"])' "$fx/play_action_movie.json")
+    handler "$work/ui.json" "vod_search: the device's input" "$(vs_json vs_only entry_handler external_search "$vs_soho" "$vs_card")"
     check "main.php vod_search: logged" grep -qxF "play_in_apps: iptvce vs_only vod_search: $vs_soho" "$o.err"
+    check "main.php vod_search: the device's card, byte for byte" vs_card_same
+    check "main.php vod_search: the device's card not in the log" vs_log_no_card
     check "main.php vod_search: params are strings only" python3 -c 'import json, sys
 p = json.load(open(sys.argv[1]))["data"]["params"]
 sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
@@ -2708,6 +2724,7 @@ sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
     check "main.php vod_search: series" python3 -c 'import json, sys
 s = json.loads(json.load(open(sys.argv[1]))["data"]["params"]["search"])
 sys.exit(s.get("title") != "Дом Дракона")' "$o"
+    check "main.php vod_search: series card, byte for byte" vs_card_same
     vs_handler '{"title":"Дюна","native_title":"","year":""}' '{"title":"Дюна"}' \
         "empty native_title and year: no keys"
     vs_handler '{"title":"","native_title":"Dune","year":"2021"}' '{"original_title":"Dune","year":"2021"}' \
@@ -2717,8 +2734,18 @@ sys.exit(s.get("title") != "Дом Дракона")' "$o"
     # shellcheck disable=SC2016 # literal $(...) on purpose
     vs_handler '{"title":"a \"b\" \\ /c $(id)","native_title":{"x":1}}' '{"title":"a \"b\" \\ \/c $(id)"}' \
         "hostile title stays text, object native_title skipped"
+    # The card as sent: raw and \u Cyrillic, an emoji, escapes, not-string values,
+    # spaces, key order. Only the titles and the year go to search.
+    vs_raw=' { "kp_id": 409424, "description": "Дюна \"2\" \\ /a\tb\nc 😀", "title": "\u0414\u044e\u043d\u0430", "custom": null, "genre_ids": [1, 2], "imdb_id": "tt1160419", "native_title": "Dune", "year": 2021 } '
+    vs_handler "$vs_raw" '{"title":"Дюна","original_title":"Dune","year":"2021"}' "card kept as sent"
+    check "main.php vod_search: hostile card, byte for byte" vs_card_same
+    check "main.php vod_search: hostile card not in the log" vs_log_no_card
     if [ "$("$php_bin" -r 'echo PHP_MAJOR_VERSION;')" -lt 7 ]; then
         vs_handler '{"title":"ab\ud800cd","native_title":"Good"}' '{"original_title":"Good"}' "lone surrogate title"
+        # A lone surrogate outside the card's JSON: its movie_str is not UTF-8, the
+        # card does not parse and the reply never carries it (json_encode: null).
+        printf '%s\n' '{"handler_id":"iptvce_vs_only","movie_str":"{\"title\":\"Good\",\"description\":\"ab\ud800cd\"}"}' >"$work/ui.json"
+        ic_msg "$work/ui.json" "vod_search card not UTF-8" "$ic_no_title"
     else
         ic_movie '{"title":"ab\ud800cd","native_title":"Good"}' iptvce_vs_only
         ic_msg "$work/ui.json" "vod_search lone surrogate title (PHP 7+)" "$ic_no_title"
@@ -2737,13 +2764,13 @@ sys.exit(s.get("title") != "Дом Дракона")' "$o"
             old) handler "$work/ui.json" "parity $b: old way" "$(ic_search_json "$b" 'Mir Kino' 'Дюна')" ;;
             none) ic_msg "$work/ui.json" "parity $b: not a build" 'The Mir Kino plugin is not installed' ;;
             *) handler "$work/ui.json" "parity $b: vod_search $want" \
-                "$(vs_json "$b" "${want% *}" "${want#* }" "$(vs_enc '{"title":"Дюна"}')")" ;;
+                "$(vs_json "$b" "${want% *}" "${want#* }" "$(vs_enc '{"title":"Дюна"}')" '{"title":"Дюна"}')" ;;
         esac
     done <"$work/vs_want"
     vs_rm
     # The plugin is gone, so the shell calls our own handler with its
     # handler_id and control_id: no action, no error.
-    printf '%s\n' '{"handler_id":"entry_handler","control_id":"external_search","search":"{\"title\":\"x\"}","selected_media_url":"{}"}' >"$work/ui.json"
+    printf '%s\n' '{"handler_id":"entry_handler","control_id":"external_search","search":"{\"title\":\"x\"}","movie_str":"{\"title\":\"x\"}","selected_media_url":"{}"}' >"$work/ui.json"
     handler "$work/ui.json" "vod_search to a missing plugin comes back to us" none
 
     # Not our call: no action, no error.
