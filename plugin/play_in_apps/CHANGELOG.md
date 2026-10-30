@@ -5,6 +5,7 @@
 ## 0.11.0
 - IPTV Channel Editor plugins with the new search entry (`vod_search`): the item passes the card's title, original title and year to the plugin; what to show is up to the plugin. Plugins without the entry work as before. Any Dune plugin that declares the entry gets an item, even one not made with IPTV Channel Editor. "Check" shows which items use the entry.
 - README: a section for plugin developers — how to declare the entry and what the plugin receives.
+- Items of Dune plugins follow the plugin list: after a plugin is installed or removed, its item appears or goes away by itself, usually within about half a minute, without opening the plugin screen. If it does not, waking from standby, a reboot or the plugin screen still work. Choosing the item of a removed IPTV Channel Editor or `vod_search` plugin shows the message and removes the item. Android apps are as before.
 
 ## 0.10.1
 - Fixed: IPTV Channel Editor plugins with a dot or a hyphen in their name (for example iEdem/iLook TV — `iedem.tv`) did not show up in the "Play..." menu.
@@ -68,6 +69,7 @@
 ## 0.11.0
 - Плагины IPTV Channel Editor с новым входом для поиска (`vod_search`): пункт передаёт плагину название карточки, оригинальное название и год; что показать — решает плагин. Плагины без этого входа работают как раньше. Пункт получает любой плагин Дюны, объявивший этот вход, даже не из IPTV Channel Editor. «Проверка» показывает, какие пункты идут через него.
 - README: раздел для разработчиков плагинов — как объявить вход и что придёт в плагин.
+- Пункты плагинов Дюны следят за списком плагинов: после установки или удаления плагина его пункт появляется или пропадает сам, обычно в течение примерно полуминуты, без открытия экрана плагина. Если этого не случилось — по-прежнему помогут выход из режима ожидания, перезагрузка или экран плагина. Нажатие на пункт удалённого плагина IPTV Channel Editor или плагина с `vod_search` показывает сообщение и убирает пункт. С приложениями Android всё как раньше.
 
 ## 0.10.1
 - Исправлено: плагины IPTV Channel Editor с точкой или дефисом в имени (например, iEdem/iLook TV — `iedem.tv`) не появлялись в меню «Смотреть…».
