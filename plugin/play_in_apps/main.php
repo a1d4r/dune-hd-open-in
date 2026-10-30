@@ -298,6 +298,8 @@ function iptvce_play($user_input, $name)
 {
     if (!iptvce_is_build($name))
     {
+        // The build is gone: its item must not outlive this press.
+        pia_sync();
         // An invalid name never shown as is: our items only have valid ones.
         if (iptvce_valid_name($name))
             $info = iptvce_info($name);

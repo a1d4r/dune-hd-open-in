@@ -752,7 +752,7 @@ run sync.sh
 run sync.sh
 check "sync garbage in hidden: exit 0" rc_is 0
 check "sync garbage in hidden: only prisma hidden" shown num lampa bylampa lampa_atv vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit bazinga
-check "sync garbage in hidden: no stray files" listing_is "$data" hidden movie_suppliers
+check "sync garbage in hidden: no stray files" listing_is "$data" hidden movie_suppliers movie_suppliers_params.txt
 rm -f "$data/hidden"
 
 # --- sync: an app not installed (or uninstalled later)
@@ -821,7 +821,115 @@ run movie_suppliers_update.sh other other '../evil' x
 check "update: exit 0" rc_is 0
 # shellcheck disable=SC2086 # one word per id
 check "update: all items, nothing else" shown $all
-check "update: nothing outside" listing_is "$data" movie_suppliers
+check "update: nothing outside" listing_is "$data" movie_suppliers movie_suppliers_params.txt
+
+# --- sync: a directory as movie_suppliers_params.txt, for the shell's worker
+params="$data/movie_suppliers_params.txt"
+rm -rf "$params"
+run sync.sh
+check "params: exit 0" rc_is 0
+check "params: directory created" test -d "$params"
+: >"$params/mark"
+run sync.sh
+check "params: second run, exit 0" rc_is 0
+check "params: existing directory left alone" test -f "$params/mark"
+rm -rf "$params"
+printf '16:num' >"$params"
+run sync.sh
+check "params: the worker's file, exit 0" rc_is 0
+check "params: the worker's file replaced by a directory" test -d "$params"
+
+# Stand-ins: mkdir fails for the params directory only, mv always.
+stub="$work/stub_bin"
+mkdir -p "$stub/mkdir_params" "$stub/mv"
+real_mkdir=$(command -v mkdir)
+cat >"$stub/mkdir_params/mkdir" <<EOF
+#!/bin/sh
+case "\$*" in *movie_suppliers_params.txt*) exit 1 ;; esac
+exec "$real_mkdir" "\$@"
+EOF
+printf '#!/bin/sh\nexit 1\n' >"$stub/mv/mv"
+chmod +x "$stub/mkdir_params/mkdir" "$stub/mv/mv"
+
+rm -rf "$params" "$reg" "$menu"
+PATH="$stub/mkdir_params:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
+echo "$?" >"$o.rc"
+check "params: mkdir fails, exit 0" rc_is 0
+# shellcheck disable=SC2086 # one word per id
+check "params: mkdir fails, all items" shown $all
+check "params: mkdir fails, a line in the output" grep -q 'failed to create .*movie_suppliers_params.txt' "$o"
+check "params: mkdir fails, stderr empty" test ! -s "$o.err"
+# A read-only data dir, real on the device. Root ignores the mode.
+if [ "$(id -u)" != 0 ]; then
+    : >"$params"
+    rm -rf "$reg" "$menu"
+    mkdir -p "$reg"
+    chmod 555 "$data"
+    run sync.sh
+    chmod 755 "$data"
+    check "params: read-only data dir, exit 0" rc_is 0
+    # shellcheck disable=SC2086 # one word per id
+    check "params: read-only data dir, all items" shown $all
+    check "params: read-only data dir, a line in the output" grep -q 'failed to create' "$o"
+    check "params: read-only data dir, stderr empty" test ! -s "$o.err"
+    rm -f "$params"
+fi
+# A file in place of the data dir: the items cannot be written either, as before.
+rm -rf "$data"
+: >"$data"
+run sync.sh
+check "params: file as data dir, the items' exit 1" rc_is 1
+check "params: file as data dir, a line in the output" grep -q 'failed to create' "$o"
+check "params: file as data dir, the items' lines" grep -q 'failed to write num' "$o"
+rm -f "$data"
+
+# --- sync: the flag r24 rereads the suppliers by
+flag="$PLAY_IN_APPS_TMP/movie_suppliers_changed.flag"
+rm -rf "$reg" "$menu"
+rm -f "$flag"
+run sync.sh
+check "flag: exit 0" rc_is 0
+check "flag: created" test -f "$flag"
+rm -f "$flag"
+mkdir "$flag"
+run sync.sh
+check "flag is a directory: exit 0" rc_is 0
+rmdir "$flag"
+ln -s "$work/no/such/dir" "$flag"
+run sync.sh
+check "flag cannot be written: exit 0" rc_is 0
+check "flag cannot be written: stderr empty" test ! -s "$o.err"
+rm -f "$flag"
+
+# --- sync: temp files of show(), two runs at once (on boot: early_gui_start
+# and the worker)
+no_temp() { [ -z "$(find "$reg" "$menu" -name '.*.tmp')" ]; }
+rm -rf "$reg" "$menu"
+run sync.sh
+check "temp: none after a run" no_temp
+PATH="$stub/mv:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
+echo "$?" >"$o.rc"
+check "temp: mv fails, exit 1" rc_is 1
+check "temp: mv fails, none left" no_temp
+# Not the exit codes: cp of the same item at once may fail in one run ("File
+# exists"), the other one writes it.
+items_whole() {
+    python3 -c 'import json, sys
+for f in sys.argv[1:]:
+    json.load(open(f))' "$reg"/* "$menu"/*
+}
+for round in 1 2 3 4 5; do
+    rm -rf "$reg" "$menu"
+    "$sh_bin" "$bin/sync.sh" >"$o.a" 2>&1 &
+    pid_a=$!
+    "$sh_bin" "$bin/sync.sh" >"$o.b" 2>&1 &
+    pid_b=$!
+    wait "$pid_a" "$pid_b"
+    # shellcheck disable=SC2086 # one word per id
+    check "two syncs at once, round $round: all items, no temp files" shown $all
+    check "two syncs at once, round $round: items whole" items_whole
+    check "two syncs at once, round $round: no clash of temp files" sh -c '! grep -q "mv: " "$1" "$2"' _ "$o.a" "$o.b"
+done
 
 # --- sync: IPTV Channel Editor builds (iptvce_builds.sh), an item each
 
@@ -2355,6 +2463,27 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     printf '%s\n' '{"handler_id":"bazinga","movie_str":{"kp_id":"1","title":"obj"}}' >"$work/ui.json"
     bz_error "$work/ui.json" "movie_str is an object" bazinga_err_no_title
 
+    # --- The shell's async_worker: the decision of do_movie_suppliers_update.
+    cat >"$work/worker.php" <<'PHP'
+<?php
+$params_path = $argv[1];
+$new_params = '16:' . implode('-', array('num', 'lampa'));
+$old_params = is_file($params_path) ? file_get_contents($params_path) : '';
+echo $new_params != $old_params ? "run\n" : "skip\n";
+@file_put_contents($params_path, $new_params);
+PHP
+    worker_says() {
+        w=$("$php_bin" "$work/worker.php" "$params" 2>&1) || return 1
+        [ "$w" = "$1" ]
+    }
+    rm -rf "$params"
+    check "worker: no params yet, runs the script" worker_says run
+    check "worker: its own file, skips the script" worker_says skip
+    run sync.sh
+    check "worker after sync: runs the script" worker_says run
+    check "worker after sync, second pass: runs the script" worker_says run
+    check "worker after sync: the directory stays" test -d "$params"
+
     # --- IPTV Channel Editor builds: play_action with handler_id
     # iptvce_<name> opens the build's search results for the title.
     # ic_input <file> [handler_id]: the device's play_action input with this handler_id.
@@ -2449,6 +2578,15 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     # Not a build now, or not a valid name: not installed, named by its caption.
     ic_movie '{"title":"Дюна"}' iptvce_nosuch
     ic_msg "$work/ui.json" "no such build" 'The nosuch plugin is not installed'
+    # A build removed from the Dune: the press gives the message and removes the item.
+    build gone 'Gone Kino'
+    run sync.sh
+    check "iptvce removed build: item shown before the press" test -f "$menu/iptvce_gone"
+    rm -rf "${plugins:?}/gone"
+    ic_movie '{"title":"Дюна"}' iptvce_gone
+    ic_msg "$work/ui.json" "removed build" 'The gone plugin is not installed'
+    check "iptvce removed build: no registered item" no_file "$reg/iptvce_gone"
+    check "iptvce removed build: no menu item" no_file "$menu/iptvce_gone"
     sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
     ic_movie '{"title":"Дюна"}'
     ic_msg "$work/ui.json" "VOD off" 'The Mir Kino plugin is not installed'
