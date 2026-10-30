@@ -25,7 +25,7 @@ A Dune HD plugin that adds items to the **Play...** menu of a movie or series ca
 | Flux | TMDB ID |
 | SeasonHit | no ID, search by title only |
 | Bazinga | Kinopoisk ID, else search by title; in the Bazinga Dune plugin |
-| IPTV Channel Editor plugins, for example Mir Kino | not by ID, search by title in the plugin itself; sign in to the provider's account there; empty results — open the plugin once and try again. Plugins with the `vod_search` entry get the title, original title and year; what to show is up to the plugin; how to declare it — in the [plugin README](plugin/play_in_apps/README.en.md#for-plugin-developers) |
+| IPTV Channel Editor plugins, for example Mir Kino | not by ID, search by title in the plugin itself; sign in to the provider's account there; empty results — open the plugin once and try again. Plugins with the `vod_search` entry get the title, original title, year and the whole card; what to show is up to the plugin; how to declare it — in the [plugin README](plugin/play_in_apps/README.en.md#for-plugin-developers) |
 
 Details on each item are in the [plugin README](plugin/play_in_apps/README.en.md). The apps themselves (for Filmix and Bazinga, the Filmix_API and Bazinga Dune plugins; Bazinga is, for example, in the "Plugin collection" of Dune BackUp) must be installed and set up (addons, accounts, sources) separately.
 
