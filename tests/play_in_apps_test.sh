@@ -1133,9 +1133,16 @@ if n:
 open(sys.argv[2], "wb").write(x)
 EOF
 }
+# vs_jelly <name> <text> [<size>]: vs_build with all of the fixture and its
+# vod_engine Jellyfin.
+vs_jelly() {
+    vs_build "$1" "$2" files "${3-0}"
+    sed 's/"Json"/"Jellyfin"/' "$fx/iptvce_mirkino/config.json" >"$plugins/$1/config.json"
+}
 vs_64=$(printf 'a%.0s' $(seq 1 64))
 # vs_cases: the builds below; vs_want: what each is, "<handler_id>
-# <control_id>" (vod_search), "old" (the builder's files only) or "none".
+# <control_id>" (vod_search), "old" (the builder's files, VOD on and no
+# <public_actions>) or "none".
 vs_cases() {
     vs_build vs_only "$VS"
     vs_build vs_files "$VS" files
@@ -1195,6 +1202,61 @@ vs_cases() {
     vs_build vs_own_iptvce "$(vs_xml iptvce_x)"
     vs_build vs_own_iptvce_ "$(vs_xml iptvce_)"
     vs_build vs_own_not "$(vs_xml setupx)"
+    # <public_actions> in any form without a working vod_search: no item, the
+    # builder's files or not.
+    vs_jelly vs_pa_self '<public_actions/>'
+    vs_jelly vs_pa_selfspace '<public_actions />'
+    vs_jelly vs_pa_selfspace2 '<public_actions/ >'
+    vs_jelly vs_pa_selfnl "$(printf '<public_actions\n/>')"
+    vs_jelly vs_pa_selftab "$(printf '<public_actions\t/>')"
+    vs_jelly vs_pa_pair '<public_actions></public_actions>'
+    vs_jelly vs_pa_spaces '<public_actions>   </public_actions>'
+    vs_jelly vs_pa_lines "$(printf '<public_actions>\r\n\t\n</public_actions>')"
+    vs_jelly vs_pa_outer '< public_actions ></ public_actions >'
+    vs_jelly vs_pa_outerself '< public_actions />'
+    vs_jelly vs_pa_nlname "$(printf '<\npublic_actions\n>\n</public_actions\n>')"
+    vs_jelly vs_pa_attr '<public_actions a="b"></public_actions>'
+    vs_jelly vs_pa_attrself '<public_actions a="b"/>'
+    vs_jelly vs_pa_attrvs "$(vs_xml h c | sed 's/<public_actions>/<public_actions a="b">/')"
+    vs_jelly vs_pa_open '<public_actions>'
+    vs_jelly vs_pa_openvs "<public_actions><action $vs_id><type>plugin_handle_user_input</type><handler_id>h</handler_id><control_id>c</control_id></action>"
+    vs_jelly vs_pa_other '<public_actions><action id="vod_play"><type>plugin_handle_user_input</type><handler_id>h</handler_id><control_id>c</control_id></action></public_actions>'
+    vs_jelly vs_pa_badtype "$(vs_xml h c "$vs_id" plugin_open_folder)"
+    vs_jelly vs_pa_badhandler "$(vs_xml 'h$x')"
+    vs_jelly vs_pa_own "$(vs_xml setup)"
+    vs_jelly vs_pa_noctl '<public_actions><action id="vod_search"><type>plugin_handle_user_input</type><handler_id>h</handler_id></action></public_actions>'
+    vs_jelly vs_pa_commentvs "<public_actions><!-- $(vs_xml h c | sed 's/<\/*public_actions>//g') --></public_actions>"
+    vs_jelly vs_pa_aftercomment '<!-- x --><public_actions/><!-- y -->'
+    vs_jelly vs_pa_commentgap '<public_actions<!-- c -->/>'
+    vs_build vs_pa_vodoff '<public_actions/>' files
+    sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/vs_pa_vodoff/config.json"
+    # No such node: the old way.
+    vs_jelly vs_pa_no ''
+    vs_jelly vs_pa_comment '<!-- <public_actions/> -->'
+    vs_jelly vs_pa_commentblock "<!-- $VS -->"
+    vs_jelly vs_pa_commentopen '<!-- <public_actions/>'
+    vs_jelly vs_pa_likex '<public_actions_x/>'
+    vs_jelly vs_pa_likemy '<my_public_actions/>'
+    vs_jelly vs_pa_likepair '<public_actionsx></public_actionsx>'
+    vs_jelly vs_pa_likedash '<public_actions-x a="b"/>'
+    vs_jelly vs_pa_likedot '<public_actions.x/>'
+    vs_jelly vs_pa_likens '<x:public_actions/>'
+    vs_jelly vs_pa_likevs "$(vs_xml h c | sed 's/public_actions/public_actions_x/g')"
+    vs_jelly vs_pa_case '<PUBLIC_ACTIONS/>'
+    vs_jelly vs_pa_close '</public_actions>'
+    vs_jelly vs_pa_text '<note>public_actions</note>'
+    vs_jelly vs_pa_entity '&lt;public_actions/&gt;'
+    # A working vod_search wins.
+    vs_jelly vs_pa_vs "$VS"
+    vs_jelly vs_pa_emptyvs "<public_actions/>$(vs_xml h c)"
+    # Over 32768 bytes: as if there is no node.
+    vs_jelly vs_pa_32768 '<public_actions/>' 32768
+    vs_jelly vs_pa_32769 '<public_actions/>' 32769
+    # NUL bytes: as with vod_search, "public_actions" is looked for in the raw
+    # text, the node after they are dropped.
+    vs_jelly vs_pa_nul '<public_@NUL@actions/>'
+    vs_jelly vs_pa_nulbefore '@NUL@<public_actions/>'
+    vs_jelly vs_pa_nulcomment '<!-- public_actions --><public_@NUL@actions/>'
 }
 vs_want="vs.dot-x=entry_handler external_search
 vs_64=$vs_64 external_search
@@ -1202,7 +1264,7 @@ vs_65=none
 vs_attrs=h c
 vs_commented=none
 vs_crlf=h c
-vs_dollar=old
+vs_dollar=none
 vs_dotctl=entry_handler a.b-c_9
 vs_emptyctl=none
 vs_files=entry_handler external_search
@@ -1218,7 +1280,7 @@ vs_space=none
 vs_squote=entry_handler external_search
 vs_twoblocks=h c
 vs_type=none
-vs_typefiles=old
+vs_typefiles=none
 vs_unclosed=none
 vs_unclosedcomment=none
 vs_xid=none
@@ -1226,18 +1288,65 @@ vs_32768=entry_handler external_search
 vs_32769=none
 vs_32769files=old
 vs_nosubstr=none
-vs_nosubstrfiles=old
+vs_nosubstrfiles=none
 vs_nulid=none
 vs_nulidcomment=h c
 vs_nulline=entry_handler c
 vs_own_setup=none
-vs_own_setupfiles=old
+vs_own_setupfiles=none
 vs_own_check=none
 vs_own_filmix=none
 vs_own_bazinga=none
 vs_own_iptvce=none
 vs_own_iptvce_=none
-vs_own_not=setupx external_search"
+vs_own_not=setupx external_search
+vs_pa_self=none
+vs_pa_selfspace=none
+vs_pa_selfspace2=none
+vs_pa_selfnl=none
+vs_pa_selftab=none
+vs_pa_pair=none
+vs_pa_spaces=none
+vs_pa_lines=none
+vs_pa_outer=none
+vs_pa_outerself=none
+vs_pa_nlname=none
+vs_pa_attr=none
+vs_pa_attrself=none
+vs_pa_attrvs=none
+vs_pa_open=none
+vs_pa_openvs=none
+vs_pa_other=none
+vs_pa_badtype=none
+vs_pa_badhandler=none
+vs_pa_own=none
+vs_pa_noctl=none
+vs_pa_commentvs=none
+vs_pa_aftercomment=none
+vs_pa_commentgap=none
+vs_pa_vodoff=none
+vs_pa_no=old
+vs_pa_comment=old
+vs_pa_commentblock=old
+vs_pa_commentopen=old
+vs_pa_likex=old
+vs_pa_likemy=old
+vs_pa_likepair=old
+vs_pa_likedash=old
+vs_pa_likedot=old
+vs_pa_likens=old
+vs_pa_likevs=old
+vs_pa_case=old
+vs_pa_close=old
+vs_pa_text=old
+vs_pa_entity=old
+vs_pa_vs=entry_handler external_search
+vs_pa_emptyvs=h c
+vs_pa_32768=none
+vs_pa_32769=old
+vs_pa_nul=old
+vs_pa_nulbefore=none
+vs_pa_nulcomment=none"
 # vs_rm: remove the builds of vs_cases.
 vs_rm() {
     printf '%s\n' "$vs_want" | while IFS='=' read -r b _; do rm -rf "${plugins:?}/$b"; done
@@ -1289,7 +1398,49 @@ vs_nosubstr_sh() {
     done
 }
 check "iptvce_vod_search: no vod_search in the file, no parse" vs_nosubstr_sh
+# vs_is_build_no_parse: iptvce_is_build reads <public_actions> last: no tr or
+# sed for a plugin without the builder's files, with VOD off or without the
+# word (the PATH of vs_nosubstr_sh).
+vs_is_build_no_parse() {
+    for x in vs_nosubstr:1 vs_pa_vodoff:1 vs_pa_no:0; do
+        got=$(PATH="$work/vs_path:$PATH" "$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3"; echo "rc=$?"' \
+            _ "$bin/iptvce_builds.sh" "$plugins" "${x%:*}" 2>&1)
+        [ "$got" = "rc=${x#*:}" ] || {
+            echo "$x: $got" >&2
+            return 1
+        }
+    done
+}
+check "iptvce_is_build: the manifest parsed only for a candidate with the word" vs_is_build_no_parse
+# vs_mode_is <build> <want>: what iptvce_is_build and iptvce_vod_search of the
+# shell under test make of it, in the words of vs_want.
+vs_mode_is() {
+    got=$("$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3" || { echo none; exit 0; }; iptvce_vod_search "$2/$3" || echo old' \
+        _ "$bin/iptvce_builds.sh" "$plugins" "$1")
+    [ "$got" = "$2" ]
+}
+printf '%s\n' "$vs_want" >"$work/vs_want"
+while IFS='=' read -r b want; do
+    check "iptvce_is_build $b: $want" vs_mode_is "$b" "$want"
+done <"$work/vs_want"
 vs_rm
+
+# A build updated in place: <public_actions> decides whether its item stays.
+vs_jelly vs_upd ''
+run sync.sh
+check "sync build updated, before: item the old way" build_item_is vs_upd 'Mir Kino' img/logo_mirkino.png
+vs_jelly vs_upd '<public_actions/>'
+run sync.sh
+check "sync build updated to an empty node: exit 0" rc_is 0
+check "sync build updated to an empty node: no registered item" no_file "$reg/iptvce_vs_upd"
+check "sync build updated to an empty node: no menu item" no_file "$menu/iptvce_vs_upd"
+# shellcheck disable=SC2086 # one word per id
+check "sync build updated to an empty node: the others stay" shown $all iptvce_mirkino
+vs_jelly vs_upd "$VS"
+run sync.sh
+check "sync build updated to vod_search: item back" build_item_is vs_upd 'Mir Kino' img/logo_mirkino.png
+rm -rf "${plugins:?}/vs_upd"
+run sync.sh
 
 # Hidden, removed, two builds; the copies in /tmp follow.
 build kino 'Кино'
@@ -1993,6 +2144,8 @@ rm -rf "${plugins:?}/iedem.tv"
 # vod_search: the line says so, the full report names its handler.
 vs_build vs_only "$VS"
 build oldway 'Old Way'
+# An empty <public_actions>: not listed, 18 lines still.
+vs_jelly vs_pa_self '<public_actions/>'
 run sync.sh
 diag english brief
 check "diag brief vod_search build" sh -c \
@@ -2006,7 +2159,7 @@ check "diag vod_search build: installed" in_item "Mir Kino" "  installed: yes (v
 check "diag vod_search build: its handler" in_item "Mir Kino" \
     "  launch: through the Dune plugin vs_only, vod_search entry_handler/external_search, not checked"
 check "diag build without vod_search: as before" in_item "Old Way" "  launch: through the Dune plugin oldway, not checked"
-rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway"
+rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway" "${plugins:?}/vs_pa_self"
 run sync.sh
 
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
@@ -2623,6 +2776,16 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_msg "$work/ui.json" "removed build" 'The gone plugin is not installed'
     check "iptvce removed build: no registered item" no_file "$reg/iptvce_gone"
     check "iptvce removed build: no menu item" no_file "$menu/iptvce_gone"
+    # So too when the build was updated and got an empty <public_actions>.
+    vs_jelly vs_upd ''
+    run sync.sh
+    check "iptvce build updated: item shown before the press" test -f "$menu/iptvce_vs_upd"
+    vs_jelly vs_upd '<public_actions/>'
+    ic_movie '{"title":"Дюна"}' iptvce_vs_upd
+    ic_msg "$work/ui.json" "build updated to an empty node" 'The Mir Kino plugin is not installed'
+    check "iptvce build updated: no registered item" no_file "$reg/iptvce_vs_upd"
+    check "iptvce build updated: no menu item" no_file "$menu/iptvce_vs_upd"
+    rm -rf "${plugins:?}/vs_upd"
     sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
     ic_movie '{"title":"Дюна"}'
     ic_msg "$work/ui.json" "VOD off" 'The Mir Kino plugin is not installed'
@@ -2870,6 +3033,13 @@ EOF
         esac
     done <"$work/vs_want"
     vs_rm
+    # No manifest: no node, the old way; the caption is the folder name.
+    vs_jelly vs_nomanifest ''
+    rm -f "$plugins/vs_nomanifest/dune_plugin.xml"
+    check "parity no manifest: the old way in sh" vs_mode_is vs_nomanifest old
+    ic_movie '{"title":"Дюна"}' iptvce_vs_nomanifest
+    handler "$work/ui.json" "parity no manifest: the old way" "$(ic_search_json vs_nomanifest vs_nomanifest 'Дюна')"
+    rm -rf "${plugins:?}/vs_nomanifest"
     # The plugin is gone, so the shell calls our own handler with its
     # handler_id and control_id: no action, no error.
     printf '%s\n' '{"handler_id":"entry_handler","control_id":"external_search","search":"{\"title\":\"x\"}","movie_str":"{\"title\":\"x\"}","selected_media_url":"{}"}' >"$work/ui.json"
@@ -3195,6 +3365,8 @@ EOF
     build fox-fun.tv
     build a..b
     build -x
+    vs_jelly vs_pa_self '<public_actions/>'
+    vs_jelly vs_pa_comment '<!-- <public_actions/> -->'
     rm -f "$data/hidden"
     run sync.sh
     check "parity: sync exit 0" rc_is 0
@@ -3239,9 +3411,10 @@ EOF
         'iptvce_mirkino=Mir Kino=img/logo_mirkino.png' \
         'iptvce_multiline=Mir Kino=img/logo_mirkino.png' \
         'iptvce_two=First=img/logo_mirkino.png' \
-        'iptvce_twoicon=Two icons='
+        'iptvce_twoicon=Two icons=' \
+        'iptvce_vs_pa_comment=Mir Kino=img/logo_mirkino.png'
     for b in mirkino two twoicon lt ltonly ltpct ltspace multiline long badutf vodnl vodnl2 vodlow vodup vodmixed \
-        iedem.tv fox-fun.tv a..b -x; do
+        iedem.tv fox-fun.tv a..b -x vs_pa_self vs_pa_comment; do
         rm -rf "${plugins:?}/$b"
     done
     run sync.sh

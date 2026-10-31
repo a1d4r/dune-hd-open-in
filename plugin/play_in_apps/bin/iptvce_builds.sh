@@ -17,10 +17,12 @@ iptvce_builds() {
 }
 
 # iptvce_is_build <plugins dir> <name>: a safe folder name and either the
-# vod_search action (iptvce_vod_search) or the builder's files and VOD on
-# ("vod_engine" in config.json, other than "None" in any case). A safe name:
-# 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern
-# has one more copy: iptvce_valid_name in main.php.
+# vod_search action (iptvce_vod_search) or the builder's files, VOD on
+# ("vod_engine" in config.json, other than "None" in any case) and no
+# <public_actions> (iptvce_has_public_actions: the new versions of the builder
+# always write it, so it is read last, for candidates only). A safe name: 1-40
+# of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern has
+# one more copy: iptvce_valid_name in main.php.
 iptvce_is_build() {
     case "$2" in
         '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
@@ -33,26 +35,18 @@ iptvce_is_build() {
     case "$e" in
         '' | *'"'[Nn][Oo][Nn][Ee]'"') return 1 ;;
     esac
+    ! iptvce_has_public_actions "$1/$2"
 }
 
-# iptvce_vod_search <build dir>: "<handler_id> <control_id>" of the
-# plugin's search entry for other plugins, declared in its dune_plugin.xml:
-#   <public_actions><action id="vod_search">
-#     <type>plugin_handle_user_input</type>
-#     <params><handler_id>H</handler_id><control_id>C</control_id></params>
-#   </action></public_actions>
-# Only the first action with id vod_search (" or ') inside a <public_actions>
-# counts; its first <type> must be plugin_handle_user_input, its first
-# <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
-# not, or if the file is over 32768 bytes, has no "vod_search" (not parsed:
-# sync.sh checks every plugin) or the handler_id is one of ours. The text is
-# read as one line, NUL bytes, comments dropped, spaces around < > = and
-# after </ removed. Variables are prefixed: callers keep theirs. The same
-# parse: iptvce_vod_search in main.php.
-iptvce_vod_search() {
+# iptvce_manifest <build dir> <word>: fails if the build's dune_plugin.xml is
+# over 32768 bytes or has no <word> (not parsed: sync.sh checks every plugin).
+# Else ivs_s is its text as one line, NUL bytes, comments dropped, spaces around
+# < > = and after </ removed. Variables are prefixed: callers keep theirs. The
+# same: iptvce_manifest in main.php.
+iptvce_manifest() {
     [ -f "$1/dune_plugin.xml" ] || return 1
     # -z: toybox grep does not see past a NUL in a line.
-    LC_ALL=C grep -qzF vod_search "$1/dune_plugin.xml" 2>/dev/null || return 1
+    LC_ALL=C grep -qzF "$2" "$1/dune_plugin.xml" 2>/dev/null || return 1
     ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
     ivs_n=${ivs_n##* }
     case "$ivs_n" in
@@ -81,6 +75,32 @@ iptvce_vod_search() {
         esac
     done
     ivs_s=$(printf '%s' "$ivs_s" | LC_ALL=C sed 's/  */ /g; s/ *\([<>=]\) */\1/g; s:</ *:</:g')
+}
+
+# iptvce_has_public_actions <build dir>: an opening or empty <public_actions>
+# tag, with attributes or not, closed or not, outside comments. As if none: the
+# limits of iptvce_manifest. The same: iptvce_has_public_actions in main.php.
+iptvce_has_public_actions() {
+    iptvce_manifest "$1" public_actions || return 1
+    case "$ivs_s" in
+        *'<public_actions>'* | *'<public_actions/>'* | *'<public_actions '*) return 0 ;;
+    esac
+    return 1
+}
+
+# iptvce_vod_search <build dir>: "<handler_id> <control_id>" of the
+# plugin's search entry for other plugins, declared in its dune_plugin.xml:
+#   <public_actions><action id="vod_search">
+#     <type>plugin_handle_user_input</type>
+#     <params><handler_id>H</handler_id><control_id>C</control_id></params>
+#   </action></public_actions>
+# Only the first action with id vod_search (" or ') inside a <public_actions>
+# counts; its first <type> must be plugin_handle_user_input, its first
+# <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
+# not, within the limits of iptvce_manifest, or if the handler_id is one of
+# ours. The same parse: iptvce_vod_search in main.php.
+iptvce_vod_search() {
+    iptvce_manifest "$1" vod_search || return 1
     # The <public_actions> blocks, each followed by a space.
     ivs_o='<public_actions>'
     ivs_e='</public_actions>'

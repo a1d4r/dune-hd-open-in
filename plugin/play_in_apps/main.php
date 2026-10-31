@@ -209,22 +209,42 @@ function iptvce_name_of($id)
     return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
+// The plugin's dune_plugin.xml as one line, NUL bytes, comments dropped, spaces
+// around < > = and after </ removed; null if it is over 32768 bytes or has no
+// $word (before NUL bytes are dropped, as grep sees it). The same as
+// iptvce_manifest in bin/iptvce_builds.sh.
+function iptvce_manifest($name, $word)
+{
+    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
+    $x = is_file($f) && filesize($f) <= 32768 ? file_get_contents($f) : false;
+    if (!is_string($x) || strpos($x, $word) === false)
+        return null;
+    $x = str_replace("\0", '', $x);
+    $x = preg_replace('/<!--.*?(?:-->|\z)/s', ' ', strtr($x, "\n\r\t", '   '));
+    return preg_replace('#</ *#', '</', preg_replace('/ *([<>=]) */', '$1', preg_replace('/  +/', ' ', $x)));
+}
+
+// An opening or empty <public_actions> tag, with attributes or not, closed or
+// not, outside comments; as if none within the limits of iptvce_manifest. The
+// same as iptvce_has_public_actions in bin/iptvce_builds.sh.
+function iptvce_has_public_actions($name)
+{
+    $x = iptvce_manifest($name, 'public_actions');
+    return is_string($x) && preg_match('#<public_actions(?:>|/>| )#', $x) === 1;
+}
+
 // array(handler_id, control_id) of the plugin's search entry for other
 // plugins, the vod_search action of its dune_plugin.xml; null if none. The
 // same parse as iptvce_vod_search in bin/iptvce_builds.sh: the first action
 // with id vod_search inside a <public_actions>, its first <type>
 // plugin_handle_user_input, its first <handler_id> and <control_id> 1-64 of
-// [A-Za-z0-9_.-], not one of ours; null too if the file is over 32768 bytes
-// or has no "vod_search" (before NUL bytes are dropped, as grep sees it).
+// [A-Za-z0-9_.-], not one of ours; null too within the limits of
+// iptvce_manifest.
 function iptvce_vod_search($name)
 {
-    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
-    $x = is_file($f) && filesize($f) <= 32768 ? file_get_contents($f) : false;
-    if (!is_string($x) || strpos($x, 'vod_search') === false)
+    $x = iptvce_manifest($name, 'vod_search');
+    if (!is_string($x))
         return null;
-    $x = str_replace("\0", '', $x);
-    $x = preg_replace('/<!--.*?(?:-->|\z)/s', ' ', strtr($x, "\n\r\t", '   '));
-    $x = preg_replace('#</ *#', '</', preg_replace('/ *([<>=]) */', '$1', preg_replace('/  +/', ' ', $x)));
     preg_match_all('#<public_actions>(.*?)</public_actions>#s', $x, $blocks);
     $a = '';
     foreach ($blocks[1] as $b)
@@ -245,8 +265,9 @@ function iptvce_vod_search($name)
     return null;
 }
 
-// The vod_search action, or the builder's files and VOD on ("vod_engine" in
-// config.json, other than "None" in any case).
+// The vod_search action, or the builder's files, VOD on ("vod_engine" in
+// config.json, other than "None" in any case) and no <public_actions> (the new
+// versions of the builder always write it; read last, for candidates only).
 function iptvce_is_build($name)
 {
     if (!iptvce_valid_name($name))
@@ -259,7 +280,7 @@ function iptvce_is_build($name)
         return false;
     $text = file_get_contents("$d/config.json");
     return is_string($text) && preg_match('/"vod_engine": *"([^"\n]*)"/', $text, $m) === 1 &&
-        strcasecmp($m[1], 'None') !== 0;
+        strcasecmp($m[1], 'None') !== 0 && !iptvce_has_public_actions($name);
 }
 
 // array(caption, icon file or '') of a build, from its dune_plugin.xml: the
