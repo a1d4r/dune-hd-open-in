@@ -3023,6 +3023,10 @@ EOF
     # here — vod_search, the builder's search results ("old") or not a build.
     check "parity: iptvce_vod_search of sh" vs_sh_is
     printf '%s\n' "$vs_want" >"$work/vs_want"
+    # Pressing a non-build runs sync.sh, which reads every manifest of vs_cases:
+    # 3 s per case. A no-op here; "iptvce removed build" covers the real one.
+    mv "$bin/sync.sh" "$work/sync.sh.real"
+    : >"$bin/sync.sh"
     while IFS='=' read -r b want; do
         ic_movie '{"title":"Дюна"}' "iptvce_$b"
         case "$want" in
@@ -3032,6 +3036,7 @@ EOF
                 "$(vs_json "$b" "${want% *}" "${want#* }" "$(vs_enc '{"title":"Дюна"}')" '{"title":"Дюна"}')" ;;
         esac
     done <"$work/vs_want"
+    mv -f "$work/sync.sh.real" "$bin/sync.sh"
     vs_rm
     # No manifest: no node, the old way; the caption is the folder name.
     vs_jelly vs_nomanifest ''
