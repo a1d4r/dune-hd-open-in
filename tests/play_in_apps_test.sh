@@ -3,6 +3,8 @@
 # TEST_SH selects the shell used to run plugin scripts (default: dash).
 # PHP selects the PHP CLI for main.php (default: php). The device runs PHP 5.3.6:
 # tests/php53/Dockerfile has it with the other tools (see the comment there).
+# CGI_ONLY=1 runs only the logs page checks and fails without a real php-cgi
+# (the image above has none, so CI runs this apart, on Ubuntu's PHP).
 # shellcheck disable=SC2016 # sh -c '<script>' _ <args>: the script expands its own $1, $2
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -10,6 +12,7 @@ src="$root/plugin/play_in_apps"
 fx="$root/tests/fixtures"
 sh_bin=${TEST_SH:-dash}
 php_bin=${PHP:-php}
+cgi_only=${CGI_ONLY-}
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -27,6 +30,8 @@ data="$FS_PREFIX/flashdata/plugins_data/play_in_apps"
 reg="$data/movie_suppliers"
 menu="$PLAY_IN_APPS_TMP/movie_suppliers"
 apps="$PLAY_IN_APPS_TMP/applications/app_data.json"
+cfg="$work/fs/config"
+plugin_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$src/dune_plugin.xml")
 
 android="num lampa bylampa lampa_atv prisma vokino lazymedia stremio nuvio freezona alpac flux seasonhit"
 all="num lampa bylampa lampa_atv prisma vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit bazinga"
@@ -71,6 +76,8 @@ one_json() {
     [ "$(wc -l <"$o" | tr -d ' ')" = 1 ] &&
         python3 -c 'import json,sys; assert isinstance(json.load(open(sys.argv[1])), dict)' "$o"
 }
+
+if [ -z "$cgi_only" ]; then
 
 # --- item scripts bin/<id>.sh. $id is the app under test.
 
@@ -1612,7 +1619,6 @@ rm -f "$menu/nuvio"
 
 # The shell's file of the item choice dialog goes too; a symlink there is
 # removed, not followed.
-cfg="$work/fs/config"
 lcfg="$cfg/lcfg_play_in_apps.txt"
 mkdir -p "$cfg"
 printf '%s\n' -num >"$lcfg"
@@ -1634,6 +1640,8 @@ printf '{"plugin":"other"}\n' >"$menu/iptvce_other"
 run uninstall.sh
 check "uninstall: build items removed, others kept" listing_is "$menu" YouTube iptvce_other "iptvce_a b"
 rm -f "$menu/iptvce_other" "$menu/iptvce_a b"
+
+fi # not CGI_ONLY
 
 # --- diag.sh: the "Check" report. cmd, getprop, ifconfig and logcat are stand-ins.
 sbin="$work/sbin"
@@ -1707,6 +1715,8 @@ STUB_LOG="$work/cmd.log"
 all_pkgs="ru.yourok.num top.rootu.lampa top.rootu.bylumpa top.rootu.lumpa top.rootu.prisma ru.vokino.web com.lazycatsoftware.lmd com.stremio.one com.nuvio.tv free.zona cc.alcopa.tv app.flux.tv com.jimdo.xakerd.season2hit"
 STUB_RESOLVE=$all_pkgs
 export STUB_LOG STUB_RESOLVE
+
+if [ -z "$cgi_only" ]; then
 
 # diag [args]: bin/diag.sh with the stand-ins first in PATH.
 diag() {
@@ -1790,7 +1800,6 @@ cp "$fx/app_data.json" "$apps"
 rm -f "$data/hidden"
 run sync.sh
 printf 'api_version=1.1.0\nfirmware_version=260827_0003_r24\nproduct=tv188b\n' >"$PLAY_IN_APPS_TMP/run/versions.txt"
-plugin_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$src/dune_plugin.xml")
 q='package query-activities --brief'
 
 : >"$STUB_LOG"
@@ -2162,6 +2171,8 @@ check "diag build without vod_search: as before" in_item "Old Way" "  launch: th
 rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway" "${plugins:?}/vs_pa_self"
 run sync.sh
 
+fi # not CGI_ONLY
+
 # --- main.php on a stub of the firmware PHP API (/firmware_ext/php/); values as in r24 dune_api.php
 cat >"$work/fw_stub.php" <<'EOF'
 <?php
@@ -2480,11 +2491,19 @@ print(json.dumps({"handler_id": "filmix_api", "control_id": "play", "supplier_id
 EOF
 }
 
+# press <control_id> [handler_id]: a button of the screen or a dialog.
+press() {
+    printf '{"handler_id":"%s","control_id":"%s"}\n' "${2:-setup}" "$1" >"$work/ui.json"
+    ctx "$work/ui.json"
+    php_run "$work/ctx.json"
+}
+
 php_ok=1
 "$php_bin" -r 'exit(0);' >/dev/null 2>&1 || php_ok=0
 check "PHP CLI available ($php_bin)" test "$php_ok" = 1
 
 if [ "$php_ok" = 1 ]; then
+    if [ -z "$cgi_only" ]; then
     for f in main.php qrpng.php cgi/logs.php; do
         check "$f: php -l" "$php_bin" -l "$src/$f"
     done
@@ -3127,12 +3146,6 @@ EOF
     check "setup screen, all 8 old plugins: two warning lines" setup_is "$old_ids"
     for i in $old_ids; do rm -rf "${plugins:?}/${i:?}_supplier"; done
 
-    # press <control_id> [handler_id]: a button of the screen or a dialog.
-    press() {
-        printf '{"handler_id":"%s","control_id":"%s"}\n' "${2:-setup}" "$1" >"$work/ui.json"
-        ctx "$work/ui.json"
-        php_run "$work/ctx.json"
-    }
     message_json() {
         python3 -c 'import json, sys
 print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": False, "title": sys.argv[1]}}))' "$1"
@@ -3700,6 +3713,8 @@ EOF
     printf '%s\n' '{"handler_id":"other","control_id":"items"}' >"$work/ui.json"
     handler "$work/ui.json" "other handler_id" none
 
+    fi # not CGI_ONLY
+
     # --- cgi/logs.php through www/cgi-bin/logs, run as run_plugin_cgi runs it:
     # `sh <file>` as root, umask 0, cwd cgi-bin. Real php-cgi when there is one
     # (status and headers checked), else the PHP CLI through a stand-in (body only).
@@ -3710,10 +3725,13 @@ EOF
     check "cgi-bin wrapper run elsewhere: creates nothing" dir_empty "$work/empty_cwd"
 
     php_cgi=${PHP_CGI-$(command -v php-cgi 2>/dev/null || true)}
-    mkdir -p "$work/fs/firmware_ext/php"
+    mkdir -p "$work/fs/firmware_ext/php" "$cfg"
     if [ -n "$php_cgi" ]; then
         cgi_mode=cgi
         ln -sf "$php_cgi" "$work/fs/firmware_ext/php/php-cgi"
+    elif [ -n "$cgi_only" ]; then
+        echo "FAIL: CGI_ONLY needs a real php-cgi, none found"
+        exit 1
     else
         cgi_mode=cli
         cat >"$work/cgi_cli.php" <<'EOF'
@@ -3880,7 +3898,10 @@ EOF
     req GET "t=$old_tok"
     check "cgi after RETURN: same 403" forbidden
     unset PIA_T_TMP
+    cgi_ran=1
 fi
+
+if [ -z "$cgi_only" ]; then
 
 # --- build.sh: www/cgi-bin holds only the logs wrapper (the shell runs every
 # file there as root). A copy of the repo whose test script fails: a build
@@ -3997,6 +4018,11 @@ done
 check "translations: same keys in both languages" test \
     "$(cut -d' ' -f1 "$src/translations/dune_language_english.txt" | sort)" = \
     "$(cut -d' ' -f1 "$src/translations/dune_language_russian.txt" | sort)"
+
+fi # not CGI_ONLY
+
+# CGI_ONLY: green only if the page's checks really ran.
+[ -z "$cgi_only" ] || check "CGI_ONLY: the logs page checks ran" test "${cgi_ran-}" = 1
 
 if [ "$failed" -ne 0 ]; then
     echo "SOME TESTS FAILED"

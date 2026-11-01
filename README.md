@@ -50,7 +50,7 @@
 Сам плагин не ходит в сеть и ничего не запускает в фоне. Обновления плагина Дюна проверяет на GitHub Pages (`a1d4r.github.io`).
 
 ## Сборка из исходников
-`sh build.sh play_in_apps` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_play_in_apps_<версия>.zip`. Нужны `shellcheck`, `dash`, `zip`, `python3` и `php` (`PHP=…` — другой путь); `mksh`, если установлен, используется для второго прогона тестов. На Дюне PHP 5.3.6 — его и все нужные инструменты собирает `tests/php53/Dockerfile`: `docker build -t dune-php53 tests/php53`, затем `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh play_in_apps`. Zip в Releases собирает GitHub Actions тем же скриптом в этом образе; CI прогоняет тесты и под PHP 5.3.6, и под PHP из Ubuntu.
+`sh build.sh play_in_apps` прогоняет shellcheck и тесты и собирает `dist/dune_plugin_play_in_apps_<версия>.zip`. Нужны `shellcheck`, `dash`, `zip`, `python3` и `php` (`PHP=…` — другой путь); `mksh`, если установлен, используется для второго прогона тестов. На Дюне PHP 5.3.6 — его и все нужные инструменты собирает `tests/php53/Dockerfile`: `docker build -t dune-php53 tests/php53`, затем `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh play_in_apps`. Zip в Releases собирает GitHub Actions тем же скриптом в этом образе; CI прогоняет тесты в этом же образе, а страницу логов — ещё и с настоящим `php-cgi` (в образе его нет): `CGI_ONLY=1 dash tests/play_in_apps_test.sh`.
 
 ## Обратная связь
 Сделано для своей Дюны и выложено как есть. Об ошибках пишите в [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); исправления — по возможности.
