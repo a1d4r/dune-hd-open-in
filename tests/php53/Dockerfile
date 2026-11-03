@@ -7,6 +7,12 @@
 #   docker build -t dune-php53 tests/php53
 #   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 \
 #       sh build.sh play_in_apps
+#
+# Also BusyBox for the tests as on old Android, where its tools come first in
+# PATH: the image's static build with the default config (no grep -z, as on
+# the Dune). Debian's busybox package does not fit: its grep has -z.
+FROM busybox:1.36.1-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS busybox
+
 FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
 
 ARG PHP_VERSION=5.3.6
@@ -43,3 +49,6 @@ RUN apt-get update \
  && apt-get purge -y --auto-remove curl bzip2 gcc make libc6-dev autotools-dev \
  && rm -rf /var/lib/apt/lists/* \
  && php -v
+
+# Not in PATH: build.sh hands it to the tests (BUSYBOX).
+COPY --from=busybox /bin/busybox /opt/busybox/busybox

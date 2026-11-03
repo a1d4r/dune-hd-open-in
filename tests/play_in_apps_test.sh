@@ -3,6 +3,8 @@
 # TEST_SH selects the shell used to run plugin scripts (default: dash).
 # PHP selects the PHP CLI for main.php (default: php). The device runs PHP 5.3.6:
 # tests/php53/Dockerfile has it with the other tools (see the comment there).
+# BUSYBOX=<busybox binary> runs with its tools first in PATH, as on old Android
+# (tests/php53/Dockerfile has one: /opt/busybox/busybox).
 # CGI_ONLY=1 runs only the logs page checks and fails without a real php-cgi
 # (the image above has none, so CI runs this apart, on Ubuntu's PHP).
 # shellcheck disable=SC2016 # sh -c '<script>' _ <args>: the script expands its own $1, $2
@@ -49,6 +51,23 @@ check() {
         failed=1
     fi
 }
+
+# BusyBox of old Android (tv175, r24): its applets, all but the shells, go
+# first in PATH for the whole run; there sh is bash (TEST_SH=bash).
+if [ -n "${BUSYBOX-}" ]; then
+    mkdir "$work/busybox"
+    for a in $("$BUSYBOX" --list); do
+        case "$a" in
+            sh | ash | hush | bash) ;;
+            *) ln -s "$BUSYBOX" "$work/busybox/$a" ;;
+        esac
+    done
+    PATH="$work/busybox:$PATH"
+    export PATH
+    # Else the run proves nothing: the Dune's BusyBox has no grep -z.
+    check "busybox: first in PATH, a build without grep -z" sh -c \
+        '[ "$(command -v grep)" = "$1/grep" ] && ! printf "a\0b\n" | grep -qzF a' _ "$work/busybox"
+fi
 
 o="$work/out"
 
@@ -1151,6 +1170,7 @@ vs_64=$(printf 'a%.0s' $(seq 1 64))
 # <control_id>" (vod_search), "old" (the builder's files, VOD on and no
 # <public_actions>) or "none".
 vs_cases() {
+    # As ProIPTV 9.1: the action and none of the builder's files.
     vs_build vs_only "$VS"
     vs_build vs_files "$VS" files
     vs_build vs_space "$(vs_xml 'entry handler')"
@@ -1387,14 +1407,16 @@ vs_sh_is() {
     done
 }
 check "iptvce_vod_search: each case" vs_sh_is
-# vs_nosubstr_sh: without "vod_search" in the file, no tr or sed runs (a
-# PATH whose tr and sed fail loudly).
+# vs_nosubstr_sh: without "vod_search" in the file, no tr or sed runs but the
+# tr of NUL bytes before the word check (a PATH whose tr and sed fail loudly).
 vs_nosubstr_sh() {
     mkdir -p "$work/vs_path"
     for c in tr sed; do
         printf '#!/bin/sh\necho "%s ran" >&2\nexit 99\n' "$c" >"$work/vs_path/$c"
         chmod +x "$work/vs_path/$c"
     done
+    printf '#!/bin/sh\n[ "$1" = %s ] && exec %s "$@"\necho "tr ran" >&2\nexit 99\n' \
+        "'\\000'" "'$(command -v tr)'" >"$work/vs_path/tr"
     for b in vs_nosubstr vs_nosubstrfiles; do
         got=$(PATH="$work/vs_path:$PATH" "$sh_bin" -c '. "$1"; iptvce_vod_search "$2"; echo "rc=$?"' \
             _ "$bin/iptvce_builds.sh" "$plugins/$b" 2>&1)

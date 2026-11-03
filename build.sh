@@ -52,6 +52,15 @@ if command -v mksh >/dev/null 2>&1; then
         exit 1
     }
 fi
+# Old Android (tv175, r24): BusyBox tools first in PATH, bash as sh. The
+# BusyBox of tests/php53/Dockerfile, if there is one.
+busybox=/opt/busybox/busybox
+if [ -x "$busybox" ] && command -v bash >/dev/null 2>&1; then
+    BUSYBOX=$busybox TEST_SH=bash dash "$test" >/dev/null || {
+        echo "tests failed: BUSYBOX=$busybox TEST_SH=bash dash tests/${name}_test.sh" >&2
+        exit 1
+    }
+fi
 
 mkdir -p "$root/dist"
 rm -f "$out"

@@ -45,8 +45,10 @@ iptvce_is_build() {
 # same: iptvce_manifest in main.php.
 iptvce_manifest() {
     [ -f "$1/dune_plugin.xml" ] || return 1
-    # -z: toybox grep does not see past a NUL in a line.
-    LC_ALL=C grep -qzF "$2" "$1/dune_plugin.xml" 2>/dev/null || return 1
+    # NUL to a line break: toybox grep does not see past a NUL in a line, and
+    # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found,
+    # as with strpos in main.php.
+    LC_ALL=C tr '\000' '\n' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C grep -qF "$2" || return 1
     ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
     ivs_n=${ivs_n##* }
     case "$ivs_n" in

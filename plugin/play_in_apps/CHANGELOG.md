@@ -2,6 +2,9 @@
 
 **English version**
 
+## 0.11.1
+- Fixed: on some models (for example, Magic 4K Plus, older Android) plugins with the `vod_search` entry (for example, ProIPTV) were in the settings but did not show up in the "Play..." menu.
+
 ## 0.11.0
 - IPTV Channel Editor plugins with the new search entry (`vod_search`): the item passes the card's title, original title and year to the plugin, and the whole movie card as is (the `movie_str` field); if an episode was chosen through "Seasons" in the card, also its number and the season's (the `season` and `episode` fields); what to show is up to the plugin. IPTV Channel Editor plugins without the `<public_actions>` node (older versions) work as before; with the node but no working entry they get no item. Any Dune plugin that declares the entry gets an item, even one not made with IPTV Channel Editor. "Check" shows which items use the entry.
 - README: a section for plugin developers — how to declare the entry and what the plugin receives.
@@ -65,6 +68,9 @@
 ---
 
 **Russian version**
+
+## 0.11.1
+- Исправлено: на части моделей (например, Magic 4K Plus, старые Android) плагины с входом `vod_search` (например, ProIPTV) были в настройках, но не появлялись в меню «Смотреть…».
 
 ## 0.11.0
 - Плагины IPTV Channel Editor с новым входом для поиска (`vod_search`): пункт передаёт плагину название карточки, оригинальное название и год, а также всю карточку фильма как есть (поле `movie_str`); если серия выбрана через «Сезоны» карточки — ещё её номер и номер сезона (поля `season` и `episode`); что показать — решает плагин. Плагины IPTV Channel Editor без узла `<public_actions>` (старые версии) работают как раньше; с узлом, но без рабочего входа пункта не получают. Пункт получает любой плагин Дюны, объявивший этот вход, даже не из IPTV Channel Editor. «Проверка» показывает, какие пункты идут через него.
