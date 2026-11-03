@@ -85,9 +85,10 @@ function iptvce_name_of($id)
     return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
-// name => array(caption, icon file or '', handler_id, control_id; both '' if
-// there is no vod_search) of the plugins that get an item, in name order, as
-// bin/iptvce_list.sh prints them; with $name only that one, if it gets one.
+// name => array('caption' =>, 'icon' => icon file or '', 'h' => handler_id,
+// 'c' => control_id; h and c both '' if there is no vod_search) of the
+// plugins that get an item, in name order, as bin/iptvce_list.sh prints
+// them; with $name only that one, if it gets one.
 // The output is checked line by line: a line with the wrong number of
 // fields, a bad or repeated name or bad ids is skipped; a bad caption becomes
 // the name, a bad icon none, so a rule of the script and of this check that
@@ -134,7 +135,8 @@ function iptvce_builds($name = null)
         }
         if ($odd)
             $bad[] = $line;
-        $builds[$b] = array($caption, $icon === '' ? '' : pia_plugins_dir() . "/$b/$icon", $h, $c);
+        $builds[$b] = array('caption' => $caption,
+            'icon' => $icon === '' ? '' : pia_plugins_dir() . "/$b/$icon", 'h' => $h, 'c' => $c);
     }
     if ($rc !== 0 || $bad)
         pia_log("iptvce_list.sh ($rc): " . implode(' | ', $bad));
@@ -479,8 +481,8 @@ function pia_items_dialog()
     {
         $items[] = array(
             GuiItem::id => "iptvce_$name",
-            GuiItem::caption => $b[0],
-            GuiItem::icon_url => $b[1] !== '' ? $b[1] : 'gui_skin://small_icons/apps.aai',
+            GuiItem::caption => $b['caption'],
+            GuiItem::icon_url => $b['icon'] !== '' ? $b['icon'] : 'gui_skin://small_icons/apps.aai',
             GuiItem::group_id => 'apps');
         $checked[] = "iptvce_$name";
     }

@@ -154,7 +154,9 @@ function iptvce_play($user_input, $name)
         $shown = iptvce_valid_name($name) ? $name : preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40));
         return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $shown));
     }
-    list($caption, , $h, $c) = $builds[$name];
+    $caption = $builds[$name]['caption'];
+    $h = $builds[$name]['h'];
+    $c = $builds[$name]['c'];
 
     $movie = pia_movie($user_input);
     if ($h !== '')
