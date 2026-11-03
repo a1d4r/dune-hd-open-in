@@ -24,6 +24,81 @@ blk_only=${ONLY-}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+# py: python3 with "-" (the script on stdin) or "-c <code>", then the
+# arguments, run by one python3 for the whole test: a start of its own per
+# check was a third of the run. The same argv, cwd, exit code, stdout and
+# stderr; stdin is the script only. One call at a time: not in a pipeline or
+# in the background. The python3 goes when the test does.
+py_dir="$work/py"
+mkdir "$py_dir"
+mkfifo "$py_dir/req" "$py_dir/rep"
+exec 3<>"$py_dir/req" 4<>"$py_dir/rep"
+cat >"$py_dir/server.py" <<'EOF'
+import builtins, os, select, sys, traceback
+d, shell = sys.argv[1], int(sys.argv[2])
+enc = sys.stdout.encoding, sys.stdout.errors, sys.stderr.encoding, sys.stderr.errors
+stdin = sys.stdin
+while True:
+    if not select.select([stdin], [], [], 1)[0]:
+        try:
+            os.kill(shell, 0)
+        except OSError:
+            sys.exit(0)
+        continue
+    stdin.readline()
+    rc = 0
+    out = open(d + "/out", "w", encoding=enc[0], errors=enc[1])
+    err = open(d + "/err", "w", encoding=enc[2], errors=enc[3])
+    sys.stdout, sys.stderr, sys.stdin = out, err, open(os.devnull)
+    try:
+        args = [os.fsdecode(a) for a in open(d + "/argv", "rb").read().split(b"\0")[:-1]]
+        os.chdir(args[0])
+        sys.argv = args[1:]
+        code = compile(open(d + "/src", "rb").read(), "<stdin>" if args[1] == "-" else "<string>", "exec")
+        exec(code, {"__name__": "__main__", "__builtins__": builtins})
+    except SystemExit as e:
+        if e.code is None:
+            rc = 0
+        elif isinstance(e.code, int):
+            rc = e.code & 255
+        else:
+            print(e.code, file=err)
+            rc = 1
+    except BaseException as e:
+        traceback.print_exception(type(e), e, e.__traceback__.tb_next)
+        rc = 1
+    sys.stdin.close()
+    sys.stdout, sys.stderr, sys.stdin = sys.__stdout__, sys.__stderr__, stdin
+    out.close()
+    err.close()
+    print(rc, flush=True)
+EOF
+{
+    python3 "$py_dir/server.py" "$py_dir" "$$" <&3 >&4
+    : >"$py_dir/gone"
+    echo 99 >&4
+} &
+py() {
+    py_mode=$1
+    shift
+    if [ "$py_mode" = -c ]; then
+        printf '%s' "$1" >"$py_dir/src"
+        shift
+    else
+        cat >"$py_dir/src"
+    fi
+    if [ -e "$py_dir/gone" ]; then
+        echo "py: the test's python3 has exited" >&2
+        return 99
+    fi
+    printf '%s\0' "$PWD" "$py_mode" "$@" >"$py_dir/argv"
+    echo >&3
+    read -r py_rc <&4
+    [ ! -s "$py_dir/out" ] || cat "$py_dir/out"
+    [ ! -s "$py_dir/err" ] || cat "$py_dir/err" >&2
+    return "$py_rc"
+}
+
 # Plugin copy at a device-like path; FS_PREFIX and PLAY_IN_APPS_TMP point into $work.
 FS_PREFIX="$work/fs"
 PLAY_IN_APPS_TMP="$work/tmp"
@@ -118,7 +193,7 @@ listing_is() {
 # one_json: stdout is exactly one line holding one JSON object.
 one_json() {
     [ "$(wc -l <"$o" | tr -d ' ')" = 1 ] &&
-        python3 -c 'import json,sys; assert isinstance(json.load(open(sys.argv[1])), dict)' "$o"
+        py -c 'import json,sys; assert isinstance(json.load(open(sys.argv[1])), dict)' "$o"
 }
 
 if [ -z "$cgi_only" ]; then
@@ -132,7 +207,7 @@ if [ -z "$cgi_only" ]; then
 # parser on some firmware rejects it); it is parsed back the way
 # Intent.parseUri does to the scheme, data, action and package.
 launch_is() {
-    python3 - "$o" "$id" "$1" <<'EOF'
+    py - "$o" "$id" "$1" <<'EOF'
 import json, re, sys
 d = json.load(open(sys.argv[1]))
 app, arg = sys.argv[2], sys.argv[3]
@@ -192,7 +267,7 @@ EOF
 
 # search_is <title>: launch reply of app $id that searches for this title.
 search_is() {
-    q=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1")
+    q=$(py -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1")
     case "$id" in
         vokino) launch_is "vokino://ru.vokino.web/search?name=$q" ;;
         *) launch_is "$q" ;;
@@ -201,7 +276,7 @@ search_is() {
 
 # error_is <key>: error dialog with the translation key <id>_<key> of this plugin.
 error_is() {
-    python3 - "$o" "$id" "$1" <<'EOF'
+    py - "$o" "$id" "$1" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 want = {"error": {"message": "%%ext%%<key_global>play_in_apps_plugin_%s_%s</key_global>" % tuple(sys.argv[2:])}}
@@ -349,7 +424,7 @@ fi
 # and top.rootu.lumpa, each found by its exact name.
 blk items/lampa
 # app_data_only_<id>.json: app_data.json without the other two Lampa apps.
-python3 - "$fx/app_data.json" "$work" <<'EOF'
+py - "$fx/app_data.json" "$work" <<'EOF'
 import json, sys
 lampas = {"lampa": "top.rootu.lampa", "bylampa": "top.rootu.bylumpa", "lampa_atv": "top.rootu.lumpa"}
 for app, pkg in lampas.items():
@@ -445,8 +520,8 @@ titles() {
     hostile '{"movieInfo":{"title":{"ru":"unterminated\"}}}' error_is "$1"
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"ru":"","en":""}}}' error_is "$1"
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":"Gladiator"}}' error_is "$1"
-    long=$(python3 -c 'print("\\u0416" * 300)')
-    hostile '{"movieInfo":{"title":{"ru":"'"$long"'"}}}' search_is "$(python3 -c 'print("Ж" * 100)')"
+    long=$(py -c 'print("\\u0416" * 300)')
+    hostile '{"movieInfo":{"title":{"ru":"'"$long"'"}}}' search_is "$(py -c 'print("Ж" * 100)')"
 }
 
 # --- vokino: IMDb for movies and series alike, else search by title
@@ -704,7 +779,7 @@ blk sync/items
 # item_is <file> <id>: supplier JSON of app <id> with its bin and icon.
 # FS_PREFIX in the icon path is the fixture's (from app_data.json).
 item_is() {
-    python3 - "$1" "$2" "$3" <<'EOF'
+    py - "$1" "$2" "$3" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 app, bindir = sys.argv[2], sys.argv[3]
@@ -769,7 +844,7 @@ done
 # opens_series <id> <check> <arg>: the registered bin of <id> gets series.json.
 opens_series() {
     id=$1
-    cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/$id")
+    cmd=$(py -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/$id")
     (cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/series.json" >"$o" 2>"$o.err")
     check "registered bin of $id opens series" "$2" "$3"
 }
@@ -804,7 +879,7 @@ check "sync Bazinga3 installed: exit 0" rc_is 0
 check "sync Bazinga3 installed: all items" shown $all
 for id in filmix_api bazinga; do
     check "sync: $id item JSON" item_is "$reg/$id" "$id" "$bin"
-    cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/$id")
+    cmd=$(py -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/$id")
     (cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/series.json" >"$o" 2>"$o.err")
     check "registered bin of $id: err_unsupported" error_is err_unsupported
 done
@@ -1073,7 +1148,7 @@ check "temp: cp cut short, the item stays whole" cmp -s "$work/menu_num" "$menu/
 # Not the exit codes: GNU cp of an item the other run is replacing may fail in
 # one run ("replaced while being copied"), the other one writes it.
 items_whole() {
-    python3 -c 'import json, sys
+    py -c 'import json, sys
 for f in sys.argv[1:]:
     json.load(open(f))' "$reg"/* "$menu"/*
 }
@@ -1106,7 +1181,7 @@ build() {
     # Through files: bytes in argv reach Python decoded by the locale.
     printf '%s' "$2" >"$work/build_caption"
     printf '%s' "${3-plugin_file://img/logo_mirkino.png}" >"$work/build_icon"
-    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/build_caption" "$work/build_icon" <<'EOF'
+    py - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/build_caption" "$work/build_icon" <<'EOF'
 import re, sys
 x = open(sys.argv[1], "rb").read()
 for tag, v in ((b"icon_url", open(sys.argv[4], "rb").read()), (b"caption", open(sys.argv[3], "rb").read())):
@@ -1121,7 +1196,7 @@ EOF
 # a build in plugins_data, one line.
 build_item_is() {
     [ "$(wc -l <"$reg/iptvce_$1" | tr -d ' ')" = 1 ] || return 1
-    python3 - "$reg/iptvce_$1" "$1" "$2" "${3-}" "$bin" <<'EOF'
+    py - "$reg/iptvce_$1" "$1" "$2" "${3-}" "$bin" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))
 name, cap, icon, bindir = sys.argv[2:6]
@@ -1142,7 +1217,7 @@ check "sync build: exit 0" rc_is 0
 # shellcheck disable=SC2086 # one word per id
 check "sync build: its item after the fixed ones" shown $all iptvce_mirkino
 check "sync build: item JSON, caption and icon of the build" build_item_is mirkino 'Mir Kino' img/logo_mirkino.png
-cmd=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/iptvce_mirkino")
+cmd=$(py -c 'import json,sys; print(json.load(open(sys.argv[1]))["bin"])' "$menu/iptvce_mirkino")
 (cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/movie.json" >"$o" 2>"$o.err")
 id=iptvce
 check "registered bin of a build: err_unsupported" error_is err_unsupported
@@ -1251,7 +1326,7 @@ vs_build() {
         cp "$fx/iptvce_mirkino/img/logo_mirkino.png" "$plugins/$1/img/"
     fi
     printf '%s' "$2" >"$work/vs_text"
-    python3 - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/vs_text" "${4-0}" <<'EOF'
+    py - "$fx/iptvce_mirkino/dune_plugin.xml" "$plugins/$1/dune_plugin.xml" "$work/vs_text" "${4-0}" <<'EOF'
 import sys
 x = open(sys.argv[1], "rb").read()
 t = open(sys.argv[3], "rb").read().replace(b"@NUL@", b"\0")
@@ -1656,7 +1731,7 @@ if on; then
 # ({pkg} is replaced, "-" deletes the field), "/" escaped as on the device;
 # "flat": one line, "icon" before "package_name".
 apps_icon() {
-    python3 - "$fx/app_data.json" "$apps" "$@" <<'EOF'
+    py - "$fx/app_data.json" "$apps" "$@" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 for a in d["applications"]:
@@ -1675,7 +1750,7 @@ EOF
 # icons_are <icon_url template> [reg dir]: after sync every Android item has this icon_url.
 icons_are() {
     # shellcheck disable=SC2086 # one word per id
-    python3 - "${2:-$reg}" "$1" $android <<'EOF'
+    py - "${2:-$reg}" "$1" $android <<'EOF'
 import json, sys
 pkg = {"nuvio": "com.nuvio.tv", "stremio": "com.stremio.one", "num": "ru.yourok.num",
        "lampa": "top.rootu.lampa", "bylampa": "top.rootu.bylumpa", "lampa_atv": "top.rootu.lumpa",
@@ -1742,7 +1817,7 @@ for fp in unset empty; do
     # shellcheck disable=SC2086 # one word per id
     check "sync FS_PREFIX $fp: all items" listing_is "$reg" $all
     check "sync FS_PREFIX $fp: icons from /tmp" icons_are "file:///tmp/applications/icon_cache/icon_{pkg}.png"
-    check "sync FS_PREFIX $fp: bin path" python3 -c \
+    check "sync FS_PREFIX $fp: bin path" py -c \
         'import json, sys; sys.exit(json.load(open(sys.argv[1]))["bin"] != sys.argv[2])' "$reg/nuvio" "sh $bin/nuvio.sh"
     check "sync FS_PREFIX $fp: nothing in cwd" dir_empty "$work/cwd"
 done
@@ -1892,7 +1967,7 @@ has_line() { grep -qxF -- "$1" "$o"; }
 no_text() { ! grep -qF -- "$1" "$o"; }
 # in_item <caption> <text>: the item's verdict line or a reason line under it is text.
 in_item() {
-    python3 - "$o" "$1" "$2" <<'EOF'
+    py - "$o" "$1" "$2" <<'EOF'
 import sys
 lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")
 for i, l in enumerate(lines):
@@ -1909,7 +1984,7 @@ EOF
 # verdicts_are <verdict> [<caption>=<verdict>...]: the 15 verdict lines, in
 # the order of the items, after the 5 lines about the device.
 verdicts_are() {
-    python3 - "$o" "$@" <<'EOF'
+    py - "$o" "$@" <<'EOF'
 import sys
 lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")
 caps = ["NUM", "Lampa", "BYLAMPA", "LAMPA ATV", "Prisma", "VoKino", "LazyMedia", "Filmix",
@@ -1927,7 +2002,7 @@ EOF
 # lines: the device, then "<caption> <version> — <verdict>" per item, OK by
 # default.
 brief_is() {
-    python3 - "$o" "$plugin_version" "$@" <<'EOF'
+    py - "$o" "$plugin_version" "$@" <<'EOF'
 import sys
 lines = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")
 ver, ru = sys.argv[2], sys.argv[3] == "ru"
@@ -2250,7 +2325,7 @@ check "diag brief: no shell log lines" brief_is en
 # of a long one become "?", a short one stays as is.
 # version_line <version>: the NUM line of the brief report with that version.
 version_line() {
-    python3 -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", sys.argv[3]))' \
+    py -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", sys.argv[3]))' \
         "$fx/app_data.json" "$apps" "$1"
     diag english brief
     sed -n 2p "$o"
@@ -2663,7 +2738,7 @@ only_own_log() { ! grep -v '^play_in_apps: ' "$o.err"; }
 
 # ctx <input_data file> [op]: plugin call context around input_data.
 ctx() {
-    python3 - "$1" "${2:-handle_user_input}" >"$work/ctx.json" <<'EOF'
+    py - "$1" "${2:-handle_user_input}" >"$work/ctx.json" <<'EOF'
 import json, sys
 print(json.dumps({"op_type_code": sys.argv[2],
                   "input_data": json.load(open(sys.argv[1])),
@@ -2674,7 +2749,7 @@ EOF
 # out_is <expected action JSON or "none">: plugin output with this GUI action.
 # media_url is compared as decoded JSON (PHP 5.3 escapes "/" and non-ASCII).
 out_is() {
-    python3 - "$o" "$1" <<'EOF'
+    py - "$o" "$1" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 try:
@@ -2695,7 +2770,7 @@ EOF
 
 # Composite: load Filmix_API's token in its main menu handler, then open the search.
 search_json() {
-    python3 -c 'import json, sys
+    py -c 'import json, sys
 print(json.dumps({"handler_string_id": "composite", "data": {"actions": [
     {"handler_string_id": "plugin_handle_user_input", "plugin_name": "Filmix_api",
         "params": {"handler_id": "main_menu", "control_id": "fx_token"}},
@@ -2722,7 +2797,7 @@ error() { handler "$1" "$2" "$(error_json "$3")"; }
 
 # user_input <movie_str JSON or raw value for movie_str>: play_action user_input around it.
 user_input() {
-    python3 - "$1" >"$work/ui.json" <<'EOF'
+    py - "$1" >"$work/ui.json" <<'EOF'
 import json, sys
 print(json.dumps({"handler_id": "filmix_api", "control_id": "play", "supplier_id": "filmix_api",
                   "season": -1, "episode": -1, "movie_str": sys.argv[1]}))
@@ -2817,7 +2892,7 @@ if [ "$php_ok" = 1 ]; then
     if on; then
     # bz_input <file>: the device's play_action input with handler_id bazinga.
     bz_input() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 d = json.load(open(sys.argv[1]))
 d.update(handler_id="bazinga", supplier_id="bazinga")
 print(json.dumps(d))' "$1" >"$work/bz.json"
@@ -2830,7 +2905,7 @@ print(json.dumps(d))' "$1" >"$work/bz.json"
     }
     # bz_card_json <kp_id> <caption> [<caption_original> [<year>]]; "" or none: no field.
     bz_card_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 a = sys.argv[1:] + ["", ""]
 url = {"movie_id": a[0], "screen_id": "vod_movie", "class_name": "Kinopoisk_Class", "caption": a[1]}
 if a[2]:
@@ -2841,7 +2916,7 @@ print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Baz
     "data": {"media_url": url, "caption": a[1]}}))' "$@"
     }
     bz_search_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 url = {"searchStr": sys.argv[1], "screen_id": "vod_list", "class_name": "Kinopoisk_Class"}
 print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Bazinga3",
     "data": {"media_url": url, "caption": sys.argv[1]}}))' "$1"
@@ -2864,7 +2939,7 @@ print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Baz
     # Real inputs from the device: the movie has kp_id, the series has none.
     bz_card "$work/ui.json" "movie with kp_id: card" 1236583 'Прошлой ночью в Сохо' 'Last Night in Soho' 2021
     check "main.php bazinga logs the card" grep -qx 'play_in_apps: bazinga card: 1236583' "$o.err"
-    check "main.php bazinga card: Cyrillic as \\u escapes in media_url" python3 -c 'import json, sys
+    check "main.php bazinga card: Cyrillic as \\u escapes in media_url" py -c 'import json, sys
 u = json.load(open(sys.argv[1]))["data"]["data"]["media_url"]
 sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     bz_input "$fx/play_action_series.json"
@@ -2947,7 +3022,7 @@ PHP
     blk php/iptvce base
     # ic_input <file> [handler_id]: the device's play_action input with this handler_id.
     ic_input() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 d = json.load(open(sys.argv[1]))
 d.update(handler_id=sys.argv[2], supplier_id=sys.argv[2])
 print(json.dumps(d))' "$1" "${2:-iptvce_mirkino}" >"$work/ic.json"
@@ -2960,14 +3035,14 @@ print(json.dumps(d))' "$1" "${2:-iptvce_mirkino}" >"$work/ic.json"
     }
     # ic_search_json <build> <caption> <query>
     ic_search_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 name, cap, q = sys.argv[1:4]
 url = {"screen_id": "vod_list", "category_id": "##search##", "genre_id": q}
 print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": name,
     "data": {"media_url": url, "caption": cap + ": " + q}}))' "$@"
     }
     ic_message_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": False, "title": sys.argv[1]}}))' "$1"
     }
     ic_search() { handler "$1" "iptvce $2" "$(ic_search_json mirkino 'Mir Kino' "$3")"; }
@@ -2980,7 +3055,7 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
     ic_input "$fx/play_action_movie.json"
     ic_search "$work/ui.json" "movie: search by title" 'Прошлой ночью в Сохо'
     check "main.php iptvce logs the search" grep -qx 'play_in_apps: iptvce mirkino search: Прошлой ночью в Сохо' "$o.err"
-    check "main.php iptvce: media_url as the probe's, Cyrillic as \\u escapes" python3 -c 'import json, sys
+    check "main.php iptvce: media_url as the probe's, Cyrillic as \\u escapes" py -c 'import json, sys
 u = json.load(open(sys.argv[1]))["data"]["data"]["media_url"]
 sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category_id": "##search##",
     "genre_id": "Прошлой ночью в Сохо"} or not u.startswith("{\"screen_id\""))' "$o"
@@ -3113,7 +3188,7 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     if on; then
     # vs_json <build> <handler_id> <control_id> <search> <movie_str>: the action.
     vs_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 name, h, c, s, m = sys.argv[1:6]
 print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name": name,
     "params": {"handler_id": h, "control_id": c, "search": s, "movie_str": m}}))' "$@"
@@ -3121,7 +3196,7 @@ print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name"
     # vs_card_same: params.movie_str of the reply has the bytes of movie_str in
     # ui.json, whatever the JSON escapes around it.
     vs_card_same() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 sent = json.load(open(sys.argv[1]))["movie_str"]
 got = json.load(open(sys.argv[2]))["data"]["params"]["movie_str"]
 sys.exit(got.encode("utf-8") != sent.encode("utf-8"))' "$work/ui.json" "$o"
@@ -3132,7 +3207,7 @@ sys.exit(got.encode("utf-8") != sent.encode("utf-8"))' "$work/ui.json" "$o"
     # vs_enc <JSON>: as PHP's json_encode writes it: no spaces, non-ASCII as
     # \u escapes, "/" as "\/", keys in this order.
     vs_enc() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\\/"))' "$1"
     }
     # vs_handler <movie_str JSON> <search, readable JSON> [desc]: vs_only
@@ -3146,19 +3221,19 @@ print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\
     vs_soho=$(vs_enc '{"title":"Прошлой ночью в Сохо","original_title":"Last Night in Soho","year":"2021"}')
     check "vs_enc: as PHP" test "$vs_soho" = \
         '{"title":"\u041f\u0440\u043e\u0448\u043b\u043e\u0439 \u043d\u043e\u0447\u044c\u044e \u0432 \u0421\u043e\u0445\u043e","original_title":"Last Night in Soho","year":"2021"}'
-    vs_card=$(python3 -c 'import json, sys
+    vs_card=$(py -c 'import json, sys
 print(json.load(open(sys.argv[1]))["movie_str"])' "$fx/play_action_movie.json")
     handler "$work/ui.json" "vod_search: the device's input" "$(vs_json vs_only entry_handler external_search "$vs_soho" "$vs_card")"
     check "main.php vod_search: logged" grep -qxF "play_in_apps: iptvce vs_only vod_search: $vs_soho" "$o.err"
     check "main.php vod_search: the device's card, byte for byte" vs_card_same
     check "main.php vod_search: the device's card not in the log" vs_log_no_card
-    check "main.php vod_search: params are strings only" python3 -c 'import json, sys
+    check "main.php vod_search: params are strings only" py -c 'import json, sys
 p = json.load(open(sys.argv[1]))["data"]["params"]
 sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
     ic_input "$fx/play_action_series.json" iptvce_vs_only
     ctx "$work/ui.json"
     php_run "$work/ctx.json"
-    check "main.php vod_search: series" python3 -c 'import json, sys
+    check "main.php vod_search: series" py -c 'import json, sys
 s = json.loads(json.load(open(sys.argv[1]))["data"]["params"]["search"])
 sys.exit(s.get("title") != "Дом Дракона")' "$o"
     check "main.php vod_search: series card, byte for byte" vs_card_same
@@ -3166,7 +3241,7 @@ sys.exit(s.get("title") != "Дом Дракона")' "$o"
     # card. In params only as strings of digits, each only if it is at least 1.
     # vs_num_input <file> <season, raw JSON> <episode, raw JSON>; "-" drops the field.
     vs_num_input() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 d = json.load(open(sys.argv[1]))
 d.update(handler_id="iptvce_vs_only", supplier_id="iptvce_vs_only")
 for k, raw in zip(("season", "episode"), sys.argv[2:]):
@@ -3179,12 +3254,12 @@ print(json.dumps(d))' "$@" >"$work/ic.json"
     }
     # vs_num_json <search> <card> <season> <episode>: the action; "" leaves the key out.
     vs_num_json() {
-        vs_json vs_only entry_handler external_search "$1" "$2" | python3 -c 'import json, sys
-a = json.load(sys.stdin)
-for k, v in zip(("season", "episode"), sys.argv[1:]):
+        py -c 'import json, sys
+a = json.loads(sys.argv[1])
+for k, v in zip(("season", "episode"), sys.argv[2:]):
     if v:
         a["params"][k] = v
-print(json.dumps(a))' "$3" "$4"
+print(json.dumps(a))' "$(vs_json vs_only entry_handler external_search "$1" "$2")" "$3" "$4"
     }
     # vs_num <desc> <season, raw JSON> <episode, raw JSON> <want season> <want episode>
     vs_num() {
@@ -3194,11 +3269,11 @@ print(json.dumps(a))' "$3" "$4"
         check "main.php vod_search season, episode: $1: the card, byte for byte" vs_card_same
     }
     vs_params_strings() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 p = json.load(open(sys.argv[1]))["data"]["params"]
 sys.exit(not all(isinstance(v, str) for v in p.values()))' "$o"
     }
-    vs_series_card=$(python3 -c 'import json, sys
+    vs_series_card=$(py -c 'import json, sys
 print(json.load(open(sys.argv[1]))["movie_str"])' "$fx/play_action_series.json")
     vs_series=$(vs_enc '{"title":"Дом Дракона","original_title":"House of the Dragon","year":"2022"}')
     # The fixtures: -1, the main card.
@@ -3335,7 +3410,7 @@ EOF
         printf '%s' "$raw" >"$work/raw.json"
         php_run "$work/raw.json"
         check "main.php raw '$raw': exit 0" rc_is 0
-        check "main.php raw '$raw': has_data false" python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d["has_data"] is not False)' "$o"
+        check "main.php raw '$raw': has_data false" py -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d["has_data"] is not False)' "$o"
     done
     fi
 
@@ -3346,7 +3421,7 @@ EOF
     # warning labels if a separate "Open in <app>" plugin is there (the
     # caption, then the app names), then the three buttons.
     setup_is() {
-        python3 - "$o" "$1" <<'EOF'
+        py - "$o" "$1" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 old = set(sys.argv[2].split())
@@ -3375,7 +3450,7 @@ EOF
 
     # folder_view [media_url] [op]: open a screen.
     folder_view() {
-        python3 -c 'import json, sys; print(json.dumps({"media_url": sys.argv[1]}))' "${1:-setup}" >"$work/fv.json"
+        py -c 'import json, sys; print(json.dumps({"media_url": sys.argv[1]}))' "${1:-setup}" >"$work/fv.json"
         ctx "$work/fv.json" "${2:-get_folder_view}"
         php_run "$work/ctx.json"
     }
@@ -3406,11 +3481,11 @@ EOF
     fi
 
     message_json() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": False, "title": sys.argv[1]}}))' "$1"
     }
     file_is() { [ "$(cat "$1")" = "$2" ]; }
-    mode_is() { python3 -c 'import os, sys; sys.exit(os.stat(sys.argv[1]).st_mode & 0o777 != int(sys.argv[2], 8))' "$1" "$2"; }
+    mode_is() { py -c 'import os, sys; sys.exit(os.stat(sys.argv[1]).st_mode & 0o777 != int(sys.argv[2], 8))' "$1" "$2"; }
 
     # --- "Configure…": the shell's dialog with checkmarks (edit_list_config)
     blk php/items base
@@ -3419,7 +3494,7 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
     # items_is <installed ids> <ids with an icon in icon_cache> <en|ru> [<id>=<icon> ...]:
     # the dialog action; the other icons are apps.aai.
     items_is() {
-        python3 - "$o" "$1" "$2" "$3" "$PLAY_IN_APPS_TMP/applications/icon_cache" "${4-}" <<'EOF'
+        py - "$o" "$1" "$2" "$3" "$PLAY_IN_APPS_TMP/applications/icon_cache" "${4-}" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 installed, icons = set(sys.argv[2].split()), set(sys.argv[3].split())
@@ -3527,7 +3602,7 @@ EOF
     : >"$work/atv_icons/icon_com.nuvio.tv.png"
     # app_icons <package>=<icon JSON> ...: app_data.json with these "icon" values.
     app_icons() {
-        python3 - "$fx/app_data.json" "$apps" "$@" <<'EOF'
+        py - "$fx/app_data.json" "$apps" "$@" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 icons = dict(a.split("=", 1) for a in sys.argv[3:])
@@ -3584,7 +3659,7 @@ EOF
     # items_builds_are <id>=<caption>=<icon or ""> ...: the dialog's items
     # after the 15 fixed ones, and checked_ids the same.
     items_builds_are() {
-        python3 - "$o" "$@" <<'EOF'
+        py - "$o" "$@" <<'EOF'
 import json, sys
 a = json.load(open(sys.argv[1]))["data"]["data"]
 want = []
@@ -3655,7 +3730,7 @@ EOF
     # parity_is <id>=<caption>=<icon in the build or ""> ...: these items, the
     # same in sync.sh's and in the dialog's.
     parity_is() {
-        python3 - "$o" "$reg" "$plugins" "$@" <<'EOF'
+        py - "$o" "$reg" "$plugins" "$@" <<'EOF'
 import glob, json, os, sys
 out, reg, plugins = sys.argv[1:4]
 want = []
@@ -3705,7 +3780,7 @@ EOF
 
     # apply <list_config_changed JSON or none> <list_config_id JSON or none> [desc]
     apply() {
-        python3 -c 'import json, sys
+        py -c 'import json, sys
 ui = {"handler_id": "setup", "control_id": "list_apply"}
 for k, v in (("list_config_changed", sys.argv[1]), ("list_config_id", sys.argv[2])):
     if v != "none":
@@ -3757,7 +3832,7 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     apply '"1"' '"play_in_apps"' symlink
     check "list_apply symlink: not read" hidden_is nuvio
     rm -f "$lcfg"
-    python3 -c 'import sys; open(sys.argv[1], "w").write("-num\n" * 20000)' "$lcfg"
+    py -c 'import sys; open(sys.argv[1], "w").write("-num\n" * 20000)' "$lcfg"
     apply '"1"' '"play_in_apps"' 'big file'
     check "list_apply file over 64 KB: not read" hidden_is nuvio
     : >"$work/notadir"
@@ -3799,7 +3874,7 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     # check_view_is <file with the expected lines>: view_regular 1x16 with a
     # scrollbar, a row per line, ENTER does nothing.
     check_view_is() {
-        python3 - "$o" "$1" <<'EOF'
+        py - "$o" "$1" <<'EOF'
 import json, sys
 d = json.load(open(sys.argv[1]))
 lines = open(sys.argv[2], encoding="utf-8").read().rstrip("\n").split("\n")
@@ -3828,12 +3903,12 @@ EOF
     check "check screen: exit 0" rc_is 0
     check "check screen: stderr has only own log lines" only_own_log
     check "check screen: the lines of the brief report as rows" check_view_is "$work/diag_en.txt"
-    check "check screen: 16 rows, one screen" python3 -c 'import json, sys
+    check "check screen: 16 rows, one screen" py -c 'import json, sys
 sys.exit(len(json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]) != 16)' "$o"
     check "check screen: no details" sh -c '! grep -qE "am start|intent|launch:|FS_PREFIX" "$1"' _ "$o"
     check "check screen: diag.sh ran from PHP" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = 13
     folder_view check get_regular_folder_items
-    check "check screen, get_regular_folder_items: the same rows" python3 -c 'import json, sys
+    check "check screen, get_regular_folder_items: the same rows" py -c 'import json, sys
 d = json.load(open(sys.argv[1]))
 n = len(open(sys.argv[2]).read().rstrip("\n").split("\n"))
 sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] != n or len(d["data"]["items"]) != n)' "$o" "$work/diag_en.txt"
@@ -3859,10 +3934,10 @@ sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] !
     unset STUB_MODEL
     "$sh_bin" "$bin/sync.sh" >/dev/null 2>&1
     check "check screen, bad UTF-8: exit 0" rc_is 0
-    check "check screen, bad UTF-8 and a tab: cleaned" python3 -c 'import json, sys
+    check "check screen, bad UTF-8 and a tab: cleaned" py -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
 sys.exit(rows[0]["caption"] != "Pro?? 8K · r24 260827 · Android 11 · plugin " + sys.argv[2])' "$o" "$plugin_version"
-    check "check screen, long line: cut at 300 characters" python3 -c 'import json, sys
+    check "check screen, long line: cut at 300 characters" py -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
 long = [r["caption"] for r in rows if r["caption"].startswith("NUM ")]
 sys.exit(len(long) != 1 or len(long[0]) != 300 or not long[0].endswith("…"))' "$o"
@@ -3879,7 +3954,7 @@ sys.exit(len(long) != 1 or len(long[0]) != 300 or not long[0].endswith("…"))' 
     qr_dialog_is() {
         "$php_bin" "$work/qr_of.php" "$plugin/qrpng.php" \
             "http://$1/cgi-bin/plugins/play_in_apps/logs?t=$(token_of)" >"$work/qr_want.png" || return 1
-        python3 - "$o" "$pia_tmp" "$work/qr_want.png" <<'EOF'
+        py - "$o" "$pia_tmp" "$work/qr_want.png" <<'EOF'
 import glob, json, sys
 d = json.load(open(sys.argv[1]))
 tmp = sys.argv[2]
@@ -3978,7 +4053,7 @@ EOF
 
     # Not ours: no action.
     for c in '"evil"' '"logs "' '0' '["items"]' 'null'; do
-        python3 -c 'import json, sys; print(json.dumps({"handler_id": "setup", "control_id": json.loads(sys.argv[1])}))' "$c" >"$work/ui.json"
+        py -c 'import json, sys; print(json.dumps({"handler_id": "setup", "control_id": json.loads(sys.argv[1])}))' "$c" >"$work/ui.json"
         handler "$work/ui.json" "control_id $c" none
     done
     printf '%s\n' '{"handler_id":"other","control_id":"items"}' >"$work/ui.json"
@@ -4028,7 +4103,7 @@ EOF
             GATEWAY_INTERFACE=CGI/1.1 SERVER_PROTOCOL=HTTP/1.1 REDIRECT_STATUS=200 \
             sh "$plugin/www/cgi-bin/logs") </dev/null >"$o" 2>"$o.err"
         if [ "$cgi_mode" = cgi ]; then
-            python3 -c 'import sys
+            py -c 'import sys
 s = open(sys.argv[1], "rb").read()
 p = s.find(b"\r\n\r\n")
 open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
@@ -4048,7 +4123,7 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     body_has() { grep -qF -- "$1" "$o.body"; }
     forbidden() { [ "$(cat "$o.body")" = '403 Forbidden' ] && status_is 403 && hdr 'Content-type: text/plain'; }
     quiet() { ! grep -q 'PHP ' "$o.err"; }
-    age() { python3 -c 'import os, sys, time; t = time.time() - int(sys.argv[2]); os.utime(sys.argv[1], (t, t))' "$cgi_tok" "$1"; }
+    age() { py -c 'import os, sys, time; t = time.time() - int(sys.argv[2]); os.utime(sys.argv[1], (t, t))' "$cgi_tok" "$1"; }
 
     cgi_tmp="$work/fs/tmp"
     cgi_tok="$cgi_tmp/plugins/play_in_apps/logs_token"
@@ -4133,7 +4208,7 @@ open(sys.argv[2], "wb").write(b"" if p < 0 else s[p + 4:])' "$o" "$o.body"
     check "cgi download: attachment named by model and UTC time" sh -c '[ "$1" = cli ] || grep -qiE "^Content-Disposition: attachment; filename=\"play_in_apps-Pro_8K_Plus-[0-9]{8}-[0-9]{6}\\.txt\"" "$2"' _ "$cgi_mode" "$o"
     check "cgi download: no-store, nosniff" sh -c '[ "$1" = cli ] || { grep -qi "^Cache-Control: no-store" "$2" && grep -qi "^X-Content-Type-Options: nosniff" "$2"; }' _ "$cgi_mode" "$o"
     check "cgi download: version and warning first" sh -c 'head -n 1 "$1" | grep -q "^play_in_apps $2 logs, " && sed -n 2p "$1" | grep -qF "The logs may contain personal data."' _ "$o.body" "$plugin_version"
-    check "cgi download: diag, supplier logs, play_in_apps.log, shell_ext.log, async_worker.log, shell.log, logcat, END" python3 - "$o.body" <<'EOF'
+    check "cgi download: diag, supplier logs, play_in_apps.log, shell_ext.log, async_worker.log, shell.log, logcat, END" py - "$o.body" <<'EOF'
 import sys
 s = open(sys.argv[1], encoding="utf-8", errors="replace").read()
 marks = ["Device: Pro 8K Plus, Android 11", "Firmware: 260827_0003_r24 (tv188b)", "NUM_SUPPLIER_MARK",
@@ -4216,7 +4291,7 @@ fi
 # --- manifest and translations
 blk manifest
 if on; then
-check "manifest: php, suppliers, entry points, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
+check "manifest: php, suppliers, entry points, global actions, timeout" py - "$src/dune_plugin.xml" "$all" <<'EOF'
 import copy, os, re, sys, xml.etree.ElementTree as ET
 r = ET.parse(sys.argv[1]).getroot()
 es = r.findall("entry_points/entry_point")
@@ -4251,7 +4326,7 @@ EOF
 # The shell keys entry points by "<plugin>:<media_url>": with the same
 # media_url the later one replaces the earlier, and the root:// shortcut
 # drops out of Applications -> All.
-check "manifest: entry point media_url values all differ" python3 - "$src/dune_plugin.xml" <<'EOF'
+check "manifest: entry point media_url values all differ" py - "$src/dune_plugin.xml" <<'EOF'
 import sys, xml.etree.ElementTree as ET
 es = ET.parse(sys.argv[1]).getroot().findall("entry_points/entry_point")
 urls = [x.findtext("media_url") for x in es]
@@ -4295,7 +4370,7 @@ for lang in english russian; do
     done
 done
 for lang in english russian; do
-    check "translation $lang: screen_hint fits the right column (50 characters)" python3 -c 'import sys
+    check "translation $lang: screen_hint fits the right column (50 characters)" py -c 'import sys
 t = [l for l in open(sys.argv[1], encoding="utf-8") if l.startswith("screen_hint = ")]
 sys.exit(len(t) != 1 or len(t[0].rstrip("\n")) - len("screen_hint = ") > 50)' "$src/translations/dune_language_$lang.txt"
 done
