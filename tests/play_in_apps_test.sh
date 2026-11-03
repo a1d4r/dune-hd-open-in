@@ -1681,7 +1681,8 @@ vs_base() {
     run sync.sh
 }
 
-# --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_gets_item, iptvce_why
+# --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_gets_item, iptvce_why,
+# iptvce_list.sh
 blk sync/iptvce_vod_search vs_base
 if on; then
 : >>"$work/built"
