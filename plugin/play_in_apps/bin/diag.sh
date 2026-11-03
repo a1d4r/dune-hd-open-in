@@ -303,9 +303,11 @@ done
 
 # --- Plugins with the word vod_search in their dune_plugin.xml and no item,
 # and the step why (iptvce_why). Untrusted: the caption is checked text, the
-# folder name keeps only safe characters.
+# folder name keeps only safe characters. The word first, outside $(...): no
+# subshell for the most plugins, those without it.
 for d in "$plugins"/*/; do
     d=${d%/}
+    iptvce_has_word "$d" vod_search || continue
     why=$(iptvce_why "$plugins" "${d##*/}")
     [ -n "$why" ] || continue
     safe=$(printf '%s' "${d##*/}" | LC_ALL=C tr -c 'A-Za-z0-9_.-' '?' | cut -c 1-40)

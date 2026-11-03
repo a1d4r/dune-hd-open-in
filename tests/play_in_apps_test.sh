@@ -1759,6 +1759,23 @@ vs_gets_item_no_parse() {
     done
 }
 check "iptvce_gets_item: the manifest parsed only for a candidate with the word" vs_gets_item_no_parse
+# vs_why_no_parse: iptvce_why (diag.sh, every plugin) checks the word first:
+# without it nothing of the parse runs, a build (vs_pa_no) included; with it
+# (vs_type) the parse runs. The parse functions print "parsed".
+vs_why_no_parse() {
+    for x in vs_nosubstr: vs_nosubstrfiles: vs_pa_no: 'no such:' vs_type:parsed; do
+        got=$("$sh_bin" -c '. "$1"
+            iptvce_manifest() { echo parsed; return 1; }
+            iptvce_gets_item() { echo parsed; return 1; }
+            iptvce_builder_item() { echo parsed; return 1; }
+            iptvce_why "$2" "$3"' _ "$bin/iptvce_builds.sh" "$plugins" "${x%:*}" 2>&1 | head -n 1)
+        [ "$got" = "${x#*:}" ] || {
+            echo "$x: got '$got'" >&2
+            return 1
+        }
+    done
+}
+check "iptvce_why: no parse without the word vod_search" vs_why_no_parse
 printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
     check "iptvce_gets_item $b: $want" vs_mode_is "$b" "$want"

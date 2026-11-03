@@ -30,13 +30,19 @@ iptvce_builds() {
 iptvce_gets_item() {
     iptvce_name_ok "$2" || return 1
     iptvce_vod_search "$1/$2" >/dev/null && return 0
-    [ -f "$1/$2/starnet_plugin.php" ] && [ -f "$1/$2/screens_vod/starnet_vod_list_screen.php" ] &&
-        [ -f "$1/$2/config.json" ] || return 1
-    e=$(grep -o '"vod_engine": *"[^"]*"' "$1/$2/config.json" 2>/dev/null | head -n 1)
+    iptvce_builder_item "$1/$2"
+}
+
+# iptvce_builder_item <build dir>: the builder's part of iptvce_gets_item:
+# its files, VOD on and no <public_actions>.
+iptvce_builder_item() {
+    [ -f "$1/starnet_plugin.php" ] && [ -f "$1/screens_vod/starnet_vod_list_screen.php" ] &&
+        [ -f "$1/config.json" ] || return 1
+    e=$(grep -o '"vod_engine": *"[^"]*"' "$1/config.json" 2>/dev/null | head -n 1)
     case "$e" in
         '' | *'"'[Nn][Oo][Nn][Ee]'"') return 1 ;;
     esac
-    ! iptvce_has_public_actions "$1/$2"
+    ! iptvce_has_public_actions "$1"
 }
 
 # iptvce_name_ok <name>: the safe folder name of iptvce_gets_item.
@@ -53,12 +59,7 @@ iptvce_name_ok() {
 # < > = and after </ removed. Variables are prefixed: callers keep theirs.
 # ivs_why: the step it fails at (nofile, noword, big), for iptvce_why.
 iptvce_manifest() {
-    ivs_why=nofile
-    [ -f "$1/dune_plugin.xml" ] || return 1
-    ivs_why=noword
-    # NUL to a line break: toybox grep does not see past a NUL in a line, and
-    # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found.
-    LC_ALL=C tr '\000' '\n' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C grep -qF "$2" || return 1
+    iptvce_has_word "$1" "$2" || return 1
     ivs_why=big
     ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
     ivs_n=${ivs_n##* }
@@ -89,6 +90,18 @@ iptvce_manifest() {
         esac
     done
     ivs_s=$(printf '%s' "$ivs_s" | LC_ALL=C sed 's/  */ /g; s/ *\([<>=]\) */\1/g; s:</ *:</:g')
+}
+
+# iptvce_has_word <build dir> <word>: the build's dune_plugin.xml is a regular
+# file (a FIFO or /dev/zero is not read) with <word>, not parsed: the cheap
+# first step of iptvce_manifest. ivs_why: nofile or noword if not.
+iptvce_has_word() {
+    ivs_why=nofile
+    [ -f "$1/dune_plugin.xml" ] || return 1
+    ivs_why=noword
+    # NUL to a line break: toybox grep does not see past a NUL in a line, and
+    # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found.
+    LC_ALL=C tr '\000' '\n' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C grep -qF "$2"
 }
 
 # iptvce_has_public_actions <build dir>: an opening or empty <public_actions>
@@ -183,18 +196,20 @@ iptvce_vod_search() {
 # name) or the step iptvce_vod_search fails at (ivs_why). Nothing if it gets
 # an item (iptvce_gets_item) or is not such a plugin (no regular file, no
 # word).
-# <name> may be any folder name: only read, as part of a path.
+# <name> may be any folder name: only read, as part of a path. The word is
+# checked first: most plugins have none and are not parsed (diag.sh calls this
+# for every plugin); the manifest is parsed at most once more, by
+# iptvce_vod_search, and by iptvce_builder_item for a build.
 iptvce_why() {
-    iptvce_gets_item "$1" "$2" && return 0
-    iptvce_vod_search "$1/$2" >/dev/null && ivs_why=
-    case "$ivs_why" in
-        nofile | noword) return 0 ;;
-    esac
+    iptvce_has_word "$1/$2" vod_search || return 0
     if ! iptvce_name_ok "$2"; then
         echo name
-    elif [ -n "$ivs_why" ]; then
-        printf '%s\n' "$ivs_why"
+        return 0
     fi
+    iptvce_vod_search "$1/$2" >/dev/null && return 0
+    iw_why=$ivs_why
+    iptvce_builder_item "$1/$2" && return 0
+    printf '%s\n' "$iw_why"
 }
 
 # iptvce_tag <tag> <text>: what is between the first <tag> and the </tag>
