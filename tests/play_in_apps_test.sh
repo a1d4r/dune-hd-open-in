@@ -838,6 +838,12 @@ same_copies() {
 for f in log fail value ext_id; do
     check "bin/*.sh: the copies of $f() are the same" same_copies "$f"
 done
+# The TMDB ID rule is in the calls of ext_id: every one with tmdb is the same.
+tmdb_rule_same() {
+    [ "$(grep -h 'ext_id.*tmdb' "$src"/bin/*.sh | grep -cv "ext_id 'tmdb\(tv\)\{0,1\}:\[1-9\]\[0-9\]{0,8}'")" = 0 ] &&
+        [ "$(cat "$src"/bin/*.sh | grep -c 'ext_id.*tmdb')" -ge 18 ]
+}
+check "bin/*.sh: every tmdb: and tmdbtv: of ext_id is [1-9][0-9]{0,8}" tmdb_rule_same
 fi
 
 # --- filmix_api.sh, bazinga.sh, iptvce.sh: answer only if play_action was ignored
