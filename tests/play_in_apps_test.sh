@@ -792,6 +792,33 @@ check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and c
     done' _ "$src/bin"
 fi
 
+# --- log, fail, value and ext_id: a copy in each item script that needs them,
+# the copies stay the same.
+blk items/skeleton
+if on; then
+# same_copies <function>: every bin/*.sh that defines it (two at least) has
+# the same lines from "<function>() {" to the first "}".
+same_copies() {
+    sc_n=0
+    for sc_s in "$src"/bin/*.sh; do
+        grep -qE "^[[:space:]]*$1[[:space:]]*\\([[:space:]]*\\)" "$sc_s" || continue
+        sc_body=$(sed -n "/^$1() {\$/,/^}\$/p" "$sc_s")
+        [ -n "$sc_body" ] || return 1
+        if [ "$sc_n" = 0 ]; then
+            sc_first=$sc_body
+        elif [ "$sc_body" != "$sc_first" ]; then
+            echo "$sc_s: $1 differs" >&2
+            return 1
+        fi
+        sc_n=$((sc_n + 1))
+    done
+    [ "$sc_n" -ge 2 ]
+}
+for f in log fail value ext_id; do
+    check "bin/*.sh: the copies of $f() are the same" same_copies "$f"
+done
+fi
+
 # --- filmix_api.sh, bazinga.sh, iptvce.sh: answer only if play_action was ignored
 blk items/filmix_bazinga_iptvce
 if on; then
