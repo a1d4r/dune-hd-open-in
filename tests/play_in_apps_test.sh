@@ -1190,6 +1190,26 @@ fi
 # --- sync: IPTV Channel Editor builds (iptvce_builds.sh), an item each
 blk sync/iptvce base
 
+# built <name>...: these folders of plugins/ go with unbuild_all.
+built() { printf '%s\n' "$@" >>"$work/built"; }
+# unbuild_all [<name>...]: remove the folders of build, vs_build and built,
+# but these.
+unbuild_all() {
+    [ -f "$work/built" ] || return 0
+    sort -u "$work/built" >"$work/built.all"
+    : >"$work/built"
+    while IFS= read -r b; do
+        keep=
+        for k in "$@"; do
+            [ "$b" != "$k" ] || keep=1
+        done
+        if [ -n "$keep" ]; then
+            built "$b"
+        else
+            rm -rf "${plugins:?}/${b:?}"
+        fi
+    done <"$work/built.all"
+}
 # build <name> [<caption XML text> [<icon_url XML text>]]: plugins/<name> made
 # of the Mir Kino fixture (tests/fixtures/iptvce_mirkino); a caption or an
 # icon_url given goes first in its dune_plugin.xml, an empty one removes all
@@ -1197,6 +1217,7 @@ blk sync/iptvce base
 build() {
     rm -rf "${plugins:?}/$1"
     cp -R "$fx/iptvce_mirkino" "$plugins/$1"
+    built "$1"
     [ $# -gt 1 ] || return 0
     # Through files: bytes in argv reach Python decoded by the locale.
     printf '%s' "$2" >"$work/build_caption"
@@ -1264,7 +1285,7 @@ for b in tab badutf surrogate overlong trkey blank nocap; do
 done
 check "sync captions: valid JSON for PHP too (one line, no raw control bytes)" sh -c \
     '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"/iptvce_*' _ "$reg"
-for b in kino long ascii40 tab badutf surrogate overlong trkey blank nocap; do rm -rf "${plugins:?}/$b"; done
+unbuild_all mirkino
 
 # Icons: only plugin_file:// with a safe path of an existing file.
 build icon_up 'Up' 'plugin_file://../play_in_apps/icons/logo.png'
@@ -1281,7 +1302,7 @@ check "sync icons: exit 0" rc_is 0
 for b in up:Up space:Space abs:Abs http:Http skin:Skin missing:Missing dir:Dir quote:Quote none:None; do
     check "sync icon ${b%%:*}: no icon" build_item_is "icon_${b%%:*}" "${b#*:}"
 done
-for b in up space abs http skin missing dir quote none; do rm -rf "${plugins:?}/icon_$b"; done
+unbuild_all mirkino
 
 # Not a build with VOD, or an unsafe folder name: no item.
 build novod
@@ -1310,6 +1331,7 @@ for b in iedem.tv fox-fun.tv viplime.fun.tv "$(printf 'n%.0s' $(seq 1 40))"; do
     build "$b"
 done
 : >"$plugins/notadir"
+built notadir
 run sync.sh
 check "sync not builds, unsafe names: exit 0" rc_is 0
 # shellcheck disable=SC2086 # one word per id
@@ -1317,10 +1339,7 @@ check "sync not builds, unsafe names: only mirkino, names with . and -, the 40-c
     shown $all iptvce_mirkino iptvce_iedem.tv iptvce_fox-fun.tv iptvce_viplime.fun.tv \
     "iptvce_$(printf 'n%.0s' $(seq 1 40))"
 check "sync build iedem.tv: item JSON, icon of the build" build_item_is iedem.tv 'Mir Kino' img/logo_mirkino.png
-for b in novod noengine noconfig nostarnet novodlist nostarnetfile novodlow novodup 'mir kino' a..b .x -x 'мир' \
-    "$(printf 'n%.0s' $(seq 1 41))" iedem.tv fox-fun.tv viplime.fun.tv "$(printf 'n%.0s' $(seq 1 40))" notadir; do
-    rm -rf "${plugins:?}/$b"
-done
+unbuild_all mirkino
 fi
 
 # The vod_search action (the builder's entry for other plugins) in
@@ -1339,6 +1358,7 @@ VS=$(vs_xml)
 # VOD on); <size>: a comment pads the file to this many bytes.
 vs_build() {
     rm -rf "${plugins:?}/$1"
+    built "$1"
     if [ "${3-}" = files ]; then
         cp -R "$fx/iptvce_mirkino" "$plugins/$1"
     else
@@ -1573,10 +1593,6 @@ vs_pa_32769=old
 vs_pa_nul=old
 vs_pa_nulbefore=none
 vs_pa_nulcomment=none"
-# vs_rm: remove the builds of vs_cases.
-vs_rm() {
-    printf '%s\n' "$vs_want" | while IFS='=' read -r b _; do rm -rf "${plugins:?}/$b"; done
-}
 # vs_items: the item ids of the builds among them, in name order.
 vs_items() {
     printf '%s\n' "$vs_want" | grep -v '=none$' | sed 's/=.*//; s/^/iptvce_/'
@@ -1681,8 +1697,7 @@ for x in vs_only= vs_files= vs_crlf= vs_own_not= vs_pa_vs= vs_pa_commentblock= v
     vs_emptyctl=ids vs_own_setup=own vs_own_setupfiles=own vs_own_iptvce_=own; do
     check "iptvce_why ${x%%=*}: ${x#*=}" vs_why_is "${x%%=*}" "${x#*=}"
 done
-rm -rf "${plugins:?}/a b" "${plugins:?}/.x" "${plugins:?}/-x"
-vs_rm
+unbuild_all mirkino
 
 # A build updated in place: <public_actions> decides whether its item stays.
 vs_jelly vs_upd ''
@@ -1698,7 +1713,7 @@ check "sync build updated to an empty node: the others stay" shown $all iptvce_m
 vs_jelly vs_upd "$VS"
 run sync.sh
 check "sync build updated to vod_search: item back" build_item_is vs_upd 'Mir Kino' img/logo_mirkino.png
-rm -rf "${plugins:?}/vs_upd"
+unbuild_all mirkino
 run sync.sh
 
 # Hidden, removed, two builds; the copies in /tmp follow.
@@ -1712,7 +1727,7 @@ run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync build, garbage in hidden: both shown" shown $all iptvce_kino iptvce_mirkino
 rm -f "$data/hidden"
-rm -rf "${plugins:?}/kino"
+unbuild_all mirkino
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync build removed: its item removed" shown $all iptvce_mirkino
@@ -1737,7 +1752,7 @@ rm -f "$menu/YouTube" "$menu/iptvce_foreign" "$menu/iptvce_a b" "$reg/iptvce_for
 rm -rf "$reg"
 (cd "$work" && FS_PREFIX='' PLAY_IN_APPS_FLASHDATA="$work/fs/flashdata" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err")
 check "sync FS_PREFIX empty: build item" build_item_is mirkino 'Mir Kino' img/logo_mirkino.png
-rm -rf "${plugins:?}/mirkino"
+unbuild_all
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync builds gone: fixed items only" shown $all
@@ -2420,7 +2435,7 @@ check "diag brief build, another plugin's file" grep -qxF "Mir Kino — the item
 sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
 diag english brief
 check "diag build without VOD: no line" rest_is 'Кино "Мир" — OK (through the Dune plugin kino)'
-rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
+unbuild_all
 run sync.sh
 diag english brief
 check "diag builds gone: no lines after the fixed items" rest_is
@@ -2432,7 +2447,7 @@ check "diag brief build with a dot in its name" rest_is "iLook TV — OK (throug
 diag
 check "diag build with a dot: installed" in_item "iLook TV" "  installed: yes (iedem.tv)"
 check "diag build with a dot: menu file ours" in_item "iLook TV" "  menu item: yes, plugin play_in_apps"
-rm -rf "${plugins:?}/iedem.tv"
+unbuild_all
 # vod_search: the line says so, the full report names its handler.
 vs_build vs_only "$VS"
 build oldway 'Old Way'
@@ -2450,7 +2465,7 @@ check "diag vod_search build: installed" in_item "Mir Kino" "  installed: yes (v
 check "diag vod_search build: its handler" in_item "Mir Kino" \
     "  launch: through the Dune plugin vs_only, vod_search entry_handler/external_search, not checked"
 check "diag build without vod_search: as before" in_item "Old Way" "  launch: through the Dune plugin oldway, not checked"
-rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway" "${plugins:?}/vs_pa_self"
+unbuild_all
 run sync.sh
 # The word vod_search but the entry turned down: a line each after the items,
 # brief or not, with the step; the folder name with safe characters only.
@@ -2468,6 +2483,7 @@ run sync.sh
 check "sync vod_search turned down, NUL bytes: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 # Read only if a regular file: a FIFO or /dev/zero would hang the check.
 mkdir -p "$plugins/vs_fifo" "$plugins/vs_zero"
+built vs_fifo vs_zero
 mkfifo "$plugins/vs_fifo/dune_plugin.xml"
 ln -s /dev/zero "$plugins/vs_zero/dune_plugin.xml"
 vs_r='the vod_search entry is turned down'
@@ -2504,9 +2520,7 @@ check "diag vod_search turned down: the lines before the shell log" sh -c \
         [ "$(sed "/^$h/,\$d" "$1" | grep -F -- "$3" | LC_ALL=C sort)" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
     _ "$o" "$vs_why_lines" "$vs_r"
 check "diag vod_search turned down: no raw control bytes" sh -c '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"' _ "$o"
-for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_only vs_nulline vs_fifo vs_zero; do
-    rm -rf "${plugins:?}/$b"
-done
+unbuild_all
 run sync.sh
 fi
 
@@ -3134,7 +3148,7 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     build longcap "$(printf 'Ж%.0s' $(seq 1 39))Юя"
     ic_movie '{"title":""}' iptvce_longcap
     ic_msg "$work/ui.json" "long caption: 40 characters" "This title has no name, $(printf 'Ж%.0s' $(seq 1 39))Ю cannot search for it"
-    rm -rf "${plugins:?}/kino" "${plugins:?}/tabcap" "${plugins:?}/trcap" "${plugins:?}/badcap" "${plugins:?}/longcap"
+    unbuild_all mirkino
 
     # Not a build now, or not a valid name: not installed, named by its caption.
     ic_movie '{"title":"Дюна"}' iptvce_nosuch
@@ -3157,7 +3171,7 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_msg "$work/ui.json" "build updated to an empty node" 'The Mir Kino plugin is not installed'
     check "iptvce build updated: no registered item" no_file "$reg/iptvce_vs_upd"
     check "iptvce build updated: no menu item" no_file "$menu/iptvce_vs_upd"
-    rm -rf "${plugins:?}/vs_upd"
+    unbuild_all mirkino
     sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
     ic_movie '{"title":"Дюна"}'
     ic_msg "$work/ui.json" "VOD off" 'The Mir Kino plugin is not installed'
@@ -3179,9 +3193,10 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     build fox-fun.tv
     ic_movie '{"title":"Дюна"}' iptvce_fox-fun.tv
     handler "$work/ui.json" "iptvce name with a hyphen" "$(ic_search_json fox-fun.tv 'Mir Kino' 'Дюна')"
-    rm -rf "${plugins:?}/iedem.tv" "${plugins:?}/fox-fun.tv"
+    unbuild_all mirkino
     # Unsafe names, also of a folder that is a build: not opened.
     mkdir -p "$plugins/mir kino"
+    built 'mir kino'
     build a..b
     build .x
     build -x
@@ -3192,7 +3207,7 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
         shown_name=$(printf '%s' "$name" | cut -c 1-40 | sed 's/[^A-Za-z0-9_]/?/g')
         ic_msg "$work/ui.json" "handler_id '$h'" "The $shown_name plugin is not installed"
     done
-    rm -rf "${plugins:?}/mir kino" "${plugins:?}/a..b" "${plugins:?}/.x" "${plugins:?}/-x"
+    unbuild_all mirkino
     # No name: not an item id, not our call.
     ic_movie '{"title":"Дюна"}' iptvce_
     handler "$work/ui.json" "iptvce handler_id 'iptvce_'" none
@@ -3204,7 +3219,7 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_movie '{"title":""}'
     ic_msg "$work/ui.json" "no titles, Russian Dune" 'У этой карточки нет названия, Mir Kino не сможет её найти'
     rm -f "$cfg/settings.properties"
-    rm -rf "${plugins:?}/mirkino"
+    unbuild_all
     fi
 
     # --- vod_search: the plugin's own search entry gets the titles and the
@@ -3412,14 +3427,14 @@ EOF
         esac
     done <"$work/vs_want"
     mv -f "$work/sync.sh.real" "$bin/sync.sh"
-    vs_rm
+    unbuild_all
     # No manifest: no node, the old way; the caption is the folder name.
     vs_jelly vs_nomanifest ''
     rm -f "$plugins/vs_nomanifest/dune_plugin.xml"
     check "parity no manifest: the old way in sh" vs_mode_is vs_nomanifest old
     ic_movie '{"title":"Дюна"}' iptvce_vs_nomanifest
     handler "$work/ui.json" "parity no manifest: the old way" "$(ic_search_json vs_nomanifest vs_nomanifest 'Дюна')"
-    rm -rf "${plugins:?}/vs_nomanifest"
+    unbuild_all
     # The plugin is gone, so the shell calls our own handler with its
     # handler_id and control_id: no action, no error.
     printf '%s\n' '{"handler_id":"entry_handler","control_id":"external_search","search":"{\"title\":\"x\"}","movie_str":"{\"title\":\"x\"}","selected_media_url":"{}"}' >"$work/ui.json"
@@ -3706,8 +3721,7 @@ EOF
         "iptvce_zeta=zeta=$plugins/zeta/img/logo_mirkino.png"
     check "items builds: choice file, fixed items then builds" file_is "$lcfg" \
         "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_iedem.tv -iptvce_mirkino)"
-    rm -rf "${plugins:?}/novod" "${plugins:?}/zeta" "${plugins:?}/mirkino" "${plugins:?}/kino" \
-        "${plugins:?}/iedem.tv" "${plugins:?}/a..b"
+    unbuild_all
 
     # Parity: bin/iptvce_builds.sh (sync.sh) and main.php (items dialog) find
     # the same builds, with the same captions and icons.
@@ -3785,10 +3799,7 @@ EOF
         'iptvce_two=First=img/logo_mirkino.png' \
         'iptvce_twoicon=Two icons=' \
         'iptvce_vs_pa_comment=Mir Kino=img/logo_mirkino.png'
-    for b in mirkino two twoicon lt ltonly ltpct ltspace multiline long badutf vodnl vodnl2 vodlow vodup vodmixed \
-        iedem.tv fox-fun.tv a..b -x vs_pa_self vs_pa_comment; do
-        rm -rf "${plugins:?}/$b"
-    done
+    unbuild_all
     run sync.sh
     fi
 
@@ -3880,7 +3891,7 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     check "list_apply builds, empty file: the gone build stays hidden" hidden_is iptvce_gone
     # shellcheck disable=SC2086 # one word per id
     check "list_apply builds, empty file: all shown" shown $all iptvce_iedem.tv iptvce_kino iptvce_mirkino
-    rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino" "${plugins:?}/iedem.tv" "${plugins:?}/a..b"
+    unbuild_all
     rm -f "$data/hidden" "$lcfg"
     run sync.sh
     fi
