@@ -393,6 +393,12 @@ hostile '{"movieInfo":{"movieExtId":"imdb:tt123 x,tmdb:1$(reboot)","type":"singl
 hostile '{"movieInfo":{"movieExtId":"xximdb:tt123,imdb:tt12345678901","type":"single"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1,imdb:tt2","type":"single"}}' launch_is nuvio://movie/tt1
 hostile '{"movieInfo":{"movieExtId":"dunemdb:x,kinopoisk:1,imdb:tt0111161","type":"single"}}' launch_is nuvio://movie/tt0111161
+# ID 0, leading zeros and ten digits are not TMDB IDs; the first valid item wins.
+for x in single:tmdb:0 single:tmdb:007 single:tmdb:1234567890 series:tmdbtv:0 series:tmdbtv:0123 series:tmdbtv:1234567890; do
+    hostile "{\"movieInfo\":{\"movieExtId\":\"${x#*:}\",\"type\":\"${x%%:*}\"}}" error_is err_no_id
+done
+hostile '{"movieInfo":{"movieExtId":"tmdb:0,tmdb:007,tmdb:5","type":"single"}}' launch_is nuvio://tmdb/movie/5
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:0,tmdbtv:10","type":"series"}}' launch_is nuvio://tmdb/series/10
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"movie"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1"}}' error_is err_no_id
@@ -419,6 +425,12 @@ hostile '{"movieInfo":{"movieExtId":"imdb:tt123 x,tmdb:1$(reboot)","type":"singl
 hostile '{"movieInfo":{"movieExtId":"xximdb:tt123,imdb:tt12345678901","type":"single"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1,imdb:tt2","type":"single"}}' launch_is stremio:///detail/movie/tt1
 hostile '{"movieInfo":{"movieExtId":"dunemdb:x,kinopoisk:1,imdb:tt0111161","type":"single"}}' launch_is stremio:///detail/movie/tt0111161
+# ID 0, leading zeros and ten digits are not TMDB IDs; the first valid item wins.
+for x in single:tmdb:0 single:tmdb:007 single:tmdb:1234567890 series:tmdbtv:0 series:tmdbtv:0123 series:tmdbtv:1234567890; do
+    hostile "{\"movieInfo\":{\"movieExtId\":\"${x#*:}\",\"type\":\"${x%%:*}\"}}" error_is err_no_id
+done
+hostile '{"movieInfo":{"movieExtId":"tmdb:0,tmdb:007,tmdb:5","type":"single"}}' launch_is stremio:///detail/movie/tmdb:5
+hostile '{"movieInfo":{"movieExtId":"tmdbtv:0,tmdbtv:10","type":"series"}}' launch_is stremio:///detail/series/tmdb:10
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"movie"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1"}}' error_is err_no_id
@@ -452,6 +464,12 @@ for id in num lampa bylampa lampa_atv prisma; do
     # The apps parse the id as a Java int (NUM could crash, Lampa drops it silently).
     hostile '{"movieInfo":{"movieExtId":"tmdb:9999999999","type":"single"}}' error_is err_no_id
     hostile '{"movieInfo":{"movieExtId":"tmdb:999999999","type":"single"}}' launch_is "$t/movie/999999999"
+    # ID 0, leading zeros and ten digits are not TMDB IDs; the first valid item wins.
+    for x in single:tmdb:0 single:tmdb:007 single:tmdb:1234567890 series:tmdbtv:0 series:tmdbtv:0123 series:tmdbtv:1234567890; do
+        hostile "{\"movieInfo\":{\"movieExtId\":\"${x#*:}\",\"type\":\"${x%%:*}\"}}" error_is err_no_id
+    done
+    hostile '{"movieInfo":{"movieExtId":"tmdb:0,tmdb:007,tmdb:5","type":"single"}}' launch_is "$t/movie/5"
+    hostile '{"movieInfo":{"movieExtId":"tmdbtv:0,tmdbtv:10","type":"series"}}' launch_is "$t/tv/10"
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","type":"movie"}}' error_is err_no_id
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","type":"single;reboot"}}' error_is err_no_id
     hostile '{"movieInfo":{"movieExtId":"tmdb:1"}}' error_is err_no_id

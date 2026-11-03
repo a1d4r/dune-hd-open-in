@@ -52,8 +52,8 @@ fi
 # as for Lampa (Lampa's IMDb extras give a broken card).
 # Ids above Java int are dropped silently, hence 9 digits.
 case "$type" in
-    single) kind=movie tmdb=$(ext_id 'tmdb:[0-9]{1,9}') ;;
-    series) kind=tv tmdb=$(ext_id 'tmdbtv:[0-9]{1,9}') ;;
+    single) kind=movie tmdb=$(ext_id 'tmdb:[1-9][0-9]{0,8}') ;;
+    series) kind=tv tmdb=$(ext_id 'tmdbtv:[1-9][0-9]{0,8}') ;;
     *) fail err_no_id ;;
 esac
 [ -n "$tmdb" ] || fail err_no_id

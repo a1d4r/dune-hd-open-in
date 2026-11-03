@@ -49,8 +49,8 @@ if ! grep -qE '"package_name": *"com\.stremio\.one"' "$tmp/applications/app_data
 fi
 
 case "$type" in
-    single) kind=movie tmdb=$(ext_id 'tmdb:[0-9]{1,10}') ;;
-    series) kind=series tmdb=$(ext_id 'tmdbtv:[0-9]{1,10}') ;;
+    single) kind=movie tmdb=$(ext_id 'tmdb:[1-9][0-9]{0,8}') ;;
+    series) kind=series tmdb=$(ext_id 'tmdbtv:[1-9][0-9]{0,8}') ;;
     *) fail err_no_id ;;
 esac
 imdb=$(ext_id 'imdb:tt[0-9]{1,10}')
