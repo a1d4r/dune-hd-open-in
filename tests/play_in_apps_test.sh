@@ -1630,7 +1630,14 @@ vs_base() {
 # --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_is_build, iptvce_why
 blk sync/iptvce_vod_search vs_base
 if on; then
+: >>"$work/built"
+vs_n=$(wc -l <"$work/built")
 vs_cases
+# The two lists name the same builds, each once.
+check "vs_cases and vs_want: the same builds, each once" sh -c '
+    made=$(tail -n "+$2" "$1" | LC_ALL=C sort)
+    [ "$made" = "$(tail -n "+$2" "$1" | LC_ALL=C sort -u)" ] &&
+        [ "$made" = "$(printf "%s\n" "$3" | sed "s/=.*//" | LC_ALL=C sort)" ]' _ "$work/built" "$((vs_n + 1))" "$vs_want"
 run sync.sh
 check "sync vod_search: exit 0" rc_is 0
 # shellcheck disable=SC2046,SC2086 # one word per id
