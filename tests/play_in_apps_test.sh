@@ -3005,7 +3005,7 @@ if [ "$php_ok" = 1 ]; then
     if [ -z "$cgi_only" ]; then
     blk php/lint
     if on; then
-    for f in main.php qrpng.php cgi/logs.php; do
+    for f in main.php play.php qrpng.php cgi/logs.php; do
         check "$f: php -l" "$php_bin" -l "$src/$f"
     done
     fi
@@ -4628,7 +4628,7 @@ keys="plugin_caption"
 for i in $all; do
     keys="$keys ${i}_caption $(grep -ho 'fail err_[a-z_]*' "$src/bin/$i.sh" | sed "s/^fail /${i}_/" | sort -u)"
 done
-keys="$keys filmix_api_err_unsupported bazinga_err_unsupported iptvce_err_unsupported $(grep -o "%tr%[a-z_]*\|pia_error_action('[a-z_]*')\|pia_tr('[a-z_]*')\|play_in_apps_plugin_[a-z_0-9]*" "$src/main.php" |
+keys="$keys filmix_api_err_unsupported bazinga_err_unsupported iptvce_err_unsupported $(grep -ho "%tr%[a-z_]*\|pia_error_action('[a-z_]*')\|pia_tr('[a-z_]*')\|play_in_apps_plugin_[a-z_0-9]*" "$src/main.php" "$src/play.php" |
     sed "s/^%tr%//; s/^pia_error_action('//; s/^pia_tr('//; s/')\$//; s/^play_in_apps_plugin_//" | sort -u)"
 # diag.sh: $(t <key>); cgi/logs.php: lp_tr('<key>').
 keys="$keys $(grep -o '(t [a-z_]*)' "$src/bin/diag.sh" | sed 's/^(t //; s/)$//' | sort -u)"
