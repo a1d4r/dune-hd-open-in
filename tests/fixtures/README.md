@@ -14,21 +14,8 @@
 | `movie_kinopoisk.json` | `movieExtId` (есть `kinopoisk:`), название и год — из реального входа с устройства, `shell_ext.log` 04.10.2026 («Тачки»); остальные поля — по формату `movie.json` |
 | `series_kinopoisk.json` | реальный вход с устройства, вход поставщика YouTube 04.10.2026 («Игра престолов»): `movieExtId` (есть `kinopoisk:`), название, год, тип; `supplierId` подставлен `freezona`, `videoType` и остальные поля — по формату `series.json` |
 | `app_data.json` | `/tmp/applications/app_data.json` с устройства, оставлены «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona, BYLAMPA, LAMPA ATV, ALPAC, Flux и SeasonHit (запись NUM — 02.10.2026, VoKino, Lampa, Prisma и LazyMedia Deluxe — 03.10.2026; FreeZona — поля с устройства 04.10.2026, `source_dir` и время установки условные; BYLAMPA и LAMPA ATV — 06.10.2026; ALPAC — по `dumpsys package` и кэшу иконок 19.10.2026, сам файл с устройства не прочитать, `source_dir` условный; Flux и SeasonHit — так же, по `dumpsys package` и кэшу иконок 20.10.2026) |
-| `app_data_no_nuvio.json` | только «Настройки» |
-| `app_data_no_stremio.json` | «Настройки» и Nuvio |
-| `app_data_no_num.json` | «Настройки», Nuvio и Stremio |
-| `app_data_no_vokino.json` | «Настройки», Nuvio, Stremio и NUM |
-| `app_data_no_lampa.json` | «Настройки», Nuvio, Stremio, NUM и VoKino |
-| `app_data_no_prisma.json` | «Настройки», Nuvio, Stremio, NUM, VoKino и Lampa |
-| `app_data_no_lazymedia.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa и Prisma |
-| `app_data_no_freezona.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma и LazyMedia Deluxe |
-| `app_data_no_bylampa.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe и FreeZona |
-| `app_data_no_lampa_atv.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona и BYLAMPA |
-| `app_data_no_alpac.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona, BYLAMPA и LAMPA ATV |
-| `app_data_no_flux.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona, BYLAMPA, LAMPA ATV и ALPAC |
-| `app_data_no_seasonhit.json` | «Настройки», Nuvio, Stremio, NUM, VoKino, Lampa, Prisma, LazyMedia Deluxe, FreeZona, BYLAMPA, LAMPA ATV, ALPAC и Flux |
 | `play_action_movie.json` | `user_input` обработчика `play_action` («Прошлой ночью в Сохо»): ключи и поля фильма — из лога пробника на устройстве 03.10.2026; значения полей, которые лог не писал, — `null` |
 | `play_action_series.json` | то же для сериала («Дом Дракона», нет `kp_id`/`tmdb_id`) |
 | `iptvce_mirkino/` | плагин Дюны Mir Kino (IPTV Channel Editor 9.4.2548), только то, по чему пункт узнаёт сборку: начало `dune_plugin.xml` (корневые `caption`, `icon_url`) и одна точка входа; из `config.json` — `vod_engine` и несколько полей без адресов; `starnet_plugin.php`, `screens_vod/starnet_vod_list_screen.php`, `img/logo_mirkino.png` — пустые файлы-маркеры |
 
-Пустой stdin, мусор и враждебные входы генерирует сам тест.
+Пустой stdin, мусор и враждебные входы генерирует сам тест, как и списки приложений из `app_data.json`: без приложения одного пункта (`app_data_no_<id>.json`), без приложений всех пунктов (`app_data_none.json`) и т. п.
