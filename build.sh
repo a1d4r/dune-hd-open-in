@@ -41,28 +41,55 @@ fi
 cgi_bins=$(find "$src/www/cgi-bin" -type f 2>/dev/null || true)
 # shellcheck disable=SC2086 # one word per file
 shellcheck -s sh "$src"/bin/*.sh "$test" $cgi_bins
-dash "$test" >/dev/null || {
-    echo "tests failed: dash tests/${name}_test.sh" >&2
-    exit 1
-}
-# mksh is the shell on the device; run the tests under it too when available.
-if command -v mksh >/dev/null 2>&1; then
-    TEST_SH=mksh dash "$test" >/dev/null || {
-        echo "tests failed: TEST_SH=mksh dash tests/${name}_test.sh" >&2
-        exit 1
-    }
-fi
-# Old Android (tv175, r24): BusyBox tools first in PATH, bash as sh. The
-# BusyBox of tests/php53/Dockerfile, if there is one.
+# The tests under three shells at once, each run in its own temp dir (the
+# test's mktemp), no ports: dash; mksh, the shell on the device; BusyBox tools
+# first in PATH with bash as sh, as on old Android (tv175, r24), with the
+# BusyBox of tests/php53/Dockerfile. Output goes to files and is printed when
+# all are done. FAST=1: dash only, for a quick local build; CI runs all three.
 busybox=/opt/busybox/busybox
-if [ -x "$busybox" ] && command -v bash >/dev/null 2>&1; then
-    BUSYBOX=$busybox TEST_SH=bash dash "$test" >/dev/null || {
-        echo "tests failed: BUSYBOX=$busybox TEST_SH=bash dash tests/${name}_test.sh" >&2
-        exit 1
-    }
+logs=$(mktemp -d)
+trap 'rm -rf "$logs"' EXIT
+runs=dash
+if [ -n "${FAST-}" ]; then
+    echo "FAST=1: tests under dash only" >&2
 else
-    echo "BusyBox run skipped (old dune-php53 image?)" >&2
+    # mksh and BusyBox are there in the image; elsewhere a run is skipped.
+    if command -v mksh >/dev/null 2>&1; then runs="$runs mksh"; fi
+    if [ -x "$busybox" ] && command -v bash >/dev/null 2>&1; then
+        runs="$runs busybox"
+    else
+        echo "BusyBox run skipped (old dune-php53 image?)" >&2
+    fi
 fi
+# run_name <run>: how to run it by hand.
+run_name() {
+    case $1 in
+        dash) echo "dash tests/${name}_test.sh" ;;
+        mksh) echo "TEST_SH=mksh dash tests/${name}_test.sh" ;;
+        busybox) echo "BUSYBOX=$busybox TEST_SH=bash dash tests/${name}_test.sh" ;;
+    esac
+}
+for r in $runs; do
+    case $r in
+        dash) dash "$test" ;;
+        mksh) TEST_SH=mksh dash "$test" ;;
+        busybox) BUSYBOX=$busybox TEST_SH=bash dash "$test" ;;
+    esac >"$logs/$r.out" 2>"$logs/$r.err" &
+    echo "$!" >"$logs/$r.pid"
+done
+tests_failed=
+for r in $runs; do
+    rc=0
+    wait "$(cat "$logs/$r.pid")" || rc=$?
+    cat "$logs/$r.err" >&2
+    if [ "$rc" != 0 ]; then
+        grep -v '^PASS: ' "$logs/$r.out" >&2
+        echo "tests failed: $(run_name "$r")" >&2
+        tests_failed=1
+    fi
+done
+[ -z "$tests_failed" ] || exit 1
+rm -rf "$logs"
 
 mkdir -p "$root/dist"
 rm -f "$out"
