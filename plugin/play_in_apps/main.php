@@ -124,7 +124,11 @@ function filmix_search_action($title, $media_url)
 function filmix_play($user_input)
 {
     if (!is_file(pia_plugins_dir() . '/Filmix_api/dune_plugin.xml'))
+    {
+        // Removed: the item must not outlive this press, as iptvce_play's.
+        pia_sync();
         return pia_error_action('filmix_api_err_not_installed');
+    }
 
     $movie = pia_movie($user_input);
     // "title" is in the Dune UI language, "native_title" is the original one.
@@ -156,7 +160,10 @@ function bazinga_open($media_url, $caption)
 function bazinga_play($user_input)
 {
     if (!is_file(pia_plugins_dir() . '/Bazinga3/dune_plugin.xml'))
+    {
+        pia_sync();
         return pia_error_action('bazinga_err_not_installed');
+    }
 
     $movie = pia_movie($user_input);
     $title = pia_movie_field($movie, 'title');

@@ -3013,8 +3013,11 @@ if [ "$php_ok" = 1 ]; then
     # --- Filmix play_action. Filmix_API not installed yet.
     blk php/filmix base
     if on; then
+    run sync.sh
+    check "filmix removed: item shown before the press" test -f "$menu/filmix_api"
     rm -rf "$plugins/Filmix_api"
     error "$fx/play_action_movie.json" "no Filmix_API" filmix_api_err_not_installed
+    check "filmix removed: the press removes its item" sh -c '[ ! -e "$1" ] && [ ! -e "$2" ]' _ "$reg/filmix_api" "$menu/filmix_api"
     mkdir -p "$plugins/Filmix_api"
     error "$fx/play_action_movie.json" "Filmix_API dir without manifest" filmix_api_err_not_installed
     : >"$plugins/Filmix_api/dune_plugin.xml"
@@ -3115,9 +3118,12 @@ print(json.dumps({"handler_string_id": "plugin_open_folder", "plugin_name": "Baz
     bz_search() { handler "$1" "bazinga $2" "$(bz_search_json "$3")"; }
     bz_error() { handler "$1" "bazinga $2" "$(error_json "$3")"; }
 
+    run sync.sh
+    check "bazinga removed: item shown before the press" test -f "$menu/bazinga"
     rm -rf "$plugins/Bazinga3"
     bz_input "$fx/play_action_movie.json"
     bz_error "$work/ui.json" "no Bazinga3" bazinga_err_not_installed
+    check "bazinga removed: the press removes its item" sh -c '[ ! -e "$1" ] && [ ! -e "$2" ]' _ "$reg/bazinga" "$menu/bazinga"
     mkdir -p "$plugins/Bazinga3"
     bz_error "$work/ui.json" "Bazinga3 dir without manifest" bazinga_err_not_installed
     : >"$plugins/Bazinga3/dune_plugin.xml"
