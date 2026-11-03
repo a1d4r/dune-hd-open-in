@@ -24,7 +24,9 @@ iptvce_builds() {
 # versions of the builder always write it, so it is read last, for
 # candidates only). A safe name: 1-40
 # of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern has
-# one more copy: iptvce_valid_name in main.php.
+# one more copy: iptvce_valid_name in main.php. line() of iptvce_list.sh
+# relies on "a safe name and vod_search: an item"; a new condition here goes
+# there too.
 iptvce_gets_item() {
     iptvce_name_ok "$2" || return 1
     iptvce_vod_search "$1/$2" >/dev/null && return 0
