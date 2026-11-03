@@ -2,6 +2,11 @@
 
 **English version**
 
+## 0.12.0
+- Nuvio, Stremio, NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma: a wrong TMDB ID in the card (0, with leading zeros; for Nuvio and Stremio also ten digits) is no longer passed to the app. Nuvio and Stremio open the title by IMDb ID, and without one the Dune says the card has no ID; NUM, Lampa, BYLAMPA, LAMPA ATV and Prisma say so at once.
+- Filmix and Bazinga: if their plugin has been removed, choosing the item says so and removes the item from the menu (as items of IPTV Channel Editor plugins already do).
+- IPTV Channel Editor plugins and plugins with the `vod_search` entry: the settings and the "Play..." menu see the same list of plugins. A plugin whose name or icon cannot be shown is listed under its folder name or without an icon instead of going missing from the settings.
+
 ## 0.11.1
 - Fixed: on some models (for example, Magic 4K Plus, older Android) plugins with the `vod_search` entry (for example, ProIPTV) were in the settings but did not show up in the "Play..." menu.
 - "Check" shows why a plugin with `vod_search` in its `dune_plugin.xml` got no item: a line with the reason. The report in the logs names the grep the plugin's scripts get (the "Environment" line).
@@ -69,6 +74,11 @@
 ---
 
 **Russian version**
+
+## 0.12.0
+- Nuvio, Stremio, NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma: неверный TMDB ID в карточке (0, с ведущими нулями; у Nuvio и Stremio ещё десять цифр) больше не передаётся в приложение. Nuvio и Stremio открывают фильм по IMDb ID, а без него Дюна сообщает, что у карточки нет ID; NUM, Lampa, BYLAMPA, LAMPA ATV и Prisma сообщают об этом сразу.
+- Filmix и Bazinga: если их плагин удалён, нажатие пункта сообщает об этом и убирает пункт из меню (как уже у плагинов IPTV Channel Editor).
+- Плагины IPTV Channel Editor и плагины с входом `vod_search`: настройки и меню «Смотреть…» видят один и тот же список плагинов. Плагин, название или иконку которого нельзя показать, виден под именем папки или без иконки, а не пропадает из настроек.
 
 ## 0.11.1
 - Исправлено: на части моделей (например, Magic 4K Plus, старые Android) плагины с входом `vod_search` (например, ProIPTV) были в настройках, но не появлялись в меню «Смотреть…».
