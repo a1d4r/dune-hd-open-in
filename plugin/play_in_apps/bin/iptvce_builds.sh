@@ -24,10 +24,7 @@ iptvce_builds() {
 # of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern has
 # one more copy: iptvce_valid_name in main.php.
 iptvce_is_build() {
-    case "$2" in
-        '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
-    esac
-    [ "${#2}" -le 40 ] || return 1
+    iptvce_name_ok "$2" || return 1
     iptvce_vod_search "$1/$2" >/dev/null && return 0
     [ -f "$1/$2/starnet_plugin.php" ] && [ -f "$1/$2/screens_vod/starnet_vod_list_screen.php" ] &&
         [ -f "$1/$2/config.json" ] || return 1
@@ -38,17 +35,29 @@ iptvce_is_build() {
     ! iptvce_has_public_actions "$1/$2"
 }
 
+# iptvce_name_ok <name>: the safe folder name of iptvce_is_build.
+iptvce_name_ok() {
+    case "$1" in
+        '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
+    esac
+    [ "${#1}" -le 40 ]
+}
+
 # iptvce_manifest <build dir> <word>: fails if the build's dune_plugin.xml is
 # over 32768 bytes or has no <word> (not parsed: sync.sh checks every plugin).
 # Else ivs_s is its text as one line, NUL bytes, comments dropped, spaces around
 # < > = and after </ removed. Variables are prefixed: callers keep theirs. The
-# same: iptvce_manifest in main.php.
+# same: iptvce_manifest in main.php. ivs_why: the step it fails at (nofile,
+# noword, big), for iptvce_why.
 iptvce_manifest() {
+    ivs_why=nofile
     [ -f "$1/dune_plugin.xml" ] || return 1
+    ivs_why=noword
     # NUL to a line break: toybox grep does not see past a NUL in a line, and
     # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found,
     # as with strpos in main.php.
     LC_ALL=C tr '\000' '\n' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C grep -qF "$2" || return 1
+    ivs_why=big
     ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
     ivs_n=${ivs_n##* }
     case "$ivs_n" in
@@ -100,7 +109,9 @@ iptvce_has_public_actions() {
 # counts; its first <type> must be plugin_handle_user_input, its first
 # <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
 # not, within the limits of iptvce_manifest, or if the handler_id is one of
-# ours. The same parse: iptvce_vod_search in main.php.
+# ours. The same parse: iptvce_vod_search in main.php. ivs_why: the step it
+# fails at (those of iptvce_manifest, nopa, noaction, type, ids, own), empty if
+# not.
 iptvce_vod_search() {
     iptvce_manifest "$1" vod_search || return 1
     # The <public_actions> blocks, each followed by a space.
@@ -117,7 +128,10 @@ iptvce_vod_search() {
         ivs_a="$ivs_a$ivs_p "
         ivs_s=${ivs_s#*"$ivs_e"}
     done
+    ivs_why=nopa
+    [ -n "$ivs_a" ] || return 1
     # <action attributes>body</action>, in order.
+    ivs_why=noaction
     ivs_o='<action '
     ivs_e='</action>'
     while :; do
@@ -138,7 +152,9 @@ iptvce_vod_search() {
             *) continue ;;
         esac
         ivs_b=${ivs_b%%"$ivs_e"*}
+        ivs_why='type'
         [ "$(iptvce_tag type "$ivs_b")" = plugin_handle_user_input ] || return 1
+        ivs_why=ids
         ivs_h=$(iptvce_tag handler_id "$ivs_b")
         ivs_c=$(iptvce_tag control_id "$ivs_b")
         for ivs_v in "$ivs_h" "$ivs_c"; do
@@ -150,12 +166,25 @@ iptvce_vod_search() {
         # The handler_ids of main.php (pia_handle_user_input; the other copy:
         # iptvce_own_handler there): if the shell turns down plugin_name, it
         # calls ours with them.
+        ivs_why=own
         case "$ivs_h" in
             setup | check | filmix_api | bazinga | iptvce_*) return 1 ;;
         esac
+        ivs_why=
         printf '%s %s\n' "$ivs_h" "$ivs_c"
         return 0
     done
+}
+
+# iptvce_why <plugins dir> <name>: why the plugin's vod_search entry is turned
+# down, the step of iptvce_is_build and iptvce_vod_search: name (not a safe
+# folder name) or one of ivs_why; nothing if it is taken.
+iptvce_why() {
+    if ! iptvce_name_ok "$2"; then
+        echo name
+    elif ! iptvce_vod_search "$1/$2" >/dev/null; then
+        printf '%s\n' "$ivs_why"
+    fi
 }
 
 # iptvce_tag <tag> <text>: what is between the first <tag> and the </tag>

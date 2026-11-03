@@ -1452,6 +1452,21 @@ printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
     check "iptvce_is_build $b: $want" vs_mode_is "$b" "$want"
 done <"$work/vs_want"
+# iptvce_why <name>=<step> (empty: taken), the step of the parse it fails at.
+vs_why_is() {
+    got=$("$sh_bin" -c '. "$1"; iptvce_why "$2" "$3"' _ "$bin/iptvce_builds.sh" "$plugins" "$1")
+    [ "$got" = "$2" ] || {
+        echo "$1: got '$got', want '$2'" >&2
+        return 1
+    }
+}
+for x in vs_only= vs_files= vs_crlf= vs_own_not= 'a b=name' .x=name vs_none=nofile vs_32769=big \
+    vs_nosubstr=noword vs_nulid=noword vs_outside=nopa vs_commented=nopa vs_unclosed=nopa \
+    vs_unclosedcomment=nopa vs_pa_openvs=nopa vs_otherid=noaction vs_xid=noaction vs_selfclose=noaction \
+    vs_pa_other=noword vs_type=type vs_firstbad=type vs_space=ids vs_65=ids vs_dollar=ids \
+    vs_noctl=ids vs_emptyctl=ids vs_own_setup=own vs_own_iptvce_=own; do
+    check "iptvce_why ${x%%=*}: ${x#*=}" vs_why_is "${x%%=*}" "${x#*=}"
+done
 vs_rm
 
 # A build updated in place: <public_actions> decides whether its item stays.
@@ -1764,7 +1779,7 @@ sys.exit(1)
 EOF
 }
 # verdicts_are <verdict> [<caption>=<verdict>...]: the 15 verdict lines, in
-# the order of the items, after the 4 lines about the device.
+# the order of the items, after the 5 lines about the device.
 verdicts_are() {
     python3 - "$o" "$@" <<'EOF'
 import sys
@@ -1775,7 +1790,7 @@ want = dict((c, sys.argv[2]) for c in caps)
 for a in sys.argv[3:]:
     c, v = a.split("=", 1)
     want[c] = v
-got = [l for l in lines if l and not l.startswith(" ")][4:4 + len(caps)]
+got = [l for l in lines if l and not l.startswith(" ")][5:5 + len(caps)]
 sys.exit(got != ["%s: %s" % (c, want[c]) for c in caps])
 EOF
 }
@@ -1831,6 +1846,12 @@ check "diag: device" has_line "Device: Pro 8K Plus, Android 11"
 check "diag: firmware" has_line "Firmware: 260827_0003_r24 (tv188b)"
 check "diag: FS_PREFIX set" has_line "FS_PREFIX: set"
 check "diag: plugin version and uid" has_line "Plugin: play_in_apps $plugin_version (uid 1000)"
+# env_is <text>: the environment line starts with "Environment: grep <text>".
+env_is() { sed -n 's/^Environment: grep //p' "$o" | grep -qF -- "$1" && [ "$(grep -c '^Environment: ' "$o")" = 1 ]; }
+check "diag: environment, the grep of PATH" env_is "$(command -v grep)"
+if [ -n "${BUSYBOX-}" ]; then
+    check "diag: environment, BusyBox named" env_is "$(command -v grep) -> $BUSYBOX, BusyBox v"
+fi
 check "diag all resolve: every item OK" verdicts_are OK
 check "diag NUM: installed with version" in_item NUM "  installed: yes, version 1.0.150 (ru.yourok.num)"
 check "diag NUM: not hidden" in_item NUM "  hidden: no"
@@ -1870,6 +1891,21 @@ check "diag query SeasonHit: the intent: URI with the component" grep -qxF \
 check "diag: no query has -p" sh -c '! grep -q -- " -p " "$1"' _ "$STUB_LOG"
 check "diag: no -p warning" no_text "has -p"
 
+# A grep whose help has control bytes and runs long: "?" for them, 80 characters.
+mkdir -p "$work/grep_help"
+cat >"$work/grep_help/grep" <<EOF
+#!/bin/sh
+if [ "\$1" = --help ]; then
+    printf 'Fake\\033[1m grep %0100d\\n' 0 >&2
+    exit 2
+fi
+exec '$(command -v grep)' "\$@"
+EOF
+chmod +x "$work/grep_help/grep"
+PATH="$work/grep_help:$PATH" diag
+check "diag: environment, unsafe help text" has_line \
+    "Environment: grep $work/grep_help/grep, Fake?[1m grep $(printf '%066d' 0)"
+
 # An item whose command has -p (a regression) or is not one known intent: URI.
 # fake_num <command>: bin/num.sh answers with this command.
 fake_num() {
@@ -1888,6 +1924,7 @@ for c in "am start --activity-clear-task -a android.intent.action.VIEW -d 'https
     check "diag -p in the command: no query for NUM" sh -c '! grep -q ru.yourok.num "$1"' _ "$STUB_LOG"
 done
 diag russian
+check "diag russian: environment" sh -c 'grep -qF "Окружение: grep $1" "$2"' _ "$(command -v grep)" "$o"
 check "diag russian -p warning" in_item NUM "  внимание: в команде есть -p, его не понимают некоторые прошивки (r24 260214)"
 for c in "am start 'intent://www.themoviedb.org/movie/920#Intent;scheme=https;end'" \
     "am start 'intent://a b$ifr=ru.yourok.num;end'" \
@@ -2191,6 +2228,44 @@ check "diag vod_search build: its handler" in_item "Mir Kino" \
     "  launch: through the Dune plugin vs_only, vod_search entry_handler/external_search, not checked"
 check "diag build without vod_search: as before" in_item "Old Way" "  launch: through the Dune plugin oldway, not checked"
 rm -rf "${plugins:?}/vs_only" "${plugins:?}/oldway" "${plugins:?}/vs_pa_self"
+run sync.sh
+# The word vod_search but the entry turned down: a line each after the items,
+# brief or not, with the step; the folder name with safe characters only.
+vs_bad="a b$(printf '\033')"
+vs_build "$vs_bad" "$VS"
+vs_build vs_32769 "$VS" '' 32769
+vs_build vs_commented "<!-- $VS -->"
+vs_jelly vs_jcomment "<!-- $VS -->"
+vs_build vs_own_setup "$(vs_xml setup)"
+vs_build vs_type "$(vs_xml h c "$vs_id" plugin_open_folder)"
+vs_build vs_only "$VS"
+run sync.sh
+vs_r='the vod_search entry is turned down'
+vs_why_lines="Mir Kino (a?b?) — $vs_r: the plugin's folder name is not allowed
+Mir Kino (vs_32769) — $vs_r: dune_plugin.xml is over 32768 bytes
+Mir Kino (vs_commented) — $vs_r: no public_actions block (outside comments)
+Mir Kino (vs_jcomment) — $vs_r: no public_actions block (outside comments)
+Mir Kino (vs_own_setup) — $vs_r: its handler_id is one of play_in_apps' own
+Mir Kino (vs_type) — $vs_r: its type is not plugin_handle_user_input"
+# why_lines_are <lines>: the lines after the items are these, in any order.
+why_lines_are() {
+    [ "$(tail -n 6 "$o" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ]
+}
+diag english brief
+check "diag brief vod_search turned down: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
+check "diag brief vod_search turned down: 24 lines, the items before" sh -c \
+    '[ "$(wc -l <"$1" | tr -d " ")" = 24 ] && [ "$(sed -n 17,18p "$1")" = "$(printf "%s\n" \
+        "Mir Kino — OK (through the Dune plugin vs_jcomment)" "Mir Kino — OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
+check "diag brief vod_search turned down: a line each, the step" why_lines_are "$vs_why_lines"
+diag russian brief
+check "diag brief russian vod_search turned down" grep -qxF \
+    "Mir Kino (vs_type) — вход vod_search не принят: его type не plugin_handle_user_input" "$o"
+diag
+check "diag vod_search turned down: the lines before the shell log" sh -c \
+    'sed "/^The shell'"'"'s last records/,\$d" "$1" | tail -n 6 >"$1.why" && [ "$(LC_ALL=C sort "$1.why")" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
+    _ "$o" "$vs_why_lines"
+check "diag vod_search turned down: no raw control bytes" sh -c '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"' _ "$o"
+for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_only; do rm -rf "${plugins:?}/$b"; done
 run sync.sh
 
 fi # not CGI_ONLY

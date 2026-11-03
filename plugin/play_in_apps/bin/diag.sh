@@ -148,6 +148,14 @@ else
         say "FS_PREFIX: $(t diag_unset)"
     fi
     say "$(t diag_plugin): $name ${version:-?} (uid ${uid:-?})"
+    # Whose grep and the like the scripts get: on old Android BusyBox comes
+    # first in PATH. The first line of its help names it.
+    gp=$(command -v grep 2>/dev/null)
+    gl=$(readlink "$gp" 2>/dev/null)
+    gl=$(printf '%s' "$gl" | LC_ALL=C tr -c ' -~' '?' | cut -c 1-80)
+    gh=$(grep --help 2>&1 </dev/null | sed -n '/./{p;q;}')
+    gh=$(printf '%s' "$gh" | LC_ALL=C tr -c ' -~' '?' | cut -c 1-80)
+    say "$(t diag_env): grep ${gp:-?}${gl:+ -> $gl}, ${gh:-?}"
 fi
 
 # --- The items. id:package; an empty package: a Dune plugin (Filmix:
@@ -291,6 +299,20 @@ for app in num:ru.yourok.num lampa:top.rootu.lampa bylampa:top.rootu.bylumpa \
     else
         say "$cap: ${mark:+$mark }$verdict$body"
     fi
+done
+
+# --- Plugins with the word vod_search in their dune_plugin.xml whose entry
+# is turned down, and the step why (iptvce_why). Untrusted: the caption is
+# checked text, the folder name keeps only safe characters.
+for d in "$plugins"/*/; do
+    d=${d%/}
+    LC_ALL=C grep -qF vod_search "$d/dune_plugin.xml" 2>/dev/null || continue
+    why=$(iptvce_why "$plugins" "${d##*/}")
+    [ -n "$why" ] || continue
+    safe=$(printf '%s' "${d##*/}" | LC_ALL=C tr -c 'A-Za-z0-9_.-' '?' | cut -c 1-40)
+    cap=$(iptvce_caption "$d" "$safe")
+    [ "$cap" = "$safe" ] || cap="$cap ($safe)"
+    say "$cap — $(t diag_vs_rejected): $(t "diag_vs_$why")"
 done
 
 [ "$brief" = 1 ] && exit 0
