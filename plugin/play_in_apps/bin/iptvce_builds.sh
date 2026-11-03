@@ -64,7 +64,8 @@ iptvce_manifest() {
         '' | *[!0-9]*) return 1 ;;
     esac
     [ "$ivs_n" -le 32768 ] || return 1
-    ivs_x=$(LC_ALL=C tr '\n\r\t' '   ' <"$1/dune_plugin.xml" 2>/dev/null)
+    # NUL bytes dropped here, as in main.php: bash warns of them in $(...).
+    ivs_x=$(LC_ALL=C tr -d '\000' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C tr '\n\r\t' '   ')
     ivs_o='<!--'
     ivs_e='-->'
     ivs_s=
@@ -111,7 +112,7 @@ iptvce_has_public_actions() {
 # not, within the limits of iptvce_manifest, or if the handler_id is one of
 # ours. The same parse: iptvce_vod_search in main.php. ivs_why: the step it
 # fails at (those of iptvce_manifest, nopa, noaction, type, ids, own), empty if
-# not.
+# not; a new check needs its own ivs_why and a case in vs_why_is of the tests.
 iptvce_vod_search() {
     iptvce_manifest "$1" vod_search || return 1
     # The <public_actions> blocks, each followed by a space.
@@ -176,13 +177,20 @@ iptvce_vod_search() {
     done
 }
 
-# iptvce_why <plugins dir> <name>: why the plugin's vod_search entry is turned
-# down, the step of iptvce_is_build and iptvce_vod_search: name (not a safe
-# folder name) or one of ivs_why; nothing if it is taken.
+# iptvce_why <plugins dir> <name>: why the plugin, one with the word
+# vod_search in its dune_plugin.xml, gets no item: name (not a safe folder
+# name) or the step iptvce_vod_search fails at (ivs_why). Nothing if it is a
+# build (iptvce_is_build) or not such a plugin (no regular file, no word).
+# <name> may be any folder name: only read, as part of a path.
 iptvce_why() {
+    iptvce_is_build "$1" "$2" && return 0
+    iptvce_vod_search "$1/$2" >/dev/null && ivs_why=
+    case "$ivs_why" in
+        nofile | noword) return 0 ;;
+    esac
     if ! iptvce_name_ok "$2"; then
         echo name
-    elif ! iptvce_vod_search "$1/$2" >/dev/null; then
+    elif [ -n "$ivs_why" ]; then
         printf '%s\n' "$ivs_why"
     fi
 }

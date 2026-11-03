@@ -60,6 +60,8 @@ if [ -x "$busybox" ] && command -v bash >/dev/null 2>&1; then
         echo "tests failed: BUSYBOX=$busybox TEST_SH=bash dash tests/${name}_test.sh" >&2
         exit 1
     }
+else
+    echo "BusyBox run skipped (old dune-php53 image?)" >&2
 fi
 
 mkdir -p "$root/dist"

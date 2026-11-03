@@ -1452,7 +1452,8 @@ printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
     check "iptvce_is_build $b: $want" vs_mode_is "$b" "$want"
 done <"$work/vs_want"
-# iptvce_why <name>=<step> (empty: taken), the step of the parse it fails at.
+# iptvce_why <name>=<step>: the step of the parse it fails at; empty: a build
+# or not a plugin with the word vod_search.
 vs_why_is() {
     got=$("$sh_bin" -c '. "$1"; iptvce_why "$2" "$3"' _ "$bin/iptvce_builds.sh" "$plugins" "$1")
     [ "$got" = "$2" ] || {
@@ -1460,13 +1461,18 @@ vs_why_is() {
         return 1
     }
 }
-for x in vs_only= vs_files= vs_crlf= vs_own_not= 'a b=name' .x=name vs_none=nofile vs_32769=big \
-    vs_nosubstr=noword vs_nulid=noword vs_outside=nopa vs_commented=nopa vs_unclosed=nopa \
-    vs_unclosedcomment=nopa vs_pa_openvs=nopa vs_otherid=noaction vs_xid=noaction vs_selfclose=noaction \
-    vs_pa_other=noword vs_type=type vs_firstbad=type vs_space=ids vs_65=ids vs_dollar=ids \
-    vs_noctl=ids vs_emptyctl=ids vs_own_setup=own vs_own_iptvce_=own; do
+vs_build 'a b' "$VS"
+vs_build .x "$VS"
+vs_build -x "$VS"
+for x in vs_only= vs_files= vs_crlf= vs_own_not= vs_pa_vs= vs_pa_commentblock= vs_32769files= \
+    'a b=name' .x=name -x=name 'no such=' vs_none= vs_nosubstr= vs_nulid= vs_pa_other= vs_pa_no= \
+    vs_32769=big vs_outside=nopa vs_commented=nopa vs_unclosed=nopa vs_unclosedcomment=nopa \
+    vs_pa_openvs=nopa vs_otherid=noaction vs_xid=noaction vs_selfclose=noaction vs_type=type \
+    vs_typefiles=type vs_firstbad=type vs_space=ids vs_65=ids vs_dollar=ids vs_noctl=ids \
+    vs_emptyctl=ids vs_own_setup=own vs_own_setupfiles=own vs_own_iptvce_=own; do
     check "iptvce_why ${x%%=*}: ${x#*=}" vs_why_is "${x%%=*}" "${x#*=}"
 done
+rm -rf "${plugins:?}/a b" "${plugins:?}/.x" "${plugins:?}/-x"
 vs_rm
 
 # A build updated in place: <public_actions> decides whether its item stays.
@@ -2239,33 +2245,46 @@ vs_jelly vs_jcomment "<!-- $VS -->"
 vs_build vs_own_setup "$(vs_xml setup)"
 vs_build vs_type "$(vs_xml h c "$vs_id" plugin_open_folder)"
 vs_build vs_only "$VS"
+# NUL bytes in a manifest that is parsed: bash warns of them in $(...).
+vs_build vs_nulline "@NUL@ $(vs_xml 'entry@NUL@_handler' 'c@NUL@')"
 run sync.sh
+check "sync vod_search turned down, NUL bytes: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
+# Read only if a regular file: a FIFO or /dev/zero would hang the check.
+mkdir -p "$plugins/vs_fifo" "$plugins/vs_zero"
+mkfifo "$plugins/vs_fifo/dune_plugin.xml"
+ln -s /dev/zero "$plugins/vs_zero/dune_plugin.xml"
 vs_r='the vod_search entry is turned down'
 vs_why_lines="Mir Kino (a?b?) — $vs_r: the plugin's folder name is not allowed
 Mir Kino (vs_32769) — $vs_r: dune_plugin.xml is over 32768 bytes
 Mir Kino (vs_commented) — $vs_r: no public_actions block (outside comments)
-Mir Kino (vs_jcomment) — $vs_r: no public_actions block (outside comments)
 Mir Kino (vs_own_setup) — $vs_r: its handler_id is one of play_in_apps' own
 Mir Kino (vs_type) — $vs_r: its type is not plugin_handle_user_input"
 # why_lines_are <lines>: the lines after the items are these, in any order.
 why_lines_are() {
-    [ "$(tail -n 6 "$o" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ]
+    [ "$(tail -n 5 "$o" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ]
 }
-diag english brief
-check "diag brief vod_search turned down: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
-check "diag brief vod_search turned down: 24 lines, the items before" sh -c \
-    '[ "$(wc -l <"$1" | tr -d " ")" = 24 ] && [ "$(sed -n 17,18p "$1")" = "$(printf "%s\n" \
-        "Mir Kino — OK (through the Dune plugin vs_jcomment)" "Mir Kino — OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
+PATH="$sbin:$PATH" timeout 60 "$sh_bin" "$bin/diag.sh" english brief >"$o" 2>"$o.err"
+echo "$?" >"$o.rc"
+check "diag brief vod_search turned down: exit 0 (no hang on a FIFO), no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
+# Verdicts only: the caption of vs_nulline depends on the grep (GNU grep -o
+# prints nothing for a file with NUL bytes).
+check "diag brief vod_search turned down: 24 lines, the items before, none for a build" sh -c \
+    '[ "$(wc -l <"$1" | tr -d " ")" = 24 ] && [ "$(sed -n "17,19s/^.* — //p" "$1")" = "$(printf "%s\n" \
+        "OK (through the Dune plugin vs_jcomment)" "OK (through the Dune plugin vs_nulline, vod_search)" \
+        "OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
 check "diag brief vod_search turned down: a line each, the step" why_lines_are "$vs_why_lines"
 diag russian brief
 check "diag brief russian vod_search turned down" grep -qxF \
     "Mir Kino (vs_type) — вход vod_search не принят: его type не plugin_handle_user_input" "$o"
 diag
+check "diag vod_search turned down: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 check "diag vod_search turned down: the lines before the shell log" sh -c \
-    'sed "/^The shell'"'"'s last records/,\$d" "$1" | tail -n 6 >"$1.why" && [ "$(LC_ALL=C sort "$1.why")" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
+    'sed "/^The shell'"'"'s last records/,\$d" "$1" | tail -n 5 >"$1.why" && [ "$(LC_ALL=C sort "$1.why")" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
     _ "$o" "$vs_why_lines"
 check "diag vod_search turned down: no raw control bytes" sh -c '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"' _ "$o"
-for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_only; do rm -rf "${plugins:?}/$b"; done
+for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_only vs_nulline vs_fifo vs_zero; do
+    rm -rf "${plugins:?}/$b"
+done
 run sync.sh
 
 fi # not CGI_ONLY
@@ -4100,6 +4119,10 @@ keys="$keys filmix_api_err_unsupported bazinga_err_unsupported iptvce_err_unsupp
     sed "s/^%tr%//; s/^pia_error_action('//; s/^pia_tr('//; s/')\$//; s/^play_in_apps_plugin_//" | sort -u)"
 # diag.sh: $(t <key>); cgi/logs.php: lp_tr('<key>').
 keys="$keys $(grep -o '(t [a-z_]*)' "$src/bin/diag.sh" | sed 's/^(t //; s/)$//' | sort -u)"
+# diag.sh: $(t "diag_vs_$why"), every step of iptvce_why but nofile and noword
+# (not a plugin with vod_search: no line).
+keys="$keys diag_vs_name $(grep -o "ivs_why='*[a-z][a-z]*" "$src/bin/iptvce_builds.sh" |
+    sed "s/^ivs_why='*/diag_vs_/" | grep -v -e '^diag_vs_nofile$' -e '^diag_vs_noword$' | sort -u)"
 keys="$keys $(grep -o "lp_tr('[a-z_]*')" "$src/cgi/logs.php" | sed "s/^lp_tr('//; s/')\$//" | sort -u)"
 for lang in english russian; do
     tr_file="$src/translations/dune_language_$lang.txt"
