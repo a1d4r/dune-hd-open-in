@@ -208,6 +208,10 @@ iptvce_why() {
     fi
     iptvce_vod_search "$1/$2" >/dev/null && return 0
     iw_why=$ivs_why
+    # Gone or rewritten since the word check: as if no word.
+    case "$iw_why" in
+        nofile | noword) return 0 ;;
+    esac
     iptvce_builder_item "$1/$2" && return 0
     printf '%s\n' "$iw_why"
 }

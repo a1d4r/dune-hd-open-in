@@ -1765,7 +1765,7 @@ check "iptvce_gets_item: the manifest parsed only for a candidate with the word"
 vs_why_no_parse() {
     for x in vs_nosubstr: vs_nosubstrfiles: vs_pa_no: 'no such:' vs_type:parsed; do
         got=$("$sh_bin" -c '. "$1"
-            iptvce_manifest() { echo parsed; return 1; }
+            iptvce_manifest() { echo parsed; ivs_why=big; return 1; }
             iptvce_gets_item() { echo parsed; return 1; }
             iptvce_builder_item() { echo parsed; return 1; }
             iptvce_why "$2" "$3"' _ "$bin/iptvce_builds.sh" "$plugins" "${x%:*}" 2>&1 | head -n 1)
@@ -1776,6 +1776,25 @@ vs_why_no_parse() {
     done
 }
 check "iptvce_why: no parse without the word vod_search" vs_why_no_parse
+# vs_why_race: the plugin gone or rewritten after the word check of iptvce_why
+# (the next checks fail with nofile or noword): nothing, not an empty line.
+vs_why_race() {
+    for w in nofile noword; do
+        got=$("$sh_bin" -c '. "$1"
+            vs_w=$4
+            iptvce_has_word() {
+                [ -n "${vs_r-}" ] || { vs_r=1; return 0; }
+                ivs_why=$vs_w
+                return 1
+            }
+            iptvce_why "$2" "$3"; echo end' _ "$bin/iptvce_builds.sh" "$plugins" vs_type "$w" 2>&1)
+        [ "$got" = end ] || {
+            echo "$w: got '$got'" >&2
+            return 1
+        }
+    done
+}
+check "iptvce_why: the file gone or without the word after the check, nothing" vs_why_race
 printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
     check "iptvce_gets_item $b: $want" vs_mode_is "$b" "$want"
