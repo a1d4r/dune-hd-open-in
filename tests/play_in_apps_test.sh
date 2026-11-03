@@ -7,6 +7,10 @@
 # (tests/php53/Dockerfile has one: /opt/busybox/busybox).
 # CGI_ONLY=1 runs only the logs page checks and fails without a real php-cgi
 # (the image above has none, so CI runs this apart, on Ubuntu's PHP).
+# ONLY=<extended regex> runs only the blocks whose name matches, the name is
+# the "blk <name>" line under each "# --- " header: ONLY=iptvce, ONLY=diag,
+# ONLY=^sync/, ONLY='^php/(items|apply)$'. For a quick check while editing;
+# the build runs everything.
 # shellcheck disable=SC2016 # sh -c '<script>' _ <args>: the script expands its own $1, $2
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -15,6 +19,7 @@ fx="$root/tests/fixtures"
 sh_bin=${TEST_SH:-dash}
 php_bin=${PHP:-php}
 cgi_only=${CGI_ONLY-}
+blk_only=${ONLY-}
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -51,6 +56,26 @@ check() {
         failed=1
     fi
 }
+
+# Blocks: "blk <name> [prep]" under a "# --- " header names the block, its
+# checks run inside "if on; then ... fi". Setup and helpers outside "if on"
+# always run, they are cheap. With ONLY only the matching blocks run, each
+# after its prep, a function that sets up the state the block starts from
+# in the full run.
+blk_on=1
+blk_any=
+blk() {
+    [ -n "$blk_only" ] || return 0
+    if printf '%s\n' "$1" | grep -qE -- "$blk_only"; then
+        blk_on=1
+        blk_any=1
+        echo "== $1"
+        [ -z "${2-}" ] || "$2"
+    else
+        blk_on=
+    fi
+}
+on() { [ -n "$blk_on" ]; }
 
 # BusyBox of old Android (tv175, r24): its applets, all but the shells, go
 # first in PATH for the whole run; there sh is bash (TEST_SH=bash).
@@ -235,6 +260,8 @@ common() {
 cp "$fx/app_data.json" "$apps"
 
 # --- nuvio: IMDb, else TMDB
+blk items/nuvio
+if on; then
 id=nuvio
 supplier "$fx/movie.json" launch_is nuvio://movie/tt9218128
 supplier "$fx/series.json" launch_is nuvio://series/tt11198330
@@ -257,8 +284,11 @@ hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot"}}' error_i
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1"}}' error_is err_no_id
 # Title text that looks like keys must not win over the real fields.
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","title":{"en":"\"type\":\"series\" \"movieExtId\":\"imdb:tt2\""},"type":"single"}}' launch_is nuvio://movie/tt1
+fi
 
 # --- stremio: IMDb, else TMDB; Nuvio also handles stremio: links
+blk items/stremio
+if on; then
 id=stremio
 supplier "$fx/movie.json" launch_is stremio:///detail/movie/tt9218128
 supplier "$fx/series.json" launch_is stremio:///detail/series/tt11198330
@@ -279,9 +309,12 @@ hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"movie"}}' error_is err_no
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","type":"single;reboot"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1"}}' error_is err_no_id
 hostile '{"movieInfo":{"movieExtId":"imdb:tt1","title":{"en":"\"type\":\"series\" \"movieExtId\":\"imdb:tt2\""},"type":"single"}}' launch_is stremio:///detail/movie/tt1
+fi
 
 # --- num, lampa, bylampa, lampa_atv, prisma: TMDB only, ids up to Java int
+blk items/tmdb
 t=https://www.themoviedb.org
+if on; then
 for id in num lampa bylampa lampa_atv prisma; do
     supplier "$fx/movie.json" launch_is "$t/movie/558449"
     supplier "$fx/series.json" launch_is "$t/tv/94997"
@@ -310,20 +343,11 @@ for id in num lampa bylampa lampa_atv prisma; do
     hostile '{"movieInfo":{"movieExtId":"tmdb:1"}}' error_is err_no_id
     hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"type\":\"series\" \"movieExtId\":\"tmdbtv:2\""},"type":"single"}}' launch_is "$t/movie/1"
 done
+fi
 
 # --- lampa, bylampa, lampa_atv: packages top.rootu.lampa, top.rootu.bylumpa
 # and top.rootu.lumpa, each found by its exact name.
-cp "$fx/app_data_no_lampa_atv.json" "$apps"
-for id in lampa bylampa; do
-    supplier "$fx/movie.json" launch_is "$t/movie/558449"
-done
-id=lampa_atv
-supplier "$fx/movie.json" error_is err_not_installed
-cp "$fx/app_data_no_bylampa.json" "$apps"
-id=lampa
-supplier "$fx/movie.json" launch_is "$t/movie/558449"
-id=bylampa
-supplier "$fx/movie.json" error_is err_not_installed
+blk items/lampa
 # app_data_only_<id>.json: app_data.json without the other two Lampa apps.
 python3 - "$fx/app_data.json" "$work" <<'EOF'
 import json, sys
@@ -335,6 +359,18 @@ for app, pkg in lampas.items():
     open("%s/app_data_only_%s.json" % (sys.argv[2], app), "w").write(
         json.dumps(d, indent=2, ensure_ascii=False).replace("/", "\\/"))
 EOF
+if on; then
+cp "$fx/app_data_no_lampa_atv.json" "$apps"
+for id in lampa bylampa; do
+    supplier "$fx/movie.json" launch_is "$t/movie/558449"
+done
+id=lampa_atv
+supplier "$fx/movie.json" error_is err_not_installed
+cp "$fx/app_data_no_bylampa.json" "$apps"
+id=lampa
+supplier "$fx/movie.json" launch_is "$t/movie/558449"
+id=bylampa
+supplier "$fx/movie.json" error_is err_not_installed
 for only in lampa bylampa lampa_atv; do
     cp "$work/app_data_only_$only.json" "$apps"
     for id in lampa bylampa lampa_atv; do
@@ -352,8 +388,11 @@ for id in lampa bylampa lampa_atv; do
     supplier "$fx/movie.json" error_is err_not_installed
 done
 cp "$fx/app_data.json" "$apps"
+fi
 
 # --- freezona: Kinopoisk only, movies and series by the same link
+blk items/freezona
+if on; then
 id=freezona
 k=https://www.kinopoisk.ru/film
 supplier "$fx/movie_kinopoisk.json" launch_is "$k/61249"
@@ -381,6 +420,7 @@ hostile '{"movieInfo":{"movieExtId":"kinopoisk:5"}}' launch_is "$k/5"
 # Title text that looks like keys must not win over the real fields.
 hostile '{"movieInfo":{"movieExtId":"kinopoisk:1","title":{"en":"\"movieExtId\":\"kinopoisk:2\""},"type":"single"}}' launch_is "$k/1"
 hostile '{"movieInfo":{"title":{"en":"\"movieExtId\":\"kinopoisk:2\""},"type":"single"}}' error_is err_no_id
+fi
 
 # titles <no-title error key> <launch_is prefix>: title parsing shared by VoKino,
 # LazyMedia, ALPAC and SeasonHit:
@@ -410,8 +450,10 @@ titles() {
 }
 
 # --- vokino: IMDb for movies and series alike, else search by title
+blk items/vokino
 id=vokino
 v=vokino://ru.vokino.web/view
+if on; then
 supplier "$fx/movie.json" launch_is "$v/tt9218128"
 supplier "$fx/series.json" launch_is "$v/tt11198330"
 check "vokino writes uri to stderr" grep -q "uri: $v/tt11198330" "$o.err"
@@ -435,8 +477,11 @@ hostile '{"movieInfo":{"movieExtId":"imdb:tt1","title":{"ru":"x"}}}' launch_is "
 # Title text that looks like keys must not win over the real fields.
 hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"movieExtId\":\"imdb:tt2\"","ru":"\"title\":{\"ru\":\"evil\"}"}}}' search_is '"title":{"ru":"evil"}'
 titles err_no_id "vokino://ru.vokino.web/search?name="
+fi
 
 # --- lazymedia: no IDs, always search by the Russian title
+blk items/lazymedia
+if on; then
 id=lazymedia
 supplier "$fx/movie.json" search_is 'Гладиатор 2'
 supplier "$fx/series.json" search_is 'Дом Дракона'
@@ -453,10 +498,13 @@ hostile '{"movieInfo":{"movieExtId":"tmdb:1","title":{"en":"\"movieExtId\":\"imd
 # Intent URI syntax inside the title stays inside S.query.
 hostile '{"movieInfo":{"title":{"ru":"x;end;component=a/b;S.query=y#Intent"}}}' search_is 'x;end;component=a/b;S.query=y#Intent'
 titles err_no_title ''
+fi
 
 # --- alpac: TMDB ID of the matching type (movie/ or tv/), else search by title
+blk items/alpac
 id=alpac
 a=alpac://title
+if on; then
 supplier "$fx/movie.json" launch_is "$a/movie/558449"
 supplier "$fx/series.json" launch_is "$a/tv/94997"
 supplier "$fx/movie_tmdb_only.json" launch_is "$a/movie/558449"
@@ -514,8 +562,11 @@ supplier "$fx/movie.json" error_is err_not_installed
 sed 's/"cc\.alcopa\.tv"/"cc.alcopa.tv.dev"/' "$fx/app_data.json" >"$apps"
 supplier "$fx/movie.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
+fi
 
 # --- flux: TMDB ID of the matching type (movie/ or series/) only, no search
+blk items/flux
+if on; then
 id=flux
 x=flux:/
 check "fixture app_data.json has Flux" grep -qE '"package_name": *"app\.flux\.tv"' "$fx/app_data.json"
@@ -572,8 +623,11 @@ supplier "$fx/movie.json" error_is err_not_installed
 sed 's/"app\.flux\.tv"/"app.flux.tv.dev"/' "$fx/app_data.json" >"$apps"
 supplier "$fx/movie.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
+fi
 
 # --- seasonhit: no IDs, always search by the Russian title, movies too
+blk items/seasonhit
+if on; then
 id=seasonhit
 check "fixture app_data.json has SeasonHit" grep -qE '"package_name": *"com\.jimdo\.xakerd\.season2hit"' "$fx/app_data.json"
 supplier "$fx/movie.json" search_is 'Гладиатор 2'
@@ -605,9 +659,12 @@ supplier "$fx/series.json" error_is err_not_installed
 sed 's/"com\.jimdo\.xakerd\.season2hit"/"com.jimdo.xakerd.seasonhit"/' "$fx/app_data.json" >"$apps"
 supplier "$fx/series.json" error_is err_not_installed
 cp "$fx/app_data.json" "$apps"
+fi
 
 # --- Search by title: the helpers live in search.sh only, the items that
 # search call its search_query.
+blk items/search_sh
+if on; then
 # only_in_search: no other bin/*.sh defines a function of search.sh (any
 # spacing or indent before "()").
 only_in_search() {
@@ -622,8 +679,11 @@ check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and c
     for s in vokino lazymedia alpac seasonhit; do
         grep -qx "\. \"\${0%/\*}/search\.sh\"" "$1/$s.sh" && grep -q "q=\$(search_query \"\$input\")" "$1/$s.sh" || exit 1
     done' _ "$src/bin"
+fi
 
 # --- filmix_api.sh, bazinga.sh, iptvce.sh: answer only if play_action was ignored
+blk items/filmix_bazinga_iptvce
+if on; then
 for id in filmix_api bazinga iptvce; do
     for args in start_playback_app '' get_stream_url; do
         # shellcheck disable=SC2086 # split on purpose
@@ -636,8 +696,10 @@ for id in filmix_api bazinga iptvce; do
     check "$id empty stdin: exit 0" rc_is 0
     check "$id empty stdin: one line of JSON" one_json
 done
+fi
 
 # --- sync.sh: the item JSON of every app
+blk sync/items
 
 # item_is <file> <id>: supplier JSON of app <id> with its bin and icon.
 # FS_PREFIX in the icon path is the fixture's (from app_data.json).
@@ -680,6 +742,21 @@ shown() {
     done
 }
 
+# base: all apps, Filmix_API and Bazinga3 installed, nothing hidden, synced;
+# the shell's run/versions.txt and config dir. Where diag starts, and the prep
+# of the blocks after sync/items: where each starts in the full run, as far as
+# it matters to the block.
+base() {
+    mkdir -p "$plugins/Filmix_api" "$plugins/Bazinga3" "$PLAY_IN_APPS_TMP/run" "$cfg"
+    : >"$plugins/Filmix_api/dune_plugin.xml"
+    : >"$plugins/Bazinga3/dune_plugin.xml"
+    cp "$fx/app_data.json" "$apps"
+    rm -f "$data/hidden"
+    run sync.sh
+    printf 'api_version=1.1.0\nfirmware_version=260827_0003_r24\nproduct=tv188b\n' >"$PLAY_IN_APPS_TMP/run/versions.txt"
+}
+
+if on; then
 # Filmix_API and Bazinga3 are not installed yet.
 run sync.sh
 check "sync: exit 0" rc_is 0
@@ -731,8 +808,11 @@ for id in filmix_api bazinga; do
     (cd / && "$sh_bin" -c "$cmd start_playback_app" <"$fx/series.json" >"$o" 2>"$o.err")
     check "registered bin of $id: err_unsupported" error_is err_unsupported
 done
+fi
 
 # --- sync: hidden items
+blk sync/hidden base
+if on; then
 printf 'nuvio\nfilmix_api\n' >"$data/hidden"
 run sync.sh
 check "sync hidden: exit 0" rc_is 0
@@ -780,8 +860,11 @@ check "sync garbage in hidden: exit 0" rc_is 0
 check "sync garbage in hidden: only prisma hidden" shown num lampa bylampa lampa_atv vokino lazymedia filmix_api stremio nuvio freezona alpac flux seasonhit bazinga
 check "sync garbage in hidden: no stray files" listing_is "$data" hidden movie_suppliers movie_suppliers_params.txt
 rm -f "$data/hidden"
+fi
 
 # --- sync: an app not installed (or uninstalled later)
+blk sync/not_installed base
+if on; then
 cp "$fx/app_data_no_lazymedia.json" "$apps"
 run sync.sh
 check "sync LazyMedia not installed: item removed" shown num lampa prisma vokino filmix_api stremio nuvio bazinga
@@ -816,8 +899,11 @@ cp "$fx/app_data.json" "$apps"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync apps installed again: all items" shown $all
+fi
 
 # --- sync: no app list -> Android items stay as they are, Filmix still synced
+blk sync/no_app_list base
+if on; then
 printf 'lazymedia\n' >"$data/hidden"
 run sync.sh
 rm -f "$apps"
@@ -840,16 +926,22 @@ cp "$fx/app_data.json" "$apps"
 : >"$plugins/Bazinga3/dune_plugin.xml"
 rm -f "$data/hidden"
 run sync.sh
+fi
 
 # --- movie_suppliers_update.sh: runs sync.sh, arguments are ignored
+blk sync/update base
+if on; then
 rm -rf "$reg" "$menu"
 run movie_suppliers_update.sh other other '../evil' x
 check "update: exit 0" rc_is 0
 # shellcheck disable=SC2086 # one word per id
 check "update: all items, nothing else" shown $all
 check "update: nothing outside" listing_is "$data" movie_suppliers movie_suppliers_params.txt
+fi
 
 # --- sync: a directory as movie_suppliers_params.txt, for the shell's worker
+blk sync/params base
+if on; then
 params="$data/movie_suppliers_params.txt"
 rm -rf "$params"
 run sync.sh
@@ -864,6 +956,7 @@ printf '16:num' >"$params"
 run sync.sh
 check "params: the worker's file, exit 0" rc_is 0
 check "params: the worker's file replaced by a directory" test -d "$params"
+fi
 
 # Stand-ins: mkdir fails for the params directory only; mv always, or only into
 # the menu; cp leaves half a file and fails.
@@ -889,6 +982,7 @@ exit 1
 EOF
 chmod +x "$stub/mkdir_params/mkdir" "$stub/mv/mv" "$stub/mv_menu/mv" "$stub/cp_cut/cp"
 
+if on; then
 rm -rf "$params" "$reg" "$menu"
 PATH="$stub/mkdir_params:$PATH" "$sh_bin" "$bin/sync.sh" >"$o" 2>"$o.err"
 echo "$?" >"$o.rc"
@@ -920,8 +1014,11 @@ check "params: file as data dir, the items' exit 1" rc_is 1
 check "params: file as data dir, a line in the output" grep -q 'failed to create' "$o"
 check "params: file as data dir, the items' lines" grep -q 'failed to write num' "$o"
 rm -f "$data"
+fi
 
 # --- sync: the flag r24 rereads the suppliers by
+blk sync/flag base
+if on; then
 flag="$PLAY_IN_APPS_TMP/movie_suppliers_changed.flag"
 rm -rf "$reg" "$menu"
 rm -f "$flag"
@@ -938,9 +1035,12 @@ run sync.sh
 check "flag cannot be written: exit 0" rc_is 0
 check "flag cannot be written: stderr empty" test ! -s "$o.err"
 rm -f "$flag"
+fi
 
 # --- sync: temp files of show(), two runs at once (on boot: early_gui_start
 # and the worker)
+blk sync/temp base
+if on; then
 no_temp() { [ -z "$(find "$reg" "$menu" -name '.*.tmp')" ]; }
 # no_menu_temp: nothing of show() next to the menu, no dot files in it (the
 # shell takes them for suppliers).
@@ -990,8 +1090,10 @@ for round in 1 2 3 4 5; do
     check "two syncs at once, round $round: items whole" items_whole
     check "two syncs at once, round $round: no clash of temp files" sh -c '! grep -q "mv: " "$1" "$2"' _ "$o.a" "$o.b"
 done
+fi
 
 # --- sync: IPTV Channel Editor builds (iptvce_builds.sh), an item each
+blk sync/iptvce base
 
 # build <name> [<caption XML text> [<icon_url XML text>]]: plugins/<name> made
 # of the Mir Kino fixture (tests/fixtures/iptvce_mirkino); a caption or an
@@ -1033,6 +1135,7 @@ sys.exit(d != want)
 EOF
 }
 
+if on; then
 build mirkino
 run sync.sh
 check "sync build: exit 0" rc_is 0
@@ -1123,6 +1226,7 @@ for b in novod noengine noconfig nostarnet novodlist nostarnetfile novodlow novo
     "$(printf 'n%.0s' $(seq 1 41))" iedem.tv fox-fun.tv viplime.fun.tv "$(printf 'n%.0s' $(seq 1 40))" notadir; do
     rm -rf "${plugins:?}/$b"
 done
+fi
 
 # The vod_search action (the builder's entry for other plugins) in
 # <public_actions>: a build without the builder's files too.
@@ -1383,14 +1487,6 @@ vs_items() {
     printf '%s\n' "$vs_want" | grep -v '=none$' | sed 's/=.*//; s/^/iptvce_/'
 }
 
-vs_cases
-run sync.sh
-check "sync vod_search: exit 0" rc_is 0
-# shellcheck disable=SC2046,SC2086 # one word per id
-check "sync vod_search: items of the plugins with it or with the builder's files" shown $all iptvce_mirkino $(vs_items)
-check "sync vod_search: item JSON as of a build, the plugin's caption and icon" \
-    build_item_is vs_only 'Mir Kino' img/logo_mirkino.png
-check "sync vod_search, a dot in the name: item JSON" build_item_is vs.dot-x 'Mir Kino' img/logo_mirkino.png
 # vs_sh_is: iptvce_vod_search of the shell under test (TEST_SH) gives vs_want
 # for every build ("old" and "none": no output, exit 1).
 vs_sh_is() {
@@ -1406,6 +1502,31 @@ vs_sh_is() {
         fi
     done
 }
+# vs_mode_is <build> <want>: what iptvce_is_build and iptvce_vod_search of the
+# shell under test make of it, in the words of vs_want.
+vs_mode_is() {
+    got=$("$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3" || { echo none; exit 0; }; iptvce_vod_search "$2/$3" || echo old' \
+        _ "$bin/iptvce_builds.sh" "$plugins" "$1")
+    [ "$got" = "$2" ]
+}
+# vs_base: base and the Mir Kino build, synced, as sync/iptvce leaves it.
+vs_base() {
+    base
+    build mirkino
+    run sync.sh
+}
+
+# --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_is_build, iptvce_why
+blk sync/iptvce_vod_search vs_base
+if on; then
+vs_cases
+run sync.sh
+check "sync vod_search: exit 0" rc_is 0
+# shellcheck disable=SC2046,SC2086 # one word per id
+check "sync vod_search: items of the plugins with it or with the builder's files" shown $all iptvce_mirkino $(vs_items)
+check "sync vod_search: item JSON as of a build, the plugin's caption and icon" \
+    build_item_is vs_only 'Mir Kino' img/logo_mirkino.png
+check "sync vod_search, a dot in the name: item JSON" build_item_is vs.dot-x 'Mir Kino' img/logo_mirkino.png
 check "iptvce_vod_search: each case" vs_sh_is
 # vs_nosubstr_sh: without "vod_search" in the file, no tr or sed runs but the
 # tr of NUL bytes before the word check (a PATH whose tr and sed fail loudly).
@@ -1441,13 +1562,6 @@ vs_is_build_no_parse() {
     done
 }
 check "iptvce_is_build: the manifest parsed only for a candidate with the word" vs_is_build_no_parse
-# vs_mode_is <build> <want>: what iptvce_is_build and iptvce_vod_search of the
-# shell under test make of it, in the words of vs_want.
-vs_mode_is() {
-    got=$("$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3" || { echo none; exit 0; }; iptvce_vod_search "$2/$3" || echo old' \
-        _ "$bin/iptvce_builds.sh" "$plugins" "$1")
-    [ "$got" = "$2" ]
-}
 printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
     check "iptvce_is_build $b: $want" vs_mode_is "$b" "$want"
@@ -1532,8 +1646,11 @@ rm -rf "${plugins:?}/mirkino"
 run sync.sh
 # shellcheck disable=SC2086 # one word per id
 check "sync builds gone: fixed items only" shown $all
+fi
 
 # --- sync: icon_url is "file://" + the app's "icon" from app_data.json
+blk sync/icons base
+if on; then
 
 # apps_icon <icon template> [flat]: app_data.json with every app's "icon" set
 # ({pkg} is replaced, "-" deletes the field), "/" escaped as on the device;
@@ -1638,8 +1755,13 @@ rm -rf "$reg"
 "$sh_bin" "$unsafe/play_in_apps/bin/sync.sh" >"$o" 2>&1
 check "sync from unsafe path: nothing written" no_file "$reg"
 run sync.sh
+fi
 
 # --- uninstall.sh
+blk uninstall base
+lcfg="$cfg/lcfg_play_in_apps.txt"
+printf 'keep\n' >"$work/lcfg_target"
+if on; then
 : >"$menu/YouTube"
 run uninstall.sh
 check "uninstall: exit 0" rc_is 0
@@ -1662,14 +1784,12 @@ rm -f "$menu/nuvio"
 
 # The shell's file of the item choice dialog goes too; a symlink there is
 # removed, not followed.
-lcfg="$cfg/lcfg_play_in_apps.txt"
 mkdir -p "$cfg"
 printf '%s\n' -num >"$lcfg"
 : >"$cfg/lcfg_other.txt"
 run uninstall.sh
 check "uninstall with a choice file: exit 0" rc_is 0
 check "uninstall: choice file removed, others kept" listing_is "$cfg" lcfg_other.txt
-printf 'keep\n' >"$work/lcfg_target"
 ln -s "$work/lcfg_target" "$lcfg"
 run uninstall.sh
 check "uninstall: choice file symlink removed, target kept" \
@@ -1683,10 +1803,12 @@ printf '{"plugin":"other"}\n' >"$menu/iptvce_other"
 run uninstall.sh
 check "uninstall: build items removed, others kept" listing_is "$menu" YouTube iptvce_other "iptvce_a b"
 rm -f "$menu/iptvce_other" "$menu/iptvce_a b"
+fi
 
 fi # not CGI_ONLY
 
 # --- diag.sh: the "Check" report. cmd, getprop, ifconfig and logcat are stand-ins.
+blk diag
 sbin="$work/sbin"
 mkdir -p "$sbin" "$work/sbin_nocmd"
 cat >"$sbin/android_stub" <<'EOF'
@@ -1836,13 +1958,8 @@ brief_all() {
 # no_details: none of the full report's details.
 no_details() { ! grep -qE 'am start|intent|menu item|installed:|launch:|FS_PREFIX|records|movie_suppliers' "$o"; }
 
-mkdir -p "$plugins/Filmix_api" "$plugins/Bazinga3" "$PLAY_IN_APPS_TMP/run"
-: >"$plugins/Filmix_api/dune_plugin.xml"
-: >"$plugins/Bazinga3/dune_plugin.xml"
-cp "$fx/app_data.json" "$apps"
-rm -f "$data/hidden"
-run sync.sh
-printf 'api_version=1.1.0\nfirmware_version=260827_0003_r24\nproduct=tv188b\n' >"$PLAY_IN_APPS_TMP/run/versions.txt"
+if on; then
+base
 q='package query-activities --brief'
 
 : >"$STUB_LOG"
@@ -2164,7 +2281,11 @@ export STUB_MODEL
 diag
 check "diag bad UTF-8 in getprop: exit 0" rc_is 0
 unset STUB_MODEL
+fi
 
+# --- diag.sh: IPTV Channel Editor builds and their vod_search entry
+blk diag/iptvce base
+if on; then
 # IPTV Channel Editor builds: a line each after the fixed items, in name
 # order, with the build's caption; nothing to query.
 build mirkino
@@ -2286,6 +2407,7 @@ for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_onl
     rm -rf "${plugins:?}/$b"
 done
 run sync.sh
+fi
 
 fi # not CGI_ONLY
 
@@ -2620,11 +2742,16 @@ check "PHP CLI available ($php_bin)" test "$php_ok" = 1
 
 if [ "$php_ok" = 1 ]; then
     if [ -z "$cgi_only" ]; then
+    blk php/lint
+    if on; then
     for f in main.php qrpng.php cgi/logs.php; do
         check "$f: php -l" "$php_bin" -l "$src/$f"
     done
+    fi
 
     # --- Filmix play_action. Filmix_API not installed yet.
+    blk php/filmix base
+    if on; then
     rm -rf "$plugins/Filmix_api"
     error "$fx/play_action_movie.json" "no Filmix_API" filmix_api_err_not_installed
     mkdir -p "$plugins/Filmix_api"
@@ -2682,9 +2809,12 @@ if [ "$php_ok" = 1 ]; then
     error "$work/ui.json" "no movie_str" filmix_api_err_no_title
     printf '%s\n' '{"handler_id":"filmix_api","movie_str":{"title":"obj"}}' >"$work/ui.json"
     error "$work/ui.json" "movie_str is an object" filmix_api_err_no_title
+    fi
 
     # --- Bazinga play_action: the Bazinga3 plugin's Kinopoisk card by kp_id,
     # else its Kinopoisk search by title.
+    blk php/bazinga base
+    if on; then
     # bz_input <file>: the device's play_action input with handler_id bazinga.
     bz_input() {
         python3 -c 'import json, sys
@@ -2784,9 +2914,12 @@ sys.exit("\\u041f" not in u or not u.isascii())' "$o"
     bz_error "$work/ui.json" "no movie_str" bazinga_err_no_title
     printf '%s\n' '{"handler_id":"bazinga","movie_str":{"kp_id":"1","title":"obj"}}' >"$work/ui.json"
     bz_error "$work/ui.json" "movie_str is an object" bazinga_err_no_title
+    fi
 
     # --- The shell's async_worker: a copy of the decision of r24/r25
     # do_movie_suppliers_update. Green here does not prove the firmware does the same.
+    blk php/worker base
+    if on; then
     params="$data/movie_suppliers_params.txt"
     cat >"$work/worker.php" <<'PHP'
 <?php
@@ -2807,9 +2940,11 @@ PHP
     check "worker after sync: runs the script" worker_says run
     check "worker after sync, second pass: runs the script" worker_says run
     check "worker after sync: the directory stays" test -d "$params"
+    fi
 
     # --- IPTV Channel Editor builds: play_action with handler_id
     # iptvce_<name> opens the build's search results for the title.
+    blk php/iptvce base
     # ic_input <file> [handler_id]: the device's play_action input with this handler_id.
     ic_input() {
         python3 -c 'import json, sys
@@ -2839,6 +2974,7 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
     ic_msg() { handler "$1" "iptvce $2" "$(ic_message_json "$3")"; }
     ic_no_title='This title has no name, Mir Kino cannot search for it'
 
+    if on; then
     build mirkino
     # Real inputs from the device, the Mir Kino fixture.
     ic_input "$fx/play_action_movie.json"
@@ -2968,10 +3104,13 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_msg "$work/ui.json" "no titles, Russian Dune" 'У этой карточки нет названия, Mir Kino не сможет её найти'
     rm -f "$cfg/settings.properties"
     rm -rf "${plugins:?}/mirkino"
+    fi
 
     # --- vod_search: the plugin's own search entry gets the titles and the
     # year as one JSON string "search" and the card as the shell sent it,
     # "movie_str" (params hold strings only).
+    blk php/vod_search base
+    if on; then
     # vs_json <build> <handler_id> <control_id> <search> <movie_str>: the action.
     vs_json() {
         python3 -c 'import json, sys
@@ -3198,8 +3337,10 @@ EOF
         check "main.php raw '$raw': exit 0" rc_is 0
         check "main.php raw '$raw': has_data false" python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(d["has_data"] is not False)' "$o"
     done
+    fi
 
     # --- the screen "setup": get_folder_view
+    blk php/setup base
 
     # setup_is <ids with an old plugin>: view_controls with a hint label, two
     # warning labels if a separate "Open in <app>" plugin is there (the
@@ -3239,6 +3380,7 @@ EOF
         php_run "$work/ctx.json"
     }
 
+    if on; then
     rm -rf "${reg:?}" "${menu:?}"
     rm -f "$data/hidden"
     cp "$fx/app_data.json" "$apps"
@@ -3261,6 +3403,7 @@ EOF
     folder_view
     check "setup screen, all 8 old plugins: two warning lines" setup_is "$old_ids"
     for i in $old_ids; do rm -rf "${plugins:?}/${i:?}_supplier"; done
+    fi
 
     message_json() {
         python3 -c 'import json, sys
@@ -3270,6 +3413,8 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
     mode_is() { python3 -c 'import os, sys; sys.exit(os.stat(sys.argv[1]).st_mode & 0o777 != int(sys.argv[2], 8))' "$1" "$2"; }
 
     # --- "Configure…": the shell's dialog with checkmarks (edit_list_config)
+    blk php/items base
+    if on; then
 
     # items_is <installed ids> <ids with an icon in icon_cache> <en|ru> [<id>=<icon> ...]:
     # the dialog action; the other icons are apps.aai.
@@ -3552,8 +3697,11 @@ EOF
         rm -rf "${plugins:?}/$b"
     done
     run sync.sh
+    fi
 
     # --- post_action of the dialog: list_apply
+    blk php/apply base
+    if on; then
 
     # apply <list_config_changed JSON or none> <list_config_id JSON or none> [desc]
     apply() {
@@ -3642,8 +3790,11 @@ print(json.dumps(ui))' "$1" "$2" >"$work/ui.json"
     rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino" "${plugins:?}/iedem.tv" "${plugins:?}/a..b"
     rm -f "$data/hidden" "$lcfg"
     run sync.sh
+    fi
 
     # --- "Check": the report of diag.sh as a list
+    blk php/check_diag base
+    if on; then
 
     # check_view_is <file with the expected lines>: view_regular 1x16 with a
     # scrollbar, a row per line, ENTER does nothing.
@@ -3715,8 +3866,11 @@ sys.exit(rows[0]["caption"] != "Pro?? 8K · r24 260827 · Android 11 · plugin "
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
 long = [r["caption"] for r in rows if r["caption"].startswith("NUM ")]
 sys.exit(len(long) != 1 or len(long[0]) != 300 or not long[0].endswith("…"))' "$o"
+    fi
 
     # --- "Logs for the author": QR dialog, token for the CGI page
+    blk php/logs base
+    if on; then
 
     pia_tmp="$PLAY_IN_APPS_TMP/plugins/play_in_apps"
     token_of() { cat "$pia_tmp/logs_token"; }
@@ -3816,6 +3970,7 @@ EOF
     printf '%s\n' '{"handler_id":"setup","control_id":"logs"}' >"$work/ui.json"
     ctx "$work/ui.json"
     # PHP warnings are expected here, they go to the plugin log.
+    : >"$work/notadir"
     PIA_T_TMP="$work/notadir/x"
     php_run "$work/ctx.json"
     unset PIA_T_TMP
@@ -3828,12 +3983,15 @@ EOF
     done
     printf '%s\n' '{"handler_id":"other","control_id":"items"}' >"$work/ui.json"
     handler "$work/ui.json" "other handler_id" none
+    fi
 
     fi # not CGI_ONLY
 
     # --- cgi/logs.php through www/cgi-bin/logs, run as run_plugin_cgi runs it:
     # `sh <file>` as root, umask 0, cwd cgi-bin. Real php-cgi when there is one
     # (status and headers checked), else the PHP CLI through a stand-in (body only).
+    blk cgi
+    if on; then
     check "www has only cgi-bin, cgi-bin only the sh wrapper" sh -c \
         '[ "$(ls -A "$1/www")" = cgi-bin ] && [ "$(ls -A "$1/www/cgi-bin")" = logs ]' _ "$src"
     mkdir -p "$work/empty_cwd"
@@ -4015,6 +4173,7 @@ EOF
     check "cgi after RETURN: same 403" forbidden
     unset PIA_T_TMP
     cgi_ran=1
+    fi
 fi
 
 if [ -z "$cgi_only" ]; then
@@ -4022,6 +4181,8 @@ if [ -z "$cgi_only" ]; then
 # --- build.sh: www/cgi-bin holds only the logs wrapper (the shell runs every
 # file there as root). A copy of the repo whose test script fails: a build
 # that passes the check stops at the tests.
+blk build_sh
+if on; then
 br="$work/build_repo"
 mkdir -p "$br/plugin" "$br/tests"
 cp "$root/build.sh" "$br/"
@@ -4050,8 +4211,11 @@ mv "$br/plugin/play_in_apps/www/cgi-bin/logs" "$br/plugin/play_in_apps/www/logs"
 ln -s ../logs "$br/plugin/play_in_apps/www/cgi-bin/logs"
 check "build.sh: logs as a symlink refused" build_cgi_is refused
 rm -rf "$br"
+fi
 
 # --- manifest and translations
+blk manifest
+if on; then
 check "manifest: php, suppliers, entry points, global actions, timeout" python3 - "$src/dune_plugin.xml" "$all" <<'EOF'
 import copy, os, re, sys, xml.etree.ElementTree as ET
 r = ET.parse(sys.argv[1]).getroot()
@@ -4138,11 +4302,13 @@ done
 check "translations: same keys in both languages" test \
     "$(cut -d' ' -f1 "$src/translations/dune_language_english.txt" | sort)" = \
     "$(cut -d' ' -f1 "$src/translations/dune_language_russian.txt" | sort)"
+fi
 
 fi # not CGI_ONLY
 
 # CGI_ONLY: green only if the page's checks really ran.
 [ -z "$cgi_only" ] || check "CGI_ONLY: the logs page checks ran" test "${cgi_ran-}" = 1
+[ -z "$blk_only" ] || check "ONLY='$blk_only': a block matches" test -n "$blk_any"
 
 if [ "$failed" -ne 0 ]; then
     echo "SOME TESTS FAILED"
