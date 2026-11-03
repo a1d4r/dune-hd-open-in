@@ -94,7 +94,7 @@ function iptvce_name_of($id)
 // the name, a bad icon none, so a rule of the script and of this check that
 // differ never drop an item sync.sh shows. Such lines are logged. Empty if
 // the script fails.
-function iptvce_builds($name = null)
+function iptvce_items($name = null)
 {
     $cmd = 'sh ' . escapeshellarg(dirname(__FILE__) . '/bin/iptvce_list.sh');
     if (!is_null($name))
@@ -477,7 +477,7 @@ function pia_items_dialog()
     }
     // The builds found now, after the fixed items, with their own icons.
     $checked = array_keys(PlayInApps::$apps);
-    foreach (iptvce_builds() as $name => $b)
+    foreach (iptvce_items() as $name => $b)
     {
         $items[] = array(
             GuiItem::id => "iptvce_$name",
@@ -525,7 +525,7 @@ function pia_list_apply($in)
     // The dialog's items: the fixed ones and the builds found now. A hidden
     // build that is not installed now stays hidden.
     $known = PlayInApps::$apps;
-    foreach (iptvce_builds() as $name => $b)
+    foreach (iptvce_items() as $name => $b)
         $known["iptvce_$name"] = true;
     $hidden = array();
     foreach (pia_read_hidden() as $id => $on)

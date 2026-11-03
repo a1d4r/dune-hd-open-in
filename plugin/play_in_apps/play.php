@@ -139,11 +139,11 @@ function bazinga_play($user_input)
 }
 
 // --- iptvce_: the press on an item iptvce_<name>; which plugins get one:
-// iptvce_builds in main.php.
+// iptvce_items in main.php.
 
 function iptvce_play($user_input, $name)
 {
-    $builds = iptvce_valid_name($name) ? iptvce_builds($name) : array();
+    $builds = iptvce_valid_name($name) ? iptvce_items($name) : array();
     if (!isset($builds[$name]))
     {
         // No item is due now (the plugin removed or changed: VOD off, its
