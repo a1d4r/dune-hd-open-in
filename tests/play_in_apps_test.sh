@@ -1643,10 +1643,10 @@ vs_sh_is() {
         fi
     done
 }
-# vs_mode_is <build> <want>: what iptvce_is_build and iptvce_vod_search of the
+# vs_mode_is <build> <want>: what iptvce_gets_item and iptvce_vod_search of the
 # shell under test make of it, in the words of vs_want.
 vs_mode_is() {
-    got=$("$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3" || { echo none; exit 0; }; iptvce_vod_search "$2/$3" || echo old' \
+    got=$("$sh_bin" -c '. "$1"; iptvce_gets_item "$2" "$3" || { echo none; exit 0; }; iptvce_vod_search "$2/$3" || echo old' \
         _ "$bin/iptvce_builds.sh" "$plugins" "$1")
     [ "$got" = "$2" ]
 }
@@ -1657,7 +1657,7 @@ vs_base() {
     run sync.sh
 }
 
-# --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_is_build, iptvce_why
+# --- sync: the vod_search entry of builds: iptvce_vod_search, iptvce_gets_item, iptvce_why
 blk sync/iptvce_vod_search vs_base
 if on; then
 : >>"$work/built"
@@ -1696,12 +1696,12 @@ vs_nosubstr_sh() {
     done
 }
 check "iptvce_vod_search: no vod_search in the file, no parse" vs_nosubstr_sh
-# vs_is_build_no_parse: iptvce_is_build reads <public_actions> last: no tr or
+# vs_gets_item_no_parse: iptvce_gets_item reads <public_actions> last: no tr or
 # sed for a plugin without the builder's files, with VOD off or without the
 # word (the PATH of vs_nosubstr_sh).
-vs_is_build_no_parse() {
+vs_gets_item_no_parse() {
     for x in vs_nosubstr:1 vs_pa_vodoff:1 vs_pa_no:0; do
-        got=$(PATH="$work/vs_path:$PATH" "$sh_bin" -c '. "$1"; iptvce_is_build "$2" "$3"; echo "rc=$?"' \
+        got=$(PATH="$work/vs_path:$PATH" "$sh_bin" -c '. "$1"; iptvce_gets_item "$2" "$3"; echo "rc=$?"' \
             _ "$bin/iptvce_builds.sh" "$plugins" "${x%:*}" 2>&1)
         [ "$got" = "rc=${x#*:}" ] || {
             echo "$x: $got" >&2
@@ -1709,10 +1709,10 @@ vs_is_build_no_parse() {
         }
     done
 }
-check "iptvce_is_build: the manifest parsed only for a candidate with the word" vs_is_build_no_parse
+check "iptvce_gets_item: the manifest parsed only for a candidate with the word" vs_gets_item_no_parse
 printf '%s\n' "$vs_want" >"$work/vs_want"
 while IFS='=' read -r b want; do
-    check "iptvce_is_build $b: $want" vs_mode_is "$b" "$want"
+    check "iptvce_gets_item $b: $want" vs_mode_is "$b" "$want"
 done <"$work/vs_want"
 # iptvce_why <name>=<step>: the step of the parse it fails at; empty: a build
 # or not a plugin with the word vod_search.

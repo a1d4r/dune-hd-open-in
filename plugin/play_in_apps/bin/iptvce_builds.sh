@@ -1,29 +1,31 @@
 # iptvce_ is an item of a plugin with the vod_search entry or of an IPTV
 # Channel Editor build with VOD; the prefix is kept for the ids of 0.10.x.
 # Shared by sync.sh and diag.sh; only function definitions. main.php has the
-# same checks (iptvce_is_build, iptvce_vod_search, iptvce_info).
+# same checks (iptvce_gets_item, iptvce_vod_search, iptvce_info).
 # Everything read from a build is untrusted: only printed, never run.
 # shellcheck shell=sh
 
-# iptvce_builds <plugins dir>: names of the builds, one per line, in name order.
+# iptvce_builds <plugins dir>: names of the plugins that get an item
+# (iptvce_gets_item), one per line, in name order.
 iptvce_builds() {
     for b in "$1"/*/; do
         b=${b%/}
         b=${b##*/}
-        if iptvce_is_build "$1" "$b"; then
+        if iptvce_gets_item "$1" "$b"; then
             printf '%s\n' "$b"
         fi
     done
 }
 
-# iptvce_is_build <plugins dir> <name>: a safe folder name and either the
-# vod_search action (iptvce_vod_search) or the builder's files, VOD on
-# ("vod_engine" in config.json, other than "None" in any case) and no
-# <public_actions> (iptvce_has_public_actions: the new versions of the builder
-# always write it, so it is read last, for candidates only). A safe name: 1-40
+# iptvce_gets_item <plugins dir> <name>: whether the plugin gets an item: a
+# safe folder name and either the vod_search action (iptvce_vod_search) or
+# the builder's files, VOD on ("vod_engine" in config.json, other than "None"
+# in any case) and no <public_actions> (iptvce_has_public_actions: the new
+# versions of the builder always write it, so it is read last, for
+# candidates only). A safe name: 1-40
 # of [A-Za-z0-9_.-], not starting with . or -, no "..". The name pattern has
 # one more copy: iptvce_valid_name in main.php.
-iptvce_is_build() {
+iptvce_gets_item() {
     iptvce_name_ok "$2" || return 1
     iptvce_vod_search "$1/$2" >/dev/null && return 0
     [ -f "$1/$2/starnet_plugin.php" ] && [ -f "$1/$2/screens_vod/starnet_vod_list_screen.php" ] &&
@@ -35,7 +37,7 @@ iptvce_is_build() {
     ! iptvce_has_public_actions "$1/$2"
 }
 
-# iptvce_name_ok <name>: the safe folder name of iptvce_is_build.
+# iptvce_name_ok <name>: the safe folder name of iptvce_gets_item.
 iptvce_name_ok() {
     case "$1" in
         '' | [.-]* | *[!A-Za-z0-9_.-]* | *..*) return 1 ;;
@@ -179,11 +181,12 @@ iptvce_vod_search() {
 
 # iptvce_why <plugins dir> <name>: why the plugin, one with the word
 # vod_search in its dune_plugin.xml, gets no item: name (not a safe folder
-# name) or the step iptvce_vod_search fails at (ivs_why). Nothing if it is a
-# build (iptvce_is_build) or not such a plugin (no regular file, no word).
+# name) or the step iptvce_vod_search fails at (ivs_why). Nothing if it gets
+# an item (iptvce_gets_item) or is not such a plugin (no regular file, no
+# word).
 # <name> may be any folder name: only read, as part of a path.
 iptvce_why() {
-    iptvce_is_build "$1" "$2" && return 0
+    iptvce_gets_item "$1" "$2" && return 0
     iptvce_vod_search "$1/$2" >/dev/null && ivs_why=
     case "$ivs_why" in
         nofile | noword) return 0 ;;

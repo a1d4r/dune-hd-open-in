@@ -268,7 +268,7 @@ function iptvce_vod_search($name)
 // The vod_search action, or the builder's files, VOD on ("vod_engine" in
 // config.json, other than "None" in any case) and no <public_actions> (the new
 // versions of the builder always write it; read last, for candidates only).
-function iptvce_is_build($name)
+function iptvce_gets_item($name)
 {
     if (!iptvce_valid_name($name))
         return false;
@@ -320,7 +320,7 @@ function iptvce_builds()
     foreach ((array) glob(pia_plugins_dir() . '/*', GLOB_ONLYDIR) as $d)
     {
         $name = is_string($d) ? basename($d) : '';
-        if (iptvce_is_build($name))
+        if (iptvce_gets_item($name))
             $builds[$name] = iptvce_info($name);
     }
     ksort($builds, SORT_STRING);
@@ -329,7 +329,7 @@ function iptvce_builds()
 
 function iptvce_play($user_input, $name)
 {
-    if (!iptvce_is_build($name))
+    if (!iptvce_gets_item($name))
     {
         // The build is gone: its item must not outlive this press.
         pia_sync();
