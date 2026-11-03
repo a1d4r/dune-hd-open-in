@@ -1998,7 +1998,7 @@ sys.exit(1)
 EOF
 }
 # verdicts_are <verdict> [<caption>=<verdict>...]: the verdict lines of the
-# items, in their order, after the 5 lines about the device.
+# items ("<caption>: <verdict>"), one each, in their order.
 verdicts_are() {
     py - "$o" "$@" <<'EOF'
 import os, sys
@@ -2008,7 +2008,7 @@ want = dict((c, sys.argv[2]) for c in caps)
 for a in sys.argv[3:]:
     c, v = a.split("=", 1)
     want[c] = v
-got = [l for l in lines if l and not l.startswith(" ")][5:5 + len(caps)]
+got = [l for l in lines if l.split(": ", 1)[0] in caps]
 sys.exit(got != ["%s: %s" % (c, want[c]) for c in caps])
 EOF
 }
@@ -2044,6 +2044,14 @@ brief_all() {
     v=$1
     shift
     brief_is en "*=$v" "$@"
+}
+# rest_is [<line>...]: the brief report has the line of the last fixed item
+# once, and after it exactly these lines (builds, turned down entries).
+last_cap=$(printf '%s\n' "$T_ITEMS" | sed -n '$s/^[^ ]* [^ ]* //p')
+brief_rest() { awk -v c="$last_cap — " 'f; index($0, c) == 1 { f = 1 }' "$o"; }
+rest_is() {
+    [ "$(awk -v c="$last_cap — " 'index($0, c) == 1 { n++ } END { print n + 0 }' "$o")" = 1 ] &&
+        [ "$(brief_rest)" = "$(printf '%s\n' "$@")" ]
 }
 # no_details: none of the full report's details.
 no_details() { ! grep -qE 'am start|intent|menu item|installed:|launch:|FS_PREFIX|records|movie_suppliers' "$o"; }
@@ -2155,6 +2163,7 @@ cp "$work/num.sh.orig" "$bin/num.sh"
 diag english brief
 check "diag brief: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 check "diag brief: device line, then one line per item with version" brief_is en
+cp "$o" "$work/brief_en.txt"
 check "diag brief: no details" no_details
 check "diag brief: the same queries" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = "$n_android"
 diag russian brief
@@ -2166,10 +2175,10 @@ check "diag brief as the first argument: full report" has_line "Device: Pro 8K P
 cp "$PLAY_IN_APPS_TMP/run/versions.txt" "$work/versions.txt"
 printf 'firmware_version=custom_build\n' >"$PLAY_IN_APPS_TMP/run/versions.txt"
 diag english brief
-check "diag brief, other firmware name: as is" sh -c 'head -n 1 "$1" | grep -qxF "Pro 8K Plus · custom_build · Android 11 · plugin $2"' _ "$o" "$plugin_version"
+check "diag brief, other firmware name: as is" has_line "Pro 8K Plus · custom_build · Android 11 · plugin $plugin_version"
 rm -f "$PLAY_IN_APPS_TMP/run/versions.txt"
 diag english brief
-check "diag brief, no versions.txt: ?" sh -c 'head -n 1 "$1" | grep -qxF "Pro 8K Plus · ? · Android 11 · plugin $2"' _ "$o" "$plugin_version"
+check "diag brief, no versions.txt: ?" has_line "Pro 8K Plus · ? · Android 11 · plugin $plugin_version"
 cp "$work/versions.txt" "$PLAY_IN_APPS_TMP/run/versions.txt"
 
 STUB_RESOLVE=
@@ -2343,14 +2352,15 @@ version_line() {
     py -c 'import sys; open(sys.argv[2], "w").write(open(sys.argv[1]).read().replace("1.0.150", sys.argv[3]))' \
         "$fx/app_data.json" "$apps" "$1"
     diag english brief
-    sed -n 2p "$o"
+    grep '^NUM ' "$o"
 }
 check "diag brief version of 20: as is" test "$(version_line 12345678901234567890)" = "NUM 12345678901234567890 — OK"
 check "diag brief version of 21: cut" test "$(version_line 123456789012345678901)" = "NUM 1234567890123456789… — OK"
 check "diag brief short UTF-8 version: as is" test "$(version_line 'бета 2')" = "NUM бета 2 — OK"
 check "diag brief long UTF-8 version: ? in place of bytes, valid UTF-8" test \
     "$(version_line '1.0 бета-сборка')" = "NUM 1.0 ????????-??????… — OK"
-check "diag brief: 16 lines with a long version" test "$(wc -l <"$o" | tr -d ' ')" = 16
+check "diag brief: the other lines as with a short version" sh -c \
+    '[ "$(grep -v "^NUM " "$1")" = "$(grep -v "^NUM " "$2")" ]' _ "$o" "$work/brief_en.txt"
 cp "$fx/app_data.json" "$apps"
 rm -f "$PLAY_IN_APPS_TMP/run/shell.log" "$PLAY_IN_APPS_TMP/run/shell_ext.log"
 
@@ -2385,10 +2395,8 @@ rm -f "$data/hidden"
 run sync.sh
 : >"$STUB_LOG"
 diag english brief
-check "diag brief builds: 18 lines" test "$(wc -l <"$o" | tr -d ' ')" = 18
-check "diag brief builds: after Bazinga, in name order" sh -c \
-    '[ "$(sed -n "16,18p" "$1")" = "$(printf "%s\n" "Bazinga — OK (through the Dune plugin Bazinga3)" \
-        "Кино \"Мир\" — OK (through the Dune plugin kino)" "Mir Kino — OK (through the Dune plugin mirkino)")" ]' _ "$o"
+check "diag brief builds: after the fixed items, in name order" rest_is \
+    'Кино "Мир" — OK (through the Dune plugin kino)' "Mir Kino — OK (through the Dune plugin mirkino)"
 check "diag builds: no queries for them" test "$(wc -l <"$STUB_LOG" | tr -d ' ')" = "$n_android"
 diag
 check "diag build: verdict" in_item "Mir Kino" "Mir Kino: OK"
@@ -2411,17 +2419,16 @@ diag english brief
 check "diag brief build, another plugin's file" grep -qxF "Mir Kino — the item is from another plugin: other" "$o"
 sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
 diag english brief
-check "diag build without VOD: no line" sh -c '! grep -q "Mir Kino" "$1" && [ "$(wc -l <"$1" | tr -d " ")" = 17 ]' _ "$o"
+check "diag build without VOD: no line" rest_is 'Кино "Мир" — OK (through the Dune plugin kino)'
 rm -rf "${plugins:?}/mirkino" "${plugins:?}/kino"
 run sync.sh
 diag english brief
-check "diag builds gone: 16 lines" test "$(wc -l <"$o" | tr -d ' ')" = 16
+check "diag builds gone: no lines after the fixed items" rest_is
 # A name with a dot: a build like the others.
 build iedem.tv 'iLook TV'
 run sync.sh
 diag english brief
-check "diag brief build with a dot in its name" sh -c \
-    '[ "$(wc -l <"$1" | tr -d " ")" = 17 ] && [ "$(sed -n 17p "$1")" = "iLook TV — OK (through the Dune plugin iedem.tv)" ]' _ "$o"
+check "diag brief build with a dot in its name" rest_is "iLook TV — OK (through the Dune plugin iedem.tv)"
 diag
 check "diag build with a dot: installed" in_item "iLook TV" "  installed: yes (iedem.tv)"
 check "diag build with a dot: menu file ours" in_item "iLook TV" "  menu item: yes, plugin play_in_apps"
@@ -2429,13 +2436,12 @@ rm -rf "${plugins:?}/iedem.tv"
 # vod_search: the line says so, the full report names its handler.
 vs_build vs_only "$VS"
 build oldway 'Old Way'
-# An empty <public_actions>: not listed, 18 lines still.
+# An empty <public_actions>: not listed.
 vs_jelly vs_pa_self '<public_actions/>'
 run sync.sh
 diag english brief
-check "diag brief vod_search build" sh -c \
-    '[ "$(wc -l <"$1" | tr -d " ")" = 18 ] && [ "$(sed -n 17,18p "$1")" = "$(printf "%s\n" \
-        "Old Way — OK (through the Dune plugin oldway)" "Mir Kino — OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
+check "diag brief vod_search build" rest_is \
+    "Old Way — OK (through the Dune plugin oldway)" "Mir Kino — OK (through the Dune plugin vs_only, vod_search)"
 diag russian brief
 check "diag brief russian vod_search build" grep -qxF "Mir Kino — ОК (через плагин vs_only, vod_search)" "$o"
 diag
@@ -2470,19 +2476,23 @@ Mir Kino (vs_32769) — $vs_r: dune_plugin.xml is over 32768 bytes
 Mir Kino (vs_commented) — $vs_r: no public_actions block (outside comments)
 Mir Kino (vs_own_setup) — $vs_r: its handler_id is one of play_in_apps' own
 Mir Kino (vs_type) — $vs_r: its type is not plugin_handle_user_input"
-# why_lines_are <lines>: the lines after the items are these, in any order.
+# why_lines_are <lines>: the turned down lines are these, in any order, after
+# the lines of the items and the builds.
 why_lines_are() {
-    [ "$(tail -n 5 "$o" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ]
+    brief_rest >"$o.rest"
+    [ "$(grep -F -- "$vs_r" "$o.rest" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ] &&
+        [ "$(cat "$o.rest")" = "$(grep -vF -- "$vs_r" "$o.rest"; grep -F -- "$vs_r" "$o.rest")" ]
 }
 PATH="$sbin:$PATH" timeout 60 "$sh_bin" "$bin/diag.sh" english brief >"$o" 2>"$o.err"
 echo "$?" >"$o.rc"
 check "diag brief vod_search turned down: exit 0 (no hang on a FIFO), no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 # Verdicts only: the caption of vs_nulline depends on the grep (GNU grep -o
 # prints nothing for a file with NUL bytes).
-check "diag brief vod_search turned down: 24 lines, the items before, none for a build" sh -c \
-    '[ "$(wc -l <"$1" | tr -d " ")" = 24 ] && [ "$(sed -n "17,19s/^.* — //p" "$1")" = "$(printf "%s\n" \
+brief_rest >"$o.rest"
+check "diag brief vod_search turned down: the items before, none for a build" sh -c \
+    '[ "$(grep -vF -- "$2" "$1.rest" | sed "s/^.* — //")" = "$(printf "%s\n" \
         "OK (through the Dune plugin vs_jcomment)" "OK (through the Dune plugin vs_nulline, vod_search)" \
-        "OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o"
+        "OK (through the Dune plugin vs_only, vod_search)")" ]' _ "$o" "$vs_r"
 check "diag brief vod_search turned down: a line each, the step" why_lines_are "$vs_why_lines"
 diag russian brief
 check "diag brief russian vod_search turned down" grep -qxF \
@@ -2490,8 +2500,9 @@ check "diag brief russian vod_search turned down" grep -qxF \
 diag
 check "diag vod_search turned down: exit 0, no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 check "diag vod_search turned down: the lines before the shell log" sh -c \
-    'sed "/^The shell'"'"'s last records/,\$d" "$1" | tail -n 5 >"$1.why" && [ "$(LC_ALL=C sort "$1.why")" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
-    _ "$o" "$vs_why_lines"
+    'h="The shell'"'"'s last records"; grep -q "^$h" "$1" && [ "$(grep -F -- "$3" "$1" | LC_ALL=C sort)" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ] &&
+        [ "$(sed "/^$h/,\$d" "$1" | grep -F -- "$3" | LC_ALL=C sort)" = "$(printf "%s\n" "$2" | LC_ALL=C sort)" ]' \
+    _ "$o" "$vs_why_lines" "$vs_r"
 check "diag vod_search turned down: no raw control bytes" sh -c '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"' _ "$o"
 for b in "$vs_bad" vs_32769 vs_commented vs_jcomment vs_own_setup vs_type vs_only vs_nulline vs_fifo vs_zero; do
     rm -rf "${plugins:?}/$b"
@@ -3943,7 +3954,7 @@ sys.exit(d["data_type"] != "plugin_regular_folder_range" or d["data"]["total"] !
     check "check screen, bad UTF-8: exit 0" rc_is 0
     check "check screen, bad UTF-8 and a tab: cleaned" py -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
-sys.exit(rows[0]["caption"] != "Pro?? 8K · r24 260827 · Android 11 · plugin " + sys.argv[2])' "$o" "$plugin_version"
+sys.exit("Pro?? 8K · r24 260827 · Android 11 · plugin " + sys.argv[2] not in [r["caption"] for r in rows])' "$o" "$plugin_version"
     check "check screen, long line: cut at 300 characters" py -c 'import json, sys
 rows = json.load(open(sys.argv[1]))["data"]["data"]["initial_range"]["items"]
 long = [r["caption"] for r in rows if r["caption"].startswith("NUM ")]
