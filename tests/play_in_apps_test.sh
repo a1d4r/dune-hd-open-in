@@ -3410,8 +3410,9 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     check "main.php iptvce_list.sh exit 2: logged" grep -qx 'play_in_apps: iptvce_list.sh (2): ' "$o.err"
     rm -f "$bin/iptvce_list.sh"
     ic_fail "missing"
-    # Lines of another form: each alone is skipped. In the check names \ is /:
-    # dash's echo would print the bytes.
+    # Lines with the wrong number of fields, a bad or other name or bad ids:
+    # each alone is skipped. In the check names \ is /: dash's echo would
+    # print the bytes.
     while IFS= read -r l; do
         list_fake 0 "$(printf '%b' "$l")"
         ic_fail "line '$(printf '%s' "$l" | sed 's:\\:/:g')'"
@@ -3419,11 +3420,6 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
 mirkino
 mirkino\tMir Kino\t\t\t\tx
 mirkino\t\t\t\t
-mirkino\tMir\001Kino\t\t\t
-mirkino\tMir \377 Kino\t\t\t
-mirkino\tMir Kino\t/etc/passwd\t\t
-mirkino\tMir Kino\t../x/logo.png\t\t
-mirkino\tMir Kino\timg/a b.png\t\t
 mirkino\tMir Kino\t\th\t
 mirkino\tMir Kino\t\t\tc
 mirkino\tMir Kino\t\th$\tc
@@ -3433,6 +3429,29 @@ Mirkino\tMir Kino\t\t\t
 mirkino \tMir Kino\t\t\t
 sh: not found
 EOF
+    # A bad caption or icon: the item stays, its caption the folder name, no
+    # icon; the line is logged. As sync.sh shows it, the press and the items
+    # dialog take it.
+    # ic_odd <line> <caption> <icon_url in the items dialog>
+    ic_odd() {
+        list_fake 0 "$(printf '%b' "$1")"
+        ic_d=$(printf '%s' "$1" | sed 's:\\:/:g')
+        ic_movie '{"title":"Дюна"}'
+        handler "$work/ui.json" "iptvce_list.sh '$ic_d': taken" "$(ic_search_json mirkino "$2" 'Дюна')"
+        check "main.php iptvce_list.sh '$ic_d': logged" grep -q '^play_in_apps: iptvce_list.sh (0): mirkino' "$o.err"
+        press items
+        check "main.php iptvce_list.sh '$ic_d': the item in the items dialog" py -c 'import json, sys
+it = [i for i in json.load(open(sys.argv[1]))["data"]["data"]["all_items"] if i["id"] == "iptvce_mirkino"]
+sys.exit(it != [{"id": "iptvce_mirkino", "caption": sys.argv[2], "icon_url": sys.argv[3], "group_id": "apps"}])' "$o" "$2" "$3"
+    }
+    ic_none=gui_skin://small_icons/apps.aai
+    ic_odd 'mirkino\t\timg/logo_mirkino.png' mirkino "$plugins/mirkino/img/logo_mirkino.png"
+    ic_odd 'mirkino\tMir\001Kino\t\t\t' mirkino "$ic_none"
+    ic_odd 'mirkino\tMir \377 Kino\t\t\t' mirkino "$ic_none"
+    ic_odd 'mirkino\tMir Kino\t/etc/passwd\t\t' 'Mir Kino' "$ic_none"
+    ic_odd 'mirkino\tMir Kino\t../x/logo.png\t\t' 'Mir Kino' "$ic_none"
+    ic_odd 'mirkino\tMir Kino\timg/a b.png\t\t' 'Mir Kino' "$ic_none"
+    ic_odd 'mirkino\t\001\t/x\t\t' mirkino "$ic_none"
     # A good line among garbage, the vod_search ids from it.
     list_fake 0 "$(printf 'garbage\n'; t_line mirkino 'Kino X' img/logo_mirkino.png h.1 c-2; t_line mirkino 'Twice' '' '' '')"
     ic_movie '{"title":"Дюна"}'
@@ -3946,8 +3965,8 @@ EOF
     unbuild_all
 
     # The builds from one run of iptvce_list.sh, with no name; its lines are
-    # checked: garbage is skipped, the order is by name. It fails: no builds,
-    # the fixed items stay.
+    # checked: garbage is skipped, a bad icon dropped, the order is by name.
+    # It fails: no builds, the fixed items stay.
     mv "$bin/iptvce_list.sh" "$work/iptvce_list.sh.real"
     printf 'zeta\tZeta\timg/z.png\th\tc\ngarbage\nbeta\tBeta\na..b\tX\nbeta\tTwice\ngamma\tG\t/etc/x.png\nalpha\tAlpha\timg/a.png\n' \
         >"$work/list_out"
@@ -3957,7 +3976,8 @@ EOF
     check "items, iptvce_list.sh garbage: exit 0" rc_is 0
     check "items, iptvce_list.sh garbage: stderr has only own log lines" only_own_log
     check "items, iptvce_list.sh garbage: the good lines, by name" items_builds_are \
-        "iptvce_alpha=Alpha=$plugins/alpha/img/a.png" 'iptvce_beta=Beta=' "iptvce_zeta=Zeta=$plugins/zeta/img/z.png"
+        "iptvce_alpha=Alpha=$plugins/alpha/img/a.png" 'iptvce_beta=Beta=' 'iptvce_gamma=G=' \
+        "iptvce_zeta=Zeta=$plugins/zeta/img/z.png"
     check "items: iptvce_list.sh run once, with no name" sh -c '[ "$(cat "$1")" = "" ] && [ "$(wc -l <"$1")" -eq 1 ]' _ "$work/list_args"
     printf 'exit 1\n' >"$bin/iptvce_list.sh"
     press items

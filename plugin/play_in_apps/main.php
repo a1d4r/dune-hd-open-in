@@ -88,8 +88,11 @@ function iptvce_name_of($id)
 // name => array(caption, icon file or '', handler_id, control_id; both '' if
 // there is no vod_search) of the plugins that get an item, in name order, as
 // bin/iptvce_list.sh prints them; with $name only that one, if it gets one.
-// The output is checked line by line: a line of any other form is skipped.
-// Empty if the script fails.
+// The output is checked line by line: a line with the wrong number of
+// fields, a bad or repeated name or bad ids is skipped; a bad caption becomes
+// the name, a bad icon none, so a rule of the script and of this check that
+// differ never drop an item sync.sh shows. Such lines are logged. Empty if
+// the script fails.
 function iptvce_builds($name = null)
 {
     $cmd = 'sh ' . escapeshellarg(dirname(__FILE__) . '/bin/iptvce_list.sh');
@@ -111,15 +114,26 @@ function iptvce_builds($name = null)
         list($b, $caption, $icon, $h, $c) = $f;
         if ($n < 2 || $n > 5 || !iptvce_valid_name($b) || isset($builds[$b]) ||
             (!is_null($name) && $b !== $name) ||
-            $caption === '' || preg_match('/[\x00-\x1f\x7f]/', $caption) ||
-            pia_utf8_clean($caption) !== $caption ||
-            ($icon !== '' && (!preg_match('#^[A-Za-z0-9_.-][A-Za-z0-9/_.-]*$#D', $icon) ||
-                strpos($icon, '..') !== false)) ||
             (($h !== '' || $c !== '') && (!preg_match($id_re, $h) || !preg_match($id_re, $c))))
         {
             $bad[] = $line;
             continue;
         }
+        $odd = false;
+        if ($caption === '' || preg_match('/[\x00-\x1f\x7f]/', $caption) ||
+            pia_utf8_clean($caption) !== $caption)
+        {
+            $odd = true;
+            $caption = $b;
+        }
+        if ($icon !== '' && (!preg_match('#^[A-Za-z0-9_.-][A-Za-z0-9/_.-]*$#D', $icon) ||
+            strpos($icon, '..') !== false))
+        {
+            $odd = true;
+            $icon = '';
+        }
+        if ($odd)
+            $bad[] = $line;
         $builds[$b] = array($caption, $icon === '' ? '' : pia_plugins_dir() . "/$b/$icon", $h, $c);
     }
     if ($rc !== 0 || $bad)
