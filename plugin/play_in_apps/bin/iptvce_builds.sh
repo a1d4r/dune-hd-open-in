@@ -1,7 +1,7 @@
 # iptvce_ is an item of a plugin with the vod_search entry or of an IPTV
 # Channel Editor build with VOD; the prefix is kept for the ids of 0.10.x.
-# Shared by sync.sh and diag.sh; only function definitions. main.php has the
-# same checks (iptvce_gets_item, iptvce_vod_search, iptvce_info).
+# Shared by sync.sh, diag.sh and iptvce_list.sh (main.php reads that); only
+# function definitions.
 # Everything read from a build is untrusted: only printed, never run.
 # shellcheck shell=sh
 
@@ -48,16 +48,14 @@ iptvce_name_ok() {
 # iptvce_manifest <build dir> <word>: fails if the build's dune_plugin.xml is
 # over 32768 bytes or has no <word> (not parsed: sync.sh checks every plugin).
 # Else ivs_s is its text as one line, NUL bytes, comments dropped, spaces around
-# < > = and after </ removed. Variables are prefixed: callers keep theirs. The
-# same: iptvce_manifest in main.php. ivs_why: the step it fails at (nofile,
-# noword, big), for iptvce_why.
+# < > = and after </ removed. Variables are prefixed: callers keep theirs.
+# ivs_why: the step it fails at (nofile, noword, big), for iptvce_why.
 iptvce_manifest() {
     ivs_why=nofile
     [ -f "$1/dune_plugin.xml" ] || return 1
     ivs_why=noword
     # NUL to a line break: toybox grep does not see past a NUL in a line, and
-    # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found,
-    # as with strpos in main.php.
+    # BusyBox grep (old Android) has no -z. A word cut by a NUL is not found.
     LC_ALL=C tr '\000' '\n' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C grep -qF "$2" || return 1
     ivs_why=big
     ivs_n=$(wc -c <"$1/dune_plugin.xml" 2>/dev/null)
@@ -66,7 +64,7 @@ iptvce_manifest() {
         '' | *[!0-9]*) return 1 ;;
     esac
     [ "$ivs_n" -le 32768 ] || return 1
-    # NUL bytes dropped here, as in main.php: bash warns of them in $(...).
+    # NUL bytes dropped here: bash warns of them in $(...).
     ivs_x=$(LC_ALL=C tr -d '\000' <"$1/dune_plugin.xml" 2>/dev/null | LC_ALL=C tr '\n\r\t' '   ')
     ivs_o='<!--'
     ivs_e='-->'
@@ -93,7 +91,7 @@ iptvce_manifest() {
 
 # iptvce_has_public_actions <build dir>: an opening or empty <public_actions>
 # tag, with attributes or not, closed or not, outside comments. As if none: the
-# limits of iptvce_manifest. The same: iptvce_has_public_actions in main.php.
+# limits of iptvce_manifest.
 iptvce_has_public_actions() {
     iptvce_manifest "$1" public_actions || return 1
     case "$ivs_s" in
@@ -112,9 +110,9 @@ iptvce_has_public_actions() {
 # counts; its first <type> must be plugin_handle_user_input, its first
 # <handler_id> and <control_id> 1-64 of [A-Za-z0-9_.-]. Fails (no output) if
 # not, within the limits of iptvce_manifest, or if the handler_id is one of
-# ours. The same parse: iptvce_vod_search in main.php. ivs_why: the step it
-# fails at (those of iptvce_manifest, nopa, noaction, type, ids, own), empty if
-# not; a new check needs its own ivs_why and a case in vs_why_is of the tests.
+# ours. ivs_why: the step it fails at (those of iptvce_manifest, nopa,
+# noaction, type, ids, own), empty if not; a new check needs its own ivs_why
+# and a case in vs_why_is of the tests.
 iptvce_vod_search() {
     iptvce_manifest "$1" vod_search || return 1
     # The <public_actions> blocks, each followed by a space.
@@ -166,9 +164,8 @@ iptvce_vod_search() {
             esac
             [ "${#ivs_v}" -le 64 ] || return 1
         done
-        # The handler_ids of main.php (pia_handle_user_input; the other copy:
-        # iptvce_own_handler there): if the shell turns down plugin_name, it
-        # calls ours with them.
+        # The handler_ids of main.php (pia_handle_user_input) and check: if
+        # the shell turns down plugin_name, it calls ours with them.
         ivs_why=own
         case "$ivs_h" in
             setup | check | filmix_api | bazinga | iptvce_*) return 1 ;;

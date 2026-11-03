@@ -192,8 +192,9 @@ function bazinga_play($user_input)
 // bin/sync.sh shows an item iptvce_<name> for each, with play_action
 // handler_id iptvce_<name>; the handler calls the plugin's vod_search with
 // the titles, the year and the whole card, or, without one, opens the build's
-// search results for the title. The same checks as bin/iptvce_builds.sh;
-// everything read from a build is untrusted.
+// search results for the title. Which plugins get an item, their captions,
+// icons and vod_search: bin/iptvce_list.sh, the parse of sync.sh; main.php
+// reads no other plugin's files.
 
 // 1-40 of [A-Za-z0-9_.-], not starting with . or -, no "..". The same
 // pattern as in bin/iptvce_builds.sh.
@@ -209,142 +210,66 @@ function iptvce_name_of($id)
     return is_string($id) && strpos($id, 'iptvce_') === 0 ? (string) substr($id, 7) : '';
 }
 
-// The plugin's dune_plugin.xml as one line, NUL bytes, comments dropped, spaces
-// around < > = and after </ removed; null if it is over 32768 bytes or has no
-// $word (before NUL bytes are dropped, as grep sees it). The same as
-// iptvce_manifest in bin/iptvce_builds.sh.
-function iptvce_manifest($name, $word)
+// name => array(caption, icon file or '', handler_id, control_id; both '' if
+// there is no vod_search) of the plugins that get an item, in name order, as
+// bin/iptvce_list.sh prints them; with $name only that one, if it gets one.
+// The output is checked line by line: a line of any other form is skipped.
+// Empty if the script fails.
+function iptvce_builds($name = null)
 {
-    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
-    $x = is_file($f) && filesize($f) <= 32768 ? file_get_contents($f) : false;
-    if (!is_string($x) || strpos($x, $word) === false)
-        return null;
-    $x = str_replace("\0", '', $x);
-    $x = preg_replace('/<!--.*?(?:-->|\z)/s', ' ', strtr($x, "\n\r\t", '   '));
-    return preg_replace('#</ *#', '</', preg_replace('/ *([<>=]) */', '$1', preg_replace('/  +/', ' ', $x)));
-}
-
-// An opening or empty <public_actions> tag, with attributes or not, closed or
-// not, outside comments; as if none within the limits of iptvce_manifest. The
-// same as iptvce_has_public_actions in bin/iptvce_builds.sh.
-function iptvce_has_public_actions($name)
-{
-    $x = iptvce_manifest($name, 'public_actions');
-    return is_string($x) && preg_match('#<public_actions(?:>|/>| )#', $x) === 1;
-}
-
-// array(handler_id, control_id) of the plugin's search entry for other
-// plugins, the vod_search action of its dune_plugin.xml; null if none. The
-// same parse as iptvce_vod_search in bin/iptvce_builds.sh: the first action
-// with id vod_search inside a <public_actions>, its first <type>
-// plugin_handle_user_input, its first <handler_id> and <control_id> 1-64 of
-// [A-Za-z0-9_.-], not one of ours; null too within the limits of
-// iptvce_manifest.
-function iptvce_vod_search($name)
-{
-    $x = iptvce_manifest($name, 'vod_search');
-    if (!is_string($x))
-        return null;
-    preg_match_all('#<public_actions>(.*?)</public_actions>#s', $x, $blocks);
-    $a = '';
-    foreach ($blocks[1] as $b)
-        $a .= "$b ";
-    preg_match_all('#<action ([^>]*)>(.*?)</action>#s', $a, $acts, PREG_SET_ORDER);
-    foreach ($acts as $act)
-    {
-        if (!preg_match('/ id=("vod_search"|\'vod_search\') /', " {$act[1]} "))
-            continue;
-        $v = array();
-        foreach (array('type', 'handler_id', 'control_id') as $tag)
-            $v[] = preg_match("#<$tag>(.*?)</$tag>#s", $act[2], $m) ? $m[1] : '';
-        if ($v[0] !== 'plugin_handle_user_input' || !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[1]) ||
-            !preg_match('/^[A-Za-z0-9_.-]{1,64}$/D', $v[2]) || iptvce_own_handler($v[1]))
-            return null;
-        return array($v[1], $v[2]);
-    }
-    return null;
-}
-
-// The vod_search action, or the builder's files, VOD on ("vod_engine" in
-// config.json, other than "None" in any case) and no <public_actions> (the new
-// versions of the builder always write it; read last, for candidates only).
-function iptvce_gets_item($name)
-{
-    if (!iptvce_valid_name($name))
-        return false;
-    if (!is_null(iptvce_vod_search($name)))
-        return true;
-    $d = pia_plugins_dir() . "/$name";
-    if (!is_file("$d/starnet_plugin.php") || !is_file("$d/screens_vod/starnet_vod_list_screen.php") ||
-        !is_file("$d/config.json"))
-        return false;
-    $text = file_get_contents("$d/config.json");
-    return is_string($text) && preg_match('/"vod_engine": *"([^"\n]*)"/', $text, $m) === 1 &&
-        strcasecmp($m[1], 'None') !== 0 && !iptvce_has_public_actions($name);
-}
-
-// array(caption, icon file or '') of a build, from its dune_plugin.xml: the
-// first <caption> (entities decoded, then < and > dropped, spaces trimmed, at
-// most 40 characters; the name if there is none or it has control
-// characters, bad UTF-8 or a leading %) and the first <icon_url> if it is
-// plugin_file://<safe path> of an existing file. One line each, as grep reads
-// them in iptvce_builds.sh.
-function iptvce_info($name)
-{
-    $f = pia_plugins_dir() . "/$name/dune_plugin.xml";
-    $xml = is_file($f) ? file_get_contents($f) : false;
-    if (!is_string($xml))
-        $xml = '';
-    $caption = $name;
-    if (preg_match('/<caption>([^<\n]*)<\/caption>/', $xml, $m))
-    {
-        $c = strtr($m[1], array('&lt;' => '<', '&gt;' => '>', '&quot;' => '"', '&apos;' => "'",
-            '&amp;' => '&'));
-        $c = trim(str_replace(array('<', '>'), '', $c), ' ');
-        if ($c !== '' && $c[0] !== '%' && !preg_match('/[\x00-\x1f\x7f]/', $c) && pia_utf8_clean($c) === $c)
-            $caption = mb_substr($c, 0, 40, 'UTF-8');
-    }
-    $icon = '';
-    if (preg_match('/<icon_url>([^<\n]*)<\/icon_url>/', $xml, $m) &&
-        preg_match('#^plugin_file://([A-Za-z0-9/._-]+)$#D', $m[1], $p) &&
-        $p[1][0] !== '/' && strpos($p[1], '..') === false &&
-        is_file(pia_plugins_dir() . "/$name/{$p[1]}"))
-        $icon = pia_plugins_dir() . "/$name/{$p[1]}";
-    return array($caption, $icon);
-}
-
-// name => iptvce_info() of every build, in name order.
-function iptvce_builds()
-{
+    $cmd = 'sh ' . escapeshellarg(dirname(__FILE__) . '/bin/iptvce_list.sh');
+    if (!is_null($name))
+        $cmd .= ' ' . escapeshellarg($name);
+    $out = array();
+    $rc = -1;
+    exec("$cmd 2>&1", $out, $rc);
     $builds = array();
-    foreach ((array) glob(pia_plugins_dir() . '/*', GLOB_ONLYDIR) as $d)
+    $bad = array();
+    $id_re = '/^[A-Za-z0-9_.-]{1,64}$/D';
+    foreach ($out as $line)
     {
-        $name = is_string($d) ? basename($d) : '';
-        if (iptvce_gets_item($name))
-            $builds[$name] = iptvce_info($name);
+        // exec() drops the trailing whitespace of a line, so the empty fields
+        // at its end.
+        $f = explode("\t", $line);
+        $n = count($f);
+        $f = array_pad($f, 5, '');
+        list($b, $caption, $icon, $h, $c) = $f;
+        if ($n < 2 || $n > 5 || !iptvce_valid_name($b) || isset($builds[$b]) ||
+            (!is_null($name) && $b !== $name) ||
+            $caption === '' || preg_match('/[\x00-\x1f\x7f]/', $caption) ||
+            pia_utf8_clean($caption) !== $caption ||
+            ($icon !== '' && (!preg_match('#^[A-Za-z0-9_.-][A-Za-z0-9/_.-]*$#D', $icon) ||
+                strpos($icon, '..') !== false)) ||
+            (($h !== '' || $c !== '') && (!preg_match($id_re, $h) || !preg_match($id_re, $c))))
+        {
+            $bad[] = $line;
+            continue;
+        }
+        $builds[$b] = array($caption, $icon === '' ? '' : pia_plugins_dir() . "/$b/$icon", $h, $c);
     }
+    if ($rc !== 0 || $bad)
+        pia_log("iptvce_list.sh ($rc): " . implode(' | ', $bad));
     ksort($builds, SORT_STRING);
     return $builds;
 }
 
 function iptvce_play($user_input, $name)
 {
-    if (!iptvce_gets_item($name))
+    $builds = iptvce_valid_name($name) ? iptvce_builds($name) : array();
+    if (!isset($builds[$name]))
     {
-        // The build is gone: its item must not outlive this press.
+        // No item is due now (the plugin removed or changed: VOD off, its
+        // vod_search gone) or iptvce_list.sh failed: the item must not
+        // outlive this press.
         pia_sync();
         // An invalid name never shown as is: our items only have valid ones.
-        if (iptvce_valid_name($name))
-            $info = iptvce_info($name);
-        else
-            $info = array(preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40)));
-        return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $info[0]));
+        $shown = iptvce_valid_name($name) ? $name : preg_replace('/[^A-Za-z0-9_]/', '?', substr($name, 0, 40));
+        return pia_message(sprintf(pia_tr('iptvce_err_not_installed'), $shown));
     }
-    $info = iptvce_info($name);
+    list($caption, , $h, $c) = $builds[$name];
 
     $movie = pia_movie($user_input);
-    $vs = iptvce_vod_search($name);
-    if (!is_null($vs))
+    if ($h !== '')
     {
         // The plugin's own search entry. params: strings only, the shell
         // fails on the whole reply if one is an array.
@@ -356,10 +281,10 @@ function iptvce_play($user_input, $name)
                 $search[$k] = $v;
         }
         if (!isset($search['title']) && !isset($search['original_title']))
-            return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $info[0]));
+            return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $caption));
         $json = json_encode($search);
         pia_log("iptvce $name vod_search: $json");
-        $params = array('handler_id' => $vs[0], 'control_id' => $vs[1], 'search' => $json,
+        $params = array('handler_id' => $h, 'control_id' => $c, 'search' => $json,
             'movie_str' => $user_input->movie_str);
         // Chosen through "Seasons" in the card; the main card sends -1. Only as
         // a pair: season 0 is the shell's "about the series", its items have
@@ -381,7 +306,7 @@ function iptvce_play($user_input, $name)
     if ($q === '')
         $q = pia_movie_field($movie, 'native_title');
     if ($q === '')
-        return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $info[0]));
+        return pia_message(sprintf(pia_tr('iptvce_err_no_title'), $caption));
 
     // The builder's own media_url after its search dialog:
     // Starnet_Vod_List_Screen::get_media_url_string(Vod_Category::FLAG_SEARCH, $q).
@@ -392,7 +317,7 @@ function iptvce_play($user_input, $name)
         'data' => array(
             'media_url' => json_encode(array('screen_id' => 'vod_list',
                 'category_id' => '##search##', 'genre_id' => $q)),
-            'caption' => "{$info[0]}: $q"));
+            'caption' => "$caption: $q"));
 }
 
 // --- Translations.
@@ -1055,15 +980,9 @@ function pia_folder_view($media_url)
     return $media_url === 'check' ? pia_check_view() : pia_setup_view();
 }
 
-// The handler_ids pia_handle_user_input takes, and check (the check screen):
-// if the shell turns down another plugin's name, it calls ours with that
-// plugin's ids. The other copy: iptvce_vod_search in bin/iptvce_builds.sh.
-function iptvce_own_handler($id)
-{
-    return in_array($id, array('setup', 'check', 'filmix_api', 'bazinga'), true) ||
-        strpos($id, 'iptvce_') === 0;
-}
-
+// The handler_ids taken here and check (the check screen): if the shell
+// turns down another plugin's name, it calls ours with that plugin's ids, so
+// iptvce_vod_search in bin/iptvce_builds.sh turns these down.
 function pia_handle_user_input($user_input)
 {
     $handler = isset($user_input->handler_id) ? $user_input->handler_id : null;

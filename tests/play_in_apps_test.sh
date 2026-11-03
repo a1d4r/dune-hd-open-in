@@ -3213,6 +3213,19 @@ print(json.dumps({"handler_string_id": "plugin_show_error", "data": {"fatal": Fa
     ic_search() { handler "$1" "iptvce $2" "$(ic_search_json mirkino 'Mir Kino' "$3")"; }
     ic_msg() { handler "$1" "iptvce $2" "$(ic_message_json "$3")"; }
     ic_no_title='This title has no name, Mir Kino cannot search for it'
+    # vs_json <build> <handler_id> <control_id> <search> <movie_str>: the action.
+    vs_json() {
+        py -c 'import json, sys
+name, h, c, s, m = sys.argv[1:6]
+print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name": name,
+    "params": {"handler_id": h, "control_id": c, "search": s, "movie_str": m}}))' "$@"
+    }
+    # vs_enc <JSON>: as PHP's json_encode writes it: no spaces, non-ASCII as
+    # \u escapes, "/" as "\/", keys in this order.
+    vs_enc() {
+        py -c 'import json, sys
+print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\\/"))' "$1"
+    }
 
     if on; then
     build mirkino
@@ -3275,7 +3288,8 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     ic_msg "$work/ui.json" "long caption: 40 characters" "This title has no name, $(printf 'Ж%.0s' $(seq 1 39))Ю cannot search for it"
     unbuild_all mirkino
 
-    # Not a build now, or not a valid name: not installed, named by its caption.
+    # No item due now, or not a valid name: not installed, named by its folder
+    # name (main.php reads no manifest; iptvce_list.sh prints only items).
     ic_movie '{"title":"Дюна"}' iptvce_nosuch
     ic_msg "$work/ui.json" "no such build" 'The nosuch plugin is not installed'
     # A build removed from the Dune: the press gives the message and removes the item.
@@ -3293,21 +3307,21 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     check "iptvce build updated: item shown before the press" test -f "$menu/iptvce_vs_upd"
     vs_jelly vs_upd '<public_actions/>'
     ic_movie '{"title":"Дюна"}' iptvce_vs_upd
-    ic_msg "$work/ui.json" "build updated to an empty node" 'The Mir Kino plugin is not installed'
+    ic_msg "$work/ui.json" "build updated to an empty node" 'The vs_upd plugin is not installed'
     check "iptvce build updated: no registered item" no_file "$reg/iptvce_vs_upd"
     check "iptvce build updated: no menu item" no_file "$menu/iptvce_vs_upd"
     unbuild_all mirkino
     sed 's/"Json"/"None"/' "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
     ic_movie '{"title":"Дюна"}'
-    ic_msg "$work/ui.json" "VOD off" 'The Mir Kino plugin is not installed'
+    ic_msg "$work/ui.json" "VOD off" 'The mirkino plugin is not installed'
     build mirkino
     rm -f "$plugins/mirkino/screens_vod/starnet_vod_list_screen.php"
-    ic_msg "$work/ui.json" "no VOD list screen" 'The Mir Kino plugin is not installed'
+    ic_msg "$work/ui.json" "no VOD list screen" 'The mirkino plugin is not installed'
     build mirkino
     for v in none NONE; do
         sed "s/\"Json\"/\"$v\"/" "$fx/iptvce_mirkino/config.json" >"$plugins/mirkino/config.json"
         ic_movie '{"title":"Дюна"}'
-        ic_msg "$work/ui.json" "VOD off: $v" 'The Mir Kino plugin is not installed'
+        ic_msg "$work/ui.json" "VOD off: $v" 'The mirkino plugin is not installed'
     done
     build mirkino
     # Dots and hyphens inside a name: a build, opened by its folder name.
@@ -3333,6 +3347,76 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
         ic_msg "$work/ui.json" "handler_id '$h'" "The $shown_name plugin is not installed"
     done
     unbuild_all mirkino
+    # The press reads one plugin: iptvce_list.sh <name>, once; an invalid name
+    # runs no script.
+    build mirkino
+    mv "$bin/iptvce_list.sh" "$work/iptvce_list.sh.real"
+    printf '%s\n' "printf '%s\\n' \"\$*\" >>'$work/list_args'" ". '$work/iptvce_list.sh.real'" >"$bin/iptvce_list.sh"
+    : >"$work/list_args"
+    ic_movie '{"title":"Дюна"}'
+    ic_search "$work/ui.json" "press through iptvce_list.sh" 'Дюна'
+    for h in iptvce_../mirkino 'iptvce_a b'; do
+        ic_movie '{"title":"Дюна"}' "$h"
+        ctx "$work/ui.json"
+        php_run "$work/ctx.json"
+    done
+    check "main.php iptvce press: iptvce_list.sh run once, with the name" test "$(cat "$work/list_args")" = mirkino
+    # The script fails, is missing or prints garbage: as if no item is due;
+    # the reason goes to the log.
+    # list_fake <exit code> <output>: iptvce_list.sh prints this and exits so.
+    list_fake() {
+        printf '%s' "$2" >"$work/list_out"
+        printf 'cat %s\nexit %s\n' "'$work/list_out'" "$1" >"$bin/iptvce_list.sh"
+    }
+    t_line() { printf '%s\t%s\t%s\t%s\t%s\n' "$@"; }
+    ic_fail() {
+        ic_movie '{"title":"Дюна"}'
+        ic_msg "$work/ui.json" "iptvce_list.sh $1" 'The mirkino plugin is not installed'
+        check "main.php iptvce_list.sh $1: logged" grep -q '^play_in_apps: iptvce_list.sh (' "$o.err"
+    }
+    list_fake 1 ''
+    ic_fail "exit 1, no output"
+    list_fake 0 ''
+    ic_movie '{"title":"Дюна"}'
+    ic_msg "$work/ui.json" "iptvce_list.sh no output" 'The mirkino plugin is not installed'
+    list_fake 2 "$(t_line mirkino 'Mir Kino' '' '' '')"
+    ic_movie '{"title":"Дюна"}'
+    ic_search "$work/ui.json" "iptvce_list.sh exit 2, a good line: taken" 'Дюна'
+    check "main.php iptvce_list.sh exit 2: logged" grep -qx 'play_in_apps: iptvce_list.sh (2): ' "$o.err"
+    rm -f "$bin/iptvce_list.sh"
+    ic_fail "missing"
+    # Lines of another form: each alone is skipped. In the check names \ is /:
+    # dash's echo would print the bytes.
+    while IFS= read -r l; do
+        list_fake 0 "$(printf '%b' "$l")"
+        ic_fail "line '$(printf '%s' "$l" | sed 's:\\:/:g')'"
+    done <<'EOF'
+mirkino
+mirkino\tMir Kino\t\t\t\tx
+mirkino\t\t\t\t
+mirkino\tMir\001Kino\t\t\t
+mirkino\tMir \377 Kino\t\t\t
+mirkino\tMir Kino\t/etc/passwd\t\t
+mirkino\tMir Kino\t../x/logo.png\t\t
+mirkino\tMir Kino\timg/a b.png\t\t
+mirkino\tMir Kino\t\th\t
+mirkino\tMir Kino\t\t\tc
+mirkino\tMir Kino\t\th$\tc
+mirkino\tMir Kino\t\th\tc d
+other\tMir Kino\t\t\t
+Mirkino\tMir Kino\t\t\t
+mirkino \tMir Kino\t\t\t
+sh: not found
+EOF
+    # A good line among garbage, the vod_search ids from it.
+    list_fake 0 "$(printf 'garbage\n'; t_line mirkino 'Kino X' img/logo_mirkino.png h.1 c-2; t_line mirkino 'Twice' '' '' '')"
+    ic_movie '{"title":"Дюна"}'
+    handler "$work/ui.json" "iptvce_list.sh: the good line, the first of a name" \
+        "$(vs_json mirkino h.1 c-2 "$(vs_enc '{"title":"Дюна"}')" '{"title":"Дюна"}')"
+    check "main.php iptvce_list.sh garbage: logged" grep -qxF "play_in_apps: iptvce_list.sh (0): garbage | $(t_line mirkino Twice '' '' '' | sed 's/[[:space:]]*$//')" "$o.err"
+    mv -f "$work/iptvce_list.sh.real" "$bin/iptvce_list.sh"
+    unbuild_all mirkino
+
     # No name: not an item id, not our call.
     ic_movie '{"title":"Дюна"}' iptvce_
     handler "$work/ui.json" "iptvce handler_id 'iptvce_'" none
@@ -3352,13 +3436,6 @@ sys.exit(not u.isascii() or json.loads(u) != {"screen_id": "vod_list", "category
     # "movie_str" (params hold strings only).
     blk php/vod_search base
     if on; then
-    # vs_json <build> <handler_id> <control_id> <search> <movie_str>: the action.
-    vs_json() {
-        py -c 'import json, sys
-name, h, c, s, m = sys.argv[1:6]
-print(json.dumps({"handler_string_id": "plugin_handle_user_input", "plugin_name": name,
-    "params": {"handler_id": h, "control_id": c, "search": s, "movie_str": m}}))' "$@"
-    }
     # vs_card_same: params.movie_str of the reply has the bytes of movie_str in
     # ui.json, whatever the JSON escapes around it.
     vs_card_same() {
@@ -3370,12 +3447,6 @@ sys.exit(got.encode("utf-8") != sent.encode("utf-8"))' "$work/ui.json" "$o"
     # vs_log_no_card: the log line of the press has no field of the card but
     # the titles and the year.
     vs_log_no_card() { ! grep -qE 'imdb_id|kp_id|tmdb_id|description|tt[0-9]' "$o.err"; }
-    # vs_enc <JSON>: as PHP's json_encode writes it: no spaces, non-ASCII as
-    # \u escapes, "/" as "\/", keys in this order.
-    vs_enc() {
-        py -c 'import json, sys
-print(json.dumps(json.loads(sys.argv[1]), separators=(",", ":")).replace("/", "\\/"))' "$1"
-    }
     # vs_handler <movie_str JSON> <search, readable JSON> [desc]: vs_only
     # answers with this exact search string.
     vs_handler() {
@@ -3534,31 +3605,32 @@ EOF
         ic_movie "$raw" iptvce_vs_only
         ic_msg "$work/ui.json" "vod_search no titles '$raw'" "$ic_no_title"
     done
-    # Parity with bin/iptvce_builds.sh: each case of vs_cases is the same
-    # here — vod_search, the builder's search results ("old") or not a build.
-    check "parity: iptvce_vod_search of sh" vs_sh_is
-    printf '%s\n' "$vs_want" >"$work/vs_want"
+    # The press through iptvce_list.sh <name>: cases of each kind of vs_cases,
+    # vod_search, the builder's search results ("old") or no item. Every case
+    # is parsed in sync/iptvce_vod_search ("iptvce_list.sh <name>").
     # Pressing a non-build runs sync.sh, which reads every manifest of vs_cases:
     # 3 s per case. A no-op here; "iptvce removed build" covers the real one.
     mv "$bin/sync.sh" "$work/sync.sh.real"
     : >"$bin/sync.sh"
-    while IFS='=' read -r b want; do
+    for b in vs.dot-x vs_64 vs_second vs_crlf vs_pa_emptyvs vs_32769files vs_pa_no vs_pa_likevs \
+        vs_pa_self vs_65 vs_own_setup vs_32769 vs_nosubstr; do
+        want=$(printf '%s\n' "$vs_want" | awk -F = -v b="$b" '$1 == b { print $2 }')
         ic_movie '{"title":"Дюна"}' "iptvce_$b"
         case "$want" in
-            old) handler "$work/ui.json" "parity $b: old way" "$(ic_search_json "$b" 'Mir Kino' 'Дюна')" ;;
-            none) ic_msg "$work/ui.json" "parity $b: not a build" 'The Mir Kino plugin is not installed' ;;
-            *) handler "$work/ui.json" "parity $b: vod_search $want" \
+            old) handler "$work/ui.json" "vod_search $b: old way" "$(ic_search_json "$b" 'Mir Kino' 'Дюна')" ;;
+            none) ic_msg "$work/ui.json" "vod_search $b: no item" "The $b plugin is not installed" ;;
+            *) handler "$work/ui.json" "vod_search $b: $want" \
                 "$(vs_json "$b" "${want% *}" "${want#* }" "$(vs_enc '{"title":"Дюна"}')" '{"title":"Дюна"}')" ;;
         esac
-    done <"$work/vs_want"
+    done
     mv -f "$work/sync.sh.real" "$bin/sync.sh"
     unbuild_all
     # No manifest: no node, the old way; the caption is the folder name.
     vs_jelly vs_nomanifest ''
     rm -f "$plugins/vs_nomanifest/dune_plugin.xml"
-    check "parity no manifest: the old way in sh" vs_mode_is vs_nomanifest old
+    check "no manifest: the old way in sh" vs_mode_is vs_nomanifest old
     ic_movie '{"title":"Дюна"}' iptvce_vs_nomanifest
-    handler "$work/ui.json" "parity no manifest: the old way" "$(ic_search_json vs_nomanifest vs_nomanifest 'Дюна')"
+    handler "$work/ui.json" "no manifest: the old way" "$(ic_search_json vs_nomanifest vs_nomanifest 'Дюна')"
     unbuild_all
     # The plugin is gone, so the shell calls our own handler with its
     # handler_id and control_id: no action, no error.
@@ -3848,8 +3920,29 @@ EOF
         "$(printf '%s\n' -nuvio -iptvce_gone -iptvce_iedem.tv -iptvce_mirkino)"
     unbuild_all
 
-    # Parity: bin/iptvce_builds.sh (sync.sh) and main.php (items dialog) find
-    # the same builds, with the same captions and icons.
+    # The builds from one run of iptvce_list.sh, with no name; its lines are
+    # checked: garbage is skipped, the order is by name. It fails: no builds,
+    # the fixed items stay.
+    mv "$bin/iptvce_list.sh" "$work/iptvce_list.sh.real"
+    printf 'zeta\tZeta\timg/z.png\th\tc\ngarbage\nbeta\tBeta\na..b\tX\nbeta\tTwice\ngamma\tG\t/etc/x.png\nalpha\tAlpha\timg/a.png\n' \
+        >"$work/list_out"
+    printf 'printf "%%s\\n" "$*" >>%s\ncat %s\n' "'$work/list_args'" "'$work/list_out'" >"$bin/iptvce_list.sh"
+    : >"$work/list_args"
+    press items
+    check "items, iptvce_list.sh garbage: exit 0" rc_is 0
+    check "items, iptvce_list.sh garbage: stderr has only own log lines" only_own_log
+    check "items, iptvce_list.sh garbage: the good lines, by name" items_builds_are \
+        "iptvce_alpha=Alpha=$plugins/alpha/img/a.png" 'iptvce_beta=Beta=' "iptvce_zeta=Zeta=$plugins/zeta/img/z.png"
+    check "items: iptvce_list.sh run once, with no name" sh -c '[ "$(cat "$1")" = "" ] && [ "$(wc -l <"$1")" -eq 1 ]' _ "$work/list_args"
+    printf 'exit 1\n' >"$bin/iptvce_list.sh"
+    press items
+    check "items, iptvce_list.sh fails: exit 0" rc_is 0
+    check "items, iptvce_list.sh fails: fixed items only" items_builds_are
+    check "items, iptvce_list.sh fails: logged" grep -qx 'play_in_apps: iptvce_list.sh (1): ' "$o.err"
+    mv -f "$work/iptvce_list.sh.real" "$bin/iptvce_list.sh"
+
+    # sync.sh and main.php (items dialog, through iptvce_list.sh) find the
+    # same builds, with the same captions and icons.
     build mirkino
     build two 'First</caption><caption>Second' \
         'plugin_file://img/logo_mirkino.png</icon_url><icon_url>plugin_file://img/other.png'
