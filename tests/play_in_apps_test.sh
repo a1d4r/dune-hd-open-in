@@ -1263,6 +1263,28 @@ for tag, v in ((b"icon_url", open(sys.argv[4], "rb").read()), (b"caption", open(
 open(sys.argv[2], "wb").write(x)
 EOF
 }
+# list_as_sync: bin/iptvce_list.sh (main.php's view) has a line of 5 fields
+# for each item sync.sh wrote, in name order, with its caption and icon, and
+# no other line.
+list_as_sync() {
+    "$sh_bin" "$bin/iptvce_list.sh" >"$work/list" 2>&1 || return 1
+    py - "$work/list" "$reg" <<'EOF'
+import glob, json, os, sys
+got = [l.split("\t") for l in open(sys.argv[1], "rb").read().decode("utf-8").split("\n")]
+if got.pop() != [""]:
+    sys.exit("no line break at the end")
+want = []
+for f in sorted(glob.glob(sys.argv[2] + "/iptvce_*"), key=lambda f: f.encode()):
+    d = json.load(open(f, encoding="utf-8"))
+    name = os.path.basename(f)[7:]
+    pre = "plugin_file://%%%s%%/" % name
+    u = d.get("icon_url", "")
+    want.append([name, d["caption"], u[len(pre):] if u.startswith(pre) else u, "", ""])
+if got != want:
+    print("got:", got, "\nwant:", want, file=sys.stderr)
+    sys.exit(1)
+EOF
+}
 # build_item_is <name> <caption> [<icon path in the build>]: the item JSON of
 # a build in plugins_data, one line.
 build_item_is() {
@@ -1315,6 +1337,7 @@ for b in tab badutf surrogate overlong trkey blank nocap; do
 done
 check "sync captions: valid JSON for PHP too (one line, no raw control bytes)" sh -c \
     '! LC_ALL=C grep -q "$(printf "[\001-\037]")" "$1"/iptvce_*' _ "$reg"
+check "iptvce_list.sh captions: as in the items, 5 fields a line" list_as_sync
 unbuild_all mirkino
 
 # Icons: only plugin_file:// with a safe path of an existing file.
@@ -1332,6 +1355,7 @@ check "sync icons: exit 0" rc_is 0
 for b in up:Up space:Space abs:Abs http:Http skin:Skin missing:Missing dir:Dir quote:Quote none:None; do
     check "sync icon ${b%%:*}: no icon" build_item_is "icon_${b%%:*}" "${b#*:}"
 done
+check "iptvce_list.sh icons: as in the items" list_as_sync
 unbuild_all mirkino
 
 # Not a build with VOD, or an unsafe folder name: no item.
@@ -1734,6 +1758,70 @@ for x in vs_only= vs_files= vs_crlf= vs_own_not= vs_pa_vs= vs_pa_commentblock= v
     vs_emptyctl=ids vs_own_setup=own vs_own_setupfiles=own vs_own_iptvce_=own; do
     check "iptvce_why ${x%%=*}: ${x#*=}" vs_why_is "${x%%=*}" "${x#*=}"
 done
+
+# bin/iptvce_list.sh, main.php's view of the same: "<name> TAB <caption> TAB
+# <icon> TAB <handler_id> TAB <control_id>" per plugin with an item, in name
+# order. vs_list_is: all of vs_cases and mirkino as vs_want says, the
+# fixture's caption and icon; in a *_nul* manifest grep may stop at the NUL
+# bytes as binary (GNU grep does), leaving the folder name and no icon.
+vs_list_is() {
+    py - "$o" "$vs_want" <<'EOF'
+import sys
+lines = open(sys.argv[1], "rb").read().decode("utf-8").split("\n")
+if lines[-1] != "":
+    sys.exit("no line break at the end")
+got = [l.split("\t") for l in lines[:-1]]
+want = [["mirkino", "Mir Kino", "img/logo_mirkino.png", "", ""]]
+for l in sys.argv[2].split("\n"):
+    b, w = l.split("=", 1)
+    if w != "none":
+        h, c = w.split(" ") if w != "old" else ("", "")
+        want.append([b, "Mir Kino", "img/logo_mirkino.png", h, c])
+want.sort(key=lambda x: x[0].encode())
+for g in got:
+    if len(g) == 5 and "_nul" in g[0]:
+        g[1] = "Mir Kino" if g[1] == g[0] else g[1]
+        g[2] = g[2] or "img/logo_mirkino.png"
+if got != want:
+    print("got:", got, "\nwant:", want, file=sys.stderr)
+    sys.exit(1)
+EOF
+}
+run iptvce_list.sh
+check "iptvce_list.sh: exit 0" rc_is 0
+check "iptvce_list.sh: no stderr" test ! -s "$o.err"
+check "iptvce_list.sh: a line per plugin with an item, in name order, as vs_want" vs_list_is
+cp "$o" "$work/vs_list"
+# vs_list_one_is: iptvce_list.sh <name> gives its line of the full list, or
+# nothing, for every folder of plugins/.
+vs_list_one_is() {
+    for d in "$plugins"/*/; do
+        d=${d%/}
+        d=${d##*/}
+        got=$("$sh_bin" "$bin/iptvce_list.sh" "$d" 2>&1; echo "rc=$?")
+        want=$(awk -F '\t' -v n="$d" '$1 == n' "$work/vs_list"; echo rc=0)
+        [ "$got" = "$want" ] || {
+            echo "$d: got '$got', want '$want'" >&2
+            return 1
+        }
+    done
+}
+check "iptvce_list.sh <name>: the line of the full list or nothing, each folder" vs_list_one_is
+# Not a plugin with an item, unsafe names (also of folders with vod_search:
+# 'a b', .x, -x), more than one argument: nothing, exit 0.
+for n in nosuch vs_none vs_pa_self play_in_apps Filmix_api 'a b' .x -x '' . .. ../mirkino mirkino/ \
+    '/mirkino' 'mirkino ' "$(printf 'mir\nkino')" '$(id)' '*' "$(printf 'n%.0s' $(seq 1 41))"; do
+    run iptvce_list.sh "$n"
+    check "iptvce_list.sh '$(printf '%s' "$n" | tr '\n' ' ')': nothing, exit 0" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1" ] && [ ! -s "$1.err" ]' _ "$o"
+done
+run iptvce_list.sh vs_only extra
+check "iptvce_list.sh, two arguments: the first only" sh -c \
+    '[ "$(cat "$1")" = "$(printf "vs_only\tMir Kino\timg/logo_mirkino.png\tentry_handler\texternal_search")" ]' _ "$o"
+# As main.php runs it on the device: cwd /, FS_PREFIX empty or not; the
+# plugins are next to ours.
+(cd / && FS_PREFIX='' "$sh_bin" "$bin/iptvce_list.sh" vs_pa_no >"$o" 2>"$o.err")
+check "iptvce_list.sh from /, FS_PREFIX empty: the old way, no ids" sh -c \
+    '[ "$(cat "$1")" = "$(printf "vs_pa_no\tMir Kino\timg/logo_mirkino.png\t\t")" ] && [ ! -s "$1.err" ]' _ "$o"
 unbuild_all mirkino
 
 # A build updated in place: <public_actions> decides whether its item stays.
@@ -4414,7 +4502,7 @@ done
 scripts=$(for i in $all; do echo "$i.sh"; done)
 # shellcheck disable=SC2086 # one word per script
 check "no other item scripts" listing_is "$src/bin" diag.sh movie_suppliers_update.sh search.sh sync.sh uninstall.sh \
-    iptvce.sh iptvce_builds.sh $scripts
+    iptvce.sh iptvce_builds.sh iptvce_list.sh $scripts
 
 keys="plugin_caption"
 for i in $all; do
