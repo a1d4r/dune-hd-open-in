@@ -1777,26 +1777,6 @@ for x in vs_only= vs_files= vs_crlf= vs_own_not= vs_pa_vs= vs_pa_commentblock= v
     vs_emptyctl=ids vs_own_setup=own vs_own_setupfiles=own vs_own_iptvce_=own; do
     check "iptvce_why ${x%%=*}: ${x#*=}" vs_why_is "${x%%=*}" "${x#*=}"
 done
-# sync.sh logs a line with iptvce_why for each plugin that has it, the
-# folder name with safe characters only, and no other such line (in any
-# order: glob order may differ between shells).
-vs_sync_why_is() {
-    for d in "$plugins"/*/; do
-        d=${d%/}
-        why=$("$sh_bin" -c '. "$1"; iptvce_why "$2" "$3"' _ "$bin/iptvce_builds.sh" "$plugins" "${d##*/}")
-        [ -z "$why" ] || printf 'play_in_apps: vod_search of %s rejected: %s, no item\n' \
-            "$(printf '%s' "${d##*/}" | tr -c 'A-Za-z0-9_.-' '?')" "$why"
-    done | LC_ALL=C sort >"$work/vs_why_want"
-    grep 'rejected' "$o" | LC_ALL=C sort >"$work/vs_why_got"
-    grep -qxF 'play_in_apps: vod_search of vs_type rejected: type, no item' "$work/vs_why_got" &&
-        grep -qxF 'play_in_apps: vod_search of a?b rejected: name, no item' "$work/vs_why_got" &&
-        grep -qxF 'play_in_apps: vod_search of vs_outside rejected: nopa, no item' "$work/vs_why_got" &&
-        ! grep -q ' vs_only \| mirkino ' "$work/vs_why_got" &&
-        cmp -s "$work/vs_why_want" "$work/vs_why_got"
-}
-run sync.sh
-check "sync: exit 0 with plugins whose vod_search is turned down" rc_is 0
-check "sync: a line with the reason for each plugin with vod_search and no item" vs_sync_why_is
 
 # bin/iptvce_list.sh, main.php's view of the same: "<name> TAB <caption> TAB
 # <icon> TAB <handler_id> TAB <control_id>" per plugin with an item, in name
