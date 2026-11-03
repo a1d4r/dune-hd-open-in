@@ -144,6 +144,14 @@ for b in $(iptvce_builds "$plugins"); do
         "$name" "$cap" "$mydir" "$icon" "$name" "$id")"
     shown="$shown $id"
 done
+# Plugins with the word vod_search and no item: why (iptvce_why). The folder
+# name keeps only safe characters, as in diag.sh.
+for d in "$plugins"/*/; do
+    d=${d%/}
+    case " $shown " in *" iptvce_${d##*/} "*) continue ;; esac
+    why=$(iptvce_why "$plugins" "${d##*/}")
+    [ -z "$why" ] || echo "$name: vod_search of $(printf '%s' "${d##*/}" | LC_ALL=C tr -c 'A-Za-z0-9_.-' '?' | cut -c 1-40) rejected: $why, no item"
+done
 # The items of builds that are gone or hidden; only our own copies, as in
 # uninstall.sh.
 for f in "$data/movie_suppliers"/iptvce_* "$tmp/movie_suppliers"/iptvce_*; do
