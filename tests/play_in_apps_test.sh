@@ -110,7 +110,10 @@ while True:
 EOF
 {
     python3 "$py_dir/server.py" "$py_dir" "$$" <&3 >&4
-    : >"$py_dir/gone"
+    # After the test python3 quits on its own, often once the trap has
+    # removed $work: no file then, and no one to tell. A call still waiting
+    # gets the 99 below either way.
+    { true >"$py_dir/gone"; } 2>/dev/null
     echo 99 >&4
 } &
 py() {
