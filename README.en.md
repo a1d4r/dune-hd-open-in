@@ -2,58 +2,21 @@
 
 [Русский](README.md) | **English**
 
-> Android-based Dune HD models only. It will not work on older non-Android models (Sigma chips): they have no Android apps.
+> Android-based Dune HD models only. The plugin will not work on older non-Android models (Sigma chips): they have no Android apps.
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. Besides, every installed IPTV Channel Editor plugin with movies (for example, Mir Kino) gets an item of its own. Items appear only for installed apps; any of them can be hidden on the plugin screen, **Settings → Applications → Play in apps** (it is also in **Applications → Dune HD** and **All**).
+The plugin adds items of other apps to the **Play...** menu of a movie or series card (the Dune **Movies** catalog). Pick an item, and the app opens the same title, or, if it cannot open titles by ID, its own search by title. An item appears only for an installed app; the ones you don't need can be hidden.
 
-<img src="screenshots/play-menu.png" alt="Play... menu with the plugin items" width="49%"> <img src="screenshots/settings.png" alt="Plugin screen: choosing the Play... menu items" width="49%">
+<img src="screenshots/play-menu.png" alt="Play... menu with the plugin's items" width="49%"> <img src="screenshots/settings.png" alt="Plugin screen: choosing the Play... menu items" width="49%">
 
-| Menu item | Opens the title by |
-|---|---|
-| NUM | TMDB ID |
-| Lampa | TMDB ID |
-| BYLAMPA | TMDB ID |
-| LAMPA ATV | TMDB ID |
-| Prisma | TMDB ID |
-| VoKino | IMDb ID, else search by title |
-| LazyMedia | no ID, search by title only |
-| Filmix | no ID, search by title in the Filmix_API Dune plugin |
-| Stremio | IMDb ID, else TMDB ID |
-| Nuvio | IMDb ID, else TMDB ID |
-| FreeZona | Kinopoisk ID |
-| ALPAC | TMDB ID, else search by title |
-| Flux | TMDB ID |
-| SeasonHit | no ID, search by title only |
-| Bazinga | Kinopoisk ID, else search by title; in the Bazinga Dune plugin |
-| IPTV Channel Editor plugins, for example Mir Kino | not by ID, search by title in the plugin itself; sign in to the provider's account there; empty results — open the plugin once and try again. Plugins with the `vod_search` entry get the title, original title, year and the whole card; what to show is up to the plugin; how to declare it — in the [plugin README](plugin/play_in_apps/README.en.md#for-plugin-developers) |
-
-Details on each item are in the [plugin README](plugin/play_in_apps/README.en.md). The apps themselves (for Filmix and Bazinga, the Filmix_API and Bazinga Dune plugins; Bazinga is, for example, in the "Plugin collection" of Dune BackUp) must be installed and set up (addons, accounts, sources) separately.
-
-Missing items and why:
-- **Kino.pub (KinoWatch)**: the app opens a title only by its internal kino.pub number. It cannot be opened by IMDb, TMDB or title, and a search cannot be started from outside either, so the item could only open the app's home screen.
-- **Lift**: the app opens a title only by its internal number, and a search cannot be started from outside, so the item could only open the app's home screen.
-- **LostFilm.TV (`ru.twicker.lostfilmtv`)**: the app opens a series only by its internal LostFilm number. It cannot be opened by IMDb, TMDB, Kinopoisk ID or title, and a search cannot be started from outside either, so the item could only open the app's home screen.
-- **Lampa TV 7.7.9 (`ru.twicker.lampa`, the "Un" build)**: the card opens only if the link is sent again about a second after the app starts. That workaround is fragile (on a slow network you get the home screen instead), and the build is no longer updated. The Lampa item works with the official LAMPA (`top.rootu.lampa`).
-
-Tested only on Dune HD Pro 8K Plus, firmware 260827_0003_r24. Other Android Dune models with r24 firmware may work, but this is not tested.
+Supported: NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma, VoKino, LazyMedia Deluxe, Stremio, Nuvio TV, FreeZona, ALPAC, Flux, SeasonHit, the Filmix_API and Bazinga Dune plugins, and IPTV Channel Editor plugins with movies (for example, Mir Kino). How each item opens a title, which apps are missing and why — in the [apps reference](plugin/play_in_apps/docs/apps.en.md).
 
 ## Install
-1. Download `dune_plugin_play_in_apps_<version>.zip` from [Releases](https://github.com/a1d4r/dune-hd-open-in/releases/latest).
-2. Copy it to a USB drive or to the internal storage.
-3. On the Dune open **Sources**, find the zip and press ENTER.
-4. The items appear in the **Play...** menu within half a minute, no reboot needed.
-
-Updates: since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before. To remove, uninstall the plugin in the Dune plugin list.
-
-**If you have the separate "Open in …" plugins** (`num_supplier`, `nuvio_supplier` and others; until October 2026 each item was a plugin of its own), uninstall them in the Dune plugin list: this plugin replaces them, the items work the same way, and while an old plugin is installed its item cannot be hidden.
-
-The plugin itself makes no network requests and runs nothing in the background. The Dune checks for its updates on GitHub Pages (`a1d4r.github.io`).
+Download `dune_plugin_play_in_apps_<version>.zip` from [Releases](https://github.com/a1d4r/dune-hd-open-in/releases/latest) and install it on the Dune through **Sources**. Step by step, plus updating, setup and common problems — in the [plugin README](plugin/play_in_apps/README.en.md).
 
 ## Build from source
-`sh build.sh play_in_apps` runs shellcheck and the tests, then writes `dist/dune_plugin_play_in_apps_<version>.zip`. Needs `shellcheck`, `dash`, `zip`, `python3` and `php` (`PHP=…` for another path); `mksh`, if installed, is used for a second test run. The Dune runs PHP 5.3.6: `tests/php53/Dockerfile` builds it along with all the tools, `docker build -t dune-php53 tests/php53`, then `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh play_in_apps`. The zips in Releases are built by GitHub Actions with the same script in this image; CI runs the tests in this image, and the logs page also under a real `php-cgi` (the image has none): `CGI_ONLY=1 dash tests/play_in_apps_test.sh`.
+`sh build.sh play_in_apps` runs shellcheck and the tests and builds `dist/dune_plugin_play_in_apps_<version>.zip`. Needs `shellcheck`, `dash`, `zip`, `python3` and `php` (`PHP=…` for another path); `mksh`, if installed, is used for a second test run. The Dune runs PHP 5.3.6: `tests/php53/Dockerfile` builds it along with all the tools needed, `docker build -t dune-php53 tests/php53`, then `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/w" -w /w dune-php53 sh build.sh play_in_apps`. The zips in Releases are built by GitHub Actions with the same script in this image; CI runs the tests in the same image, and the logs page also under a real `php-cgi` (the image has none): `CGI_ONLY=1 dash tests/play_in_apps_test.sh`.
 
 ## Feedback
-Made for my own Dune and shared as is. Bug reports are welcome in [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); fixes are best effort.
+Made for my own Dune and shared as is. Report bugs in [Issues](https://github.com/a1d4r/dune-hd-open-in/issues); fixes are best effort.
 
-## License
-MIT, see `LICENSE`.
+MIT license, see [LICENSE](LICENSE).

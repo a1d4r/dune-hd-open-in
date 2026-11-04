@@ -2,184 +2,49 @@
 
 [Русский](README.md) | **English**
 
-A Dune HD plugin that adds items to the **Play...** menu of a movie or series card in the Dune **Movies** catalog. Each item opens the same title (or a search for it) in an Android TV app; the Filmix and Bazinga items open it in the Filmix_API and Bazinga Dune plugins. Besides, every installed IPTV Channel Editor plugin with movies (for example, Mir Kino) gets an item of its own. An item appears only if its app is installed; any item can be hidden on the plugin screen, which also has a check of the items and a logs download.
+The plugin adds items of other apps to the **Play...** menu of a movie or series card (the Dune **Movies** catalog): NUM, Lampa, Stremio, VoKino and a dozen more. Pick an item, and the app opens the same title, or, if it cannot open titles by ID, its own search by title. Handy when you choose a title in the Dune catalog but watch it in another app.
 
-| Menu item | App | Opens the title by |
-|---|---|---|
-| NUM | NUM 1.0.150 (`ru.yourok.num`) | TMDB ID |
-| Lampa | Lampa 1.13.1 (`top.rootu.lampa`) | TMDB ID |
-| BYLAMPA | BYLAMPA 1.13.3 (`top.rootu.bylumpa`) | TMDB ID |
-| LAMPA ATV | LAMPA ATV 1.13.3 (`top.rootu.lumpa`) | TMDB ID |
-| Prisma | Prisma 1.3.4 (`top.rootu.prisma`) | TMDB ID |
-| VoKino | VoKino 1.1.1 (`ru.vokino.web`) | IMDb ID, else search by title |
-| LazyMedia | LazyMedia Deluxe 3.467 (`com.lazycatsoftware.lmd`) | no ID, search by title only |
-| Filmix | Filmix_API 0.1.9 Dune plugin | no ID, search by title |
-| Stremio | Stremio for Android TV 1.11.2 (`com.stremio.one`) | IMDb ID, else TMDB ID |
-| Nuvio | Nuvio TV 1.0.0 (`com.nuvio.tv`) | IMDb ID, else TMDB ID |
-| FreeZona | FreeZona 3.0.74 (`free.zona`) | Kinopoisk ID |
-| ALPAC | ALPAC 1.0.96 (`cc.alcopa.tv`) | TMDB ID, else search by title |
-| Flux | Flux 1.63 (`app.flux.tv`) | TMDB ID |
-| SeasonHit | SeasonHit 2.4.4.2 (`com.jimdo.xakerd.season2hit`) | no ID, search by title only |
-| Bazinga | Bazinga Dune plugin (`Bazinga3`) 2023031100_patch | Kinopoisk ID, else search by title |
-| the plugin's name, for example Mir Kino | a Dune plugin made with IPTV Channel Editor, with movies (Mir Kino 9.4.2548), or any with the `vod_search` entry | not by ID, search by title; with `vod_search` the plugin gets the title, original title, year and the whole card |
+<img src="../../screenshots/play-menu.png" alt="Play... menu with the plugin's items" width="49%"> <img src="../../screenshots/settings.png" alt="Plugin screen: choosing the Play... menu items" width="49%">
 
-Made for Dune HD Pro 8K Plus, firmware 260827_0003_r24; the app versions in the table are the tested ones.
+## What you need
+- An Android-based Dune HD. The plugin does not work on older non-Android models (Sigma chips): they have no Android apps.
+- The apps themselves, installed and set up (accounts, addons, sources). The plugin does not install them and shows an item only for an installed app.
 
-### Install
-1. If you have the separate "Open in …" plugins (NUM, Lampa, Nuvio and others), uninstall them in the Dune plugin list: this plugin replaces them, and while an old one is installed its item cannot be hidden.
-2. Copy `dune_plugin_play_in_apps_<version>.zip` to a USB drive or to the internal storage.
+Supported: NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma, VoKino, LazyMedia Deluxe, Stremio, Nuvio TV, FreeZona, ALPAC, Flux, SeasonHit, the Filmix_API and Bazinga Dune plugins, and IPTV Channel Editor plugins with movies (for example, Mir Kino). How each item opens a title and which apps are missing — in the [apps reference](docs/apps.en.md).
+
+## Install
+1. If you have the separate "Open in …" plugins (NUM, Lampa, Nuvio and others), uninstall them in the Dune plugin list. This plugin replaces them, and while an old one is installed its item cannot be hidden.
+2. Download `dune_plugin_play_in_apps_<version>.zip` from [Releases](https://github.com/a1d4r/dune-hd-open-in/releases/latest) and copy it to a USB drive or to the Dune's internal storage.
 3. On the Dune open **Sources**, find the zip and press ENTER.
-4. The items of the installed apps appear in the **Play...** menu within half a minute, no reboot needed.
+4. In about half a minute the items appear in the **Play...** menu. No reboot needed.
 
-If you install or remove an app later, its item appears or goes away after the Dune wakes from standby or reboots, or at once if you open **Settings → Applications → Play in apps**.
+**Updating.** The Dune finds a new version by itself after it is switched on or rebooted (waking from standby does not count) and offers to install it. If it does not, install the new zip over the old one, as when installing.
 
-### Update
-Since 0.3.0 the plugin supports online updates: after the Dune boots (waking from standby is not a boot) the firmware checks GitHub Pages for a new version and offers to install it. Install 0.3.0 itself by hand. If an update does not come, install the new zip over the old one, as before.
+**Removing** — in the Dune plugin list. All the plugin's items go away with it.
 
-### Plugin screen
-**Settings → Applications → Play in apps** (also in **Applications → Dune HD** and **All**) is a short screen, like the Dune's own settings:
-- **Items of the "Play..." menu: Configure…** — which items to show;
-- **Check: Open…** — why an item does not start;
-- **Logs: Download to phone…** — the logs as one file to send to the author.
+## How to use
+1. Open a movie or series card in **Movies**.
+2. Press **Play...** and pick an app.
+3. The app opens the title or its search by title. A series opens on its own page: the app does not get the season and episode.
+4. How to get back to the Dune card differs from app to app — see the [reference](docs/apps.en.md#how-to-return-to-the-dune).
 
-### Hide an item
-**Items of the "Play..." menu: Configure…** opens the Dune's own dialog with a list of the apps and checkmarks. Uncheck an item to hide it, check it to show it; the **Apps** line switches all of them. All may be unchecked. The choice applies when the dialog closes ("Close" or Back): the item leaves the menu or comes back and stays so after a reboot. **POP UP → "Reset to Default Values"** turns all items on again. Apps that are not installed are marked "(not installed)"; the choice is kept for when the app appears. A choice made in earlier versions of the plugin is kept.
+Items you don't need can be hidden on the plugin screen: **Setup** → **Apps** → **Play in apps** (the same screen is in **Apps** → **Dune HD** and **All**). It also has a check of why an item does not work, and logs for the author. Details — [Plugin screen](docs/screen.en.md).
 
-### Check
-**Check: Open…** fits on one screen: the first line is the Dune model, firmware, Android and the plugin version, then one line per item: the app name, its version (if installed) and the verdict, for example "NUM 2.1 — OK", "Lampa 1.13.1 — hidden", "Prisma — not installed", "Filmix — OK (through the Dune plugin Filmix_API)", "FreeZona 3.0.74 — the app will not take the link", "NUM 1.0.150 — the item script is missing". On models where the Dune runs as an app on Android TV, every installed item may show "could not check the launch": Android hides other apps from it.
+The plugin itself makes no network requests and runs nothing in the background. The Dune checks for plugin updates on GitHub Pages (`a1d4r.github.io`).
 
-The check looks at whether the app is installed, whether the item is hidden, whether it is in the menu and not another plugin's (for example, an old "Open in …" one), what the item answers for the movie "Cars" and whether the app takes that link (Android is asked which app would open it; the app itself is not started). The details — the launch command, Android's answer, the Dune's last records about launching items — go to the logs only. An app that takes too long to open or closes at once is not seen by the check, only in the logs.
+## Common problems
+| What happened | What to do |
+|---|---|
+| The item is not in **Play...** | The app is not installed or the item is hidden. If you have just installed or removed the app, open the plugin screen — the menu updates at once (otherwise after the Dune wakes from standby or reboots). The [check](docs/screen.en.md#check) shows the reason. |
+| The item cannot be hidden | It is an item of an old "Open in …" plugin: uninstall that plugin in the Dune plugin list. The plugin screen shows which old plugins are installed. |
+| "Failed to start playback" | Right away, without rebooting the Dune, open the [check](docs/screen.en.md#check), then [download the logs](docs/screen.en.md#logs) and send them to the author. |
+| The Dune says the card has no ID | This card in the Dune catalog has no ID the app understands (series often have no Kinopoisk ID). Pick an app that searches by title — [table](docs/apps.en.md#how-each-item-opens-a-title). |
+| The app opened, but without the title: home screen, empty card, endless loading | The app does not know this title — find it with the app's own search. [What it looks like in each app](docs/apps.en.md#if-the-title-was-not-found). |
+| An IPTV provider's plugin shows empty results | Sign in to the provider's account in the plugin itself. If that does not help, open the plugin once and try again. |
 
-### Logs
-If an item says "Failed to start playback" or misbehaves, send the logs to the author:
-1. **Right after the error, without rebooting the Dune** (a reboot erases part of the logs), open **Logs: Download to phone…**.
-2. Scan the QR code with a phone on the same home network. The page that opens shows a warning about personal data and a **Download** button: one `.txt` file arrives.
-3. The link works while the QR code is open on the Dune, at most 5 minutes: **Close** or Back on the remote turns it off at once.
+## Reference
+- [Apps](docs/apps.en.md) — what each item can do, how to return to the Dune, which apps are missing and why.
+- [Plugin screen](docs/screen.en.md) — which items to show, check, logs.
+- For plugin developers: [how to get your own item in Play...](docs/developers.en.md).
 
-**The logs may contain personal data. Do not post them publicly — on forums or in group chats.**
-
-### How the items work
-For all items:
-- Series open on the series page: Dune does not pass a season or episode.
-- If the card has no ID the app needs (or no title, for a search), Dune shows a message.
-- The plugin itself makes no network requests and runs nothing in the background. The Dune checks for its updates on GitHub Pages (`a1d4r.github.io`).
-
-**NUM** is the torrent catalog and search app for Android TV by YouROK, where you can find torrents and send them to a torrent client such as TorrServe.
-- The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`). NUM cannot open a title by IMDb ID or by name.
-- Each launch replaces what was open in NUM, so screens from earlier launches do not pile up.
-- Press Back once to return from the NUM title page to the Dune card. After watching a torrent, press Back three times: torrent list, NUM title page, Dune card.
-
-**Lampa** is a movie and series catalog app: [github.com/lampa-app/LAMPA](https://github.com/lampa-app/LAMPA), APK in [Releases](https://github.com/lampa-app/LAMPA/releases/latest).
-- The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`). Lampa cannot reliably open a title from outside by IMDb ID or by name.
-- Each launch replaces what was open in Lampa. Lampa reloads for about a second.
-- Back in Lampa starts working only after you press any arrow key once — Lampa behaves like this on every start. To return to the Dune card right away, long-press Back → "Quit the Application".
-- If Lampa does not know the TMDB ID (Dune has a wrong ID), Lampa shows an endless loading spinner instead of a message.
-- Tested with the `http://lampa.mx` server. A self-hosted Lampa server (such as Lampac) has not been tested.
-
-**BYLAMPA** is an unofficial Lampa fork with its own server.
-- The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`), as in Lampa.
-- Each launch replaces what was open in BYLAMPA.
-
-**LAMPA ATV** is an unofficial Lampa build.
-- The title is opened by its TMDB ID (`https://www.themoviedb.org/movie/…`, `https://www.themoviedb.org/tv/…`), as in Lampa.
-
-**Prisma** is a Lampa fork: [prisma.ws](https://prisma.ws), APK in [Releases](https://github.com/Sheinices/Prisma_TV/releases/latest).
-- The title is opened by its TMDB ID, as in Lampa: opening by IMDb ID or by name is unreliable there.
-- Each launch replaces what was open in Prisma. Prisma reloads for about a second.
-- Back starts working only after you press any arrow key once. To return to the Dune card right away, long-press Back → "Quit the Application".
-- If Prisma does not know the TMDB ID, Prisma shows an empty placeholder card (grey blocks) instead of a message.
-- Tested with the `http://prisma.ws` server that Prisma suggests on first start.
-
-**VoKino** is an online cinema app for Android TV.
-- If the card has an IMDb ID, the VoKino title page opens right away (`vokino://ru.vokino.web/view/tt…`). VoKino does not understand TMDB or Kinopoisk IDs.
-- Without an IMDb ID, VoKino search opens with the card's title in the Dune UI language, or with the original title if there is none. The search ignores the year, so pick the right title from the list.
-- Rarely VoKino has a title but does not know its IMDb ID (for example, House of the Dragon): VoKino then shows "Failed to load data". Find the title with VoKino's own search.
-- Each launch replaces what was open in VoKino.
-- To return to the Dune card, press Back: VoKino opens its own menu. Then go down to "Exit the app" ("Выйти из приложения") and press ENTER. This is how VoKino itself works.
-
-**LazyMedia** is LazyMedia Deluxe, an app that collects movies from online cinemas.
-- LazyMedia **search** opens with the card's title in the Dune UI language, or with the original title if there is none. A title page cannot be opened directly: LazyMedia has no IDs of its own, a title page belongs to one of its source sites.
-- Pick the right title from the results. What is found depends on the sources enabled in LazyMedia and on the title: for example, "Гладиатор 2" from Dune finds worse than "Гладиатор II". The year is not passed to the search.
-- Some sources return adult films, even for an ordinary query.
-- Every launch is added to the LazyMedia search history and replaces what was open in LazyMedia.
-
-**Filmix** searches in **Filmix_API**, a Dune plugin for Filmix by ddaaff ([forum.mydune.ru thread](https://forum.mydune.ru/viewtopic.php?t=246)). It is not an Android app: Filmix_API is installed into Dune, like this plugin, and is not included in this zip.
-- The Filmix_API **search** screen opens with the card's title in the Dune UI language, or with the original title if there is none. Filmix_API knows no IMDb, TMDB or Kinopoisk IDs. The year is not passed to the search; it shows up to 5 titles.
-- From there it is Filmix_API as usual: pick the title and watch. Back from the search screen returns to the Dune card.
-- Tested without a Filmix account (Filmix_API plays 720p). How a PRO account behaves is not tested yet — please report in Issues.
-
-**Stremio**, with streams from your Stremio addons ([stremio.com](https://www.stremio.com/)).
-- The title is opened by IMDb ID (`stremio:///detail/movie/tt…`, `stremio:///detail/series/tt…`). Without an IMDb ID, by TMDB ID (`stremio:///detail/movie/tmdb:…`); this works only if one of your Stremio addons understands TMDB IDs.
-- Press Back three times (or Home) to exit Stremio and return to the Dune card.
-
-**Nuvio** is [Nuvio TV](https://github.com/NuvioMedia/NuvioTV), with streams from your Nuvio addons.
-- The title is opened by IMDb ID (`nuvio://movie/tt…`, `nuvio://series/tt…`). Without an IMDb ID, by TMDB ID (`nuvio://tmdb/movie/…`, `nuvio://tmdb/series/…`).
-- Back from the Nuvio title page leads to the Nuvio home screen; press Back a few more times (or Home) to exit Nuvio and return to the Dune card.
-
-**FreeZona** is an unofficial build of the Zona online cinema client, not made by the Zona authors.
-- Movies and series are opened by Kinopoisk ID (`https://www.kinopoisk.ru/film/…`). FreeZona does not understand IMDb or TMDB IDs, and a search by title cannot be started from outside: if the card has no Kinopoisk ID, the Dune shows a message.
-- Not every card in the Dune catalog has a Kinopoisk ID. Movies usually have one, series more often don't: for example, Game of Thrones has one, while newer series such as Shōgun, Fallout and House of the Dragon don't.
-- FreeZona looks the title up on the Zona server. If Zona does not know the title or there is no network, the FreeZona home screen opens with no message; find the title with FreeZona's own search.
-- Each launch replaces what was open in FreeZona.
-- Back from the FreeZona title page leads to the FreeZona home screen; press Back once more to return to the Dune card.
-
-**ALPAC** is an online cinema client for Android TV.
-- If the card has a TMDB ID of the right type (a movie TMDB ID for a movie, a TV TMDB ID for a series), the ALPAC title page opens right away (`alpac://title/movie/…`, `alpac://title/tv/…`). ALPAC does not understand IMDb or Kinopoisk IDs.
-- Without such a TMDB ID, ALPAC search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
-- If ALPAC does not know the title, an empty title page with "Источники не найдены" (no sources found) opens with no message; find the title with ALPAC's own search.
-- You need to be signed in to your ALPAC account.
-
-**Flux** is a media center for Android TV: a movie and series catalog, torrents, its own player.
-- The title page opens by a TMDB ID of the right type (a movie TMDB ID for a movie, a TV TMDB ID for a series): `flux://movie/…`, `flux://series/…`. Flux does not understand IMDb or Kinopoisk IDs, and a search by title cannot be started from outside: without such a TMDB ID, the Dune shows a message.
-- No account is needed.
-
-**SeasonHit** is an unofficial seasonvar.ru client: series, its own player.
-- SeasonHit **search** opens with the card's title in the Dune UI language, or with the original title if there is none. A series page cannot be opened directly: SeasonHit knows only its own seasonvar IDs (one per season), not TMDB, IMDb or Kinopoisk. The year is not passed to the search.
-- The search finds seasonvar series; movies are usually not found, look for them in the "Фильмы" (Movies) section of SeasonHit itself.
-- The results open in SeasonHit's mobile search screen, not in its TV interface.
-- Works on Dune HD players; on models where the Dune runs as an app on Android TV, SeasonHit will most likely not open (not checked).
-- No account is needed.
-
-**Bazinga** is the Bazinga Dune plugin (`Bazinga3`, by TrippyCat): the Kinopoisk catalog, with sources for a title (trackers, Jackett and others). It is not an Android app: Bazinga is installed into Dune, like this plugin, and is not included in this zip. You can install it, for example, from the "Plugin collection" of Dune BackUp.
-- If the card has a Kinopoisk ID, the title page opens in Bazinga right away.
-- Without a Kinopoisk ID, Bazinga's Kinopoisk search opens with the card's title in the Dune UI language, or with the original title if there is none. The year is not passed to the search, so pick the right title from the results.
-- From there it is Bazinga as usual: watch through "Источники" (Sources) on its title page. Which sources there are and whether they work depends on Bazinga itself and its settings.
-
-### IPTV Channel Editor plugins
-IPTV Channel Editor is a builder of Dune plugins for IPTV providers. If such a plugin has movies (VOD), for example Mir Kino, it gets an item of its own in the "Play..." menu, with that plugin's name and icon. The plugins themselves are not in this zip: providers give them out.
-- The item opens that plugin's search results for the card's title in the Dune UI language, or the original title if there is none. The year and IDs are not passed, so pick the right title from the results. Back from the results returns to the Dune card.
-- Sign in to your provider's account in that plugin first: without it there are no results.
-- If the results are empty though the provider has the title, open that plugin once and try again: with some providers the search only looks through a list already loaded. Results are also empty when the provider spells the title differently; then search in the plugin itself.
-- A plugin installed later shows up in the menu, and a removed one goes away, usually within about half a minute. If it does not, that happens after the Dune wakes from standby or reboots, or at once when the "Play in apps" screen is opened.
-- To plugins with the new search entry (`vod_search`, see below) the item passes the card's title, original title, year and the whole movie card, and, if an episode was chosen through "Seasons" in the card, its number and the season's. What of it to use and how to search — by one title or both, whether to open the title page right away when there is just one — is up to the plugin. Any Dune plugin that declares the entry gets such an item, not only one made with IPTV Channel Editor. "Check" shows `vod_search` for it.
-- Checked only with Mir Kino; plugins of other providers were not checked.
-
-### For plugin developers
-To give your plugin an item of its own in "Play..." that searches for the card's title, declare the `vod_search` action in its `dune_plugin.xml`:
-```xml
-<public_actions>
-  <action id="vod_search">
-    <type>plugin_handle_user_input</type>
-    <params>
-      <handler_id>entry_handler</handler_id>
-      <control_id>external_search</control_id>
-    </params>
-  </action>
-</public_actions>
-```
-- The plugin's folder name: 1-40 characters of `A-Z a-z 0-9 _ . -`, not starting with `.` or `-`, no `..`; `dune_plugin.xml`: at most 32 KB (32768 bytes).
-- `handler_id` and `control_id` are yours, 1-64 characters of `A-Z a-z 0-9 _ . -`; `handler_id` must not be one of the play_in_apps handler ids (`setup`, `check`, `filmix_api`, `bazinga`, `iptvce_…`). Other values or another `type` are not taken. Only the first `vod_search` action inside `<public_actions>` counts. The IPTV Channel Editor template files are not needed for this.
-- For IPTV Channel Editor builds, the `<public_actions>` node decides: empty or without a working `vod_search`, there is no item; no node, an older template version, the item searches the old way. Write `<public_actions>` without attributes: `vod_search` is not read from a node that has them.
-- When the item is chosen, the Dune calls your plugin's `handle_user_input` with this `handler_id` and `control_id`; `$user_input` also has the field `search`, a JSON string: `{"title":"…","original_title":"…","year":"…"}`. `title` is the card's title in the Dune UI language, `original_title` the original one, `year` the year. Empty fields are left out; at least one of the titles is always there. All values are strings, non-ASCII as `\uXXXX` in the JSON: parse it with `json_decode`.
-- The field `movie_str` of `$user_input` is the movie card from the Dune shell as is: a JSON string, parse it with `json_decode`. The firmware sets its fields and their types: values may be non-strings and `null`, any field may be empty or missing, the set of fields may change with the firmware. Besides the titles and the year it has, for example, `id`, `kp_id`, `imdb_id`, `tmdb_id`, `tmdbtv_id` (a series' TMDB ID), `series_type`, `description`, `poster_url`. It has no list of episodes (a series has `season_numbers` instead of `seasons`) and no chosen season or episode.
-- For searching, take the titles from `search`: there they are already trimmed and always strings. `movie_str` is for the rest, for example the IDs.
-- If the user chose an episode through "Seasons" in the card, `$user_input` also has the fields `season` and `episode`: strings of digits, both together, the numbers as in the Dune catalog. From the main card they are not there. Nor are they for the "About TV series" section in "Seasons", for seasons without a number in the catalog, or for numbers below 1.
-- The other fields of `$user_input` come from the Dune shell.
-- The Dune runs the handler's answer (a folder, a dialog) as your plugin's; Back from your folder returns to the Dune card.
-- The item, with the name and icon from `<caption>` and `<icon_url>` of the manifest, usually shows up within about half a minute after the plugin is installed. If it does not, it shows up after the Dune wakes from standby or reboots, or when the "Play in apps" screen is opened.
-
-### Remove
-Uninstall the plugin in the Dune plugin list — all its items go away.
-
-### License
-MIT, see `LICENSE`. The QR code is drawn by [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT, `qrcode/LICENSE`).
+MIT license, see [LICENSE](LICENSE). The QR code is drawn by [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT, [qrcode/LICENSE](qrcode/LICENSE)).
