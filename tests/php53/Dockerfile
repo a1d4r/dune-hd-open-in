@@ -9,9 +9,41 @@
 #       sh build.sh play_in_apps
 #
 # Also BusyBox for the tests as on old Android, where its tools come first in
-# PATH: the image's static build with the default config (no grep -z, as on
-# the Dune). Debian's busybox package does not fit: its grep has -z.
-FROM busybox:1.36.1-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS busybox
+# PATH: BusyBox 1.22 without CONFIG_DESKTOP, as on older Android Dune models
+# (od knows no -A/-t, only -aBbcDdeFfHhIiLlOovXx), and without
+# CONFIG_EXTRA_COMPAT (no grep -z). Built static from the busybox.net tarball
+# (its MD5 and SHA1 are in the signed .sign file next to it), defconfig minus
+# these two and what does not build with today's gcc and glibc: inetd RPC
+# (no rpc/rpc.h) and rdate (no stime()); date gets the upstream stime() fix.
+# Debian's busybox package and the busybox image do not fit: full builds.
+FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251 AS busybox
+
+ARG BUSYBOX_VERSION=1.22.1
+ARG BUSYBOX_SHA256=ae0b029d0a9e4dd71a077a790840e496dd838998e4571b87b60fed7462b6678b
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates curl bzip2 gcc make libc6-dev \
+ && curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 --connect-timeout 30 \
+      -o /tmp/busybox.tar.bz2 "https://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2" \
+ && echo "$BUSYBOX_SHA256  /tmp/busybox.tar.bz2" | sha256sum -c - \
+ && mkdir /src \
+ && tar -xjf /tmp/busybox.tar.bz2 -C /src --strip-components=1 \
+ && cd /src \
+ && make defconfig \
+ && sed -i \
+      -e 's/^CONFIG_DESKTOP=y/# CONFIG_DESKTOP is not set/' \
+      -e 's/^CONFIG_EXTRA_COMPAT=y/# CONFIG_EXTRA_COMPAT is not set/' \
+      -e 's/^CONFIG_FEATURE_INETD_RPC=y/# CONFIG_FEATURE_INETD_RPC is not set/' \
+      -e 's/^CONFIG_RDATE=y/# CONFIG_RDATE is not set/' \
+      -e 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' \
+      .config \
+ && yes '' | make oldconfig \
+ # glibc 2.31 dropped stime(); the same change as upstream busybox 1.32.
+ && sed -i 's/stime(&ts.tv_sec) < 0/clock_settime(CLOCK_REALTIME, \&ts) < 0/' coreutils/date.c \
+ && grep -q 'clock_settime(CLOCK_REALTIME, &ts)' coreutils/date.c \
+ && make -j"$(nproc)" \
+ && ./busybox od --help 2>&1 | grep -qF '[-aBbcDdeFfHhIiLlOovXx]'
 
 FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
 
@@ -51,4 +83,4 @@ RUN apt-get update \
  && php -v
 
 # Not in PATH: build.sh hands it to the tests (BUSYBOX).
-COPY --from=busybox /bin/busybox /opt/busybox/busybox
+COPY --from=busybox /src/busybox /opt/busybox/busybox
