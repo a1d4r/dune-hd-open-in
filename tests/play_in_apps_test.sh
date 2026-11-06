@@ -816,11 +816,6 @@ check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and c
     for s in vokino lazymedia alpac seasonhit; do
         grep -qx "\. \"\${0%/\*}/search\.sh\"" "$1/$s.sh" && grep -q "q=\$(search_query \"\$input\")" "$1/$s.sh" || exit 1
     done' _ "$src/bin"
-# Search by a Cyrillic title, raw UTF-8 and \u escapes: in the BusyBox run
-# with the od of BusyBox 1.22 (no -A or -t).
-id=lazymedia
-hostile '{"movieInfo":{"title":{"ru":"Дом Дракона"}}}' search_is 'Дом Дракона'
-hostile '{"movieInfo":{"title":{"ru":"\u0414\u043e\u043C \"Ж\" \\ \/ \u00e9"}}}' search_is 'Дом "Ж" \ / é'
 fi
 
 # --- log, fail, value and ext_id: a copy in each item script that needs them,

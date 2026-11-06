@@ -3,7 +3,7 @@
 **English version**
 
 ## 0.12.1
-- Fixed: on some models with older Android (for example, Android 9) LazyMedia and SeasonHit, and also VoKino for a card without IMDb ID and ALPAC for a card without TMDB ID, said the card had no title (VoKino and ALPAC: neither an ID nor a title) instead of searching by it.
+- Fixed: on some models with older Android (for example, Android 9) search by title did not work: LazyMedia and SeasonHit said the card had no title, and VoKino (for a card without IMDb ID) and ALPAC (without TMDB ID) said it had neither an ID nor a title.
 
 ## 0.12.0
 - Nuvio, Stremio, NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma: a wrong TMDB ID in the card (0, with leading zeros; for Nuvio and Stremio also ten digits) is no longer passed to the app. Nuvio and Stremio open the title by IMDb ID, and without one the Dune says the card has no ID; NUM, Lampa, BYLAMPA, LAMPA ATV and Prisma say so at once.
@@ -79,7 +79,7 @@
 **Russian version**
 
 ## 0.12.1
-- Исправлено: на части моделей со старым Android (например, Android 9) LazyMedia и SeasonHit, а также VoKino для карточки без IMDb ID и ALPAC для карточки без TMDB ID сообщали, что у карточки нет названия (VoKino и ALPAC — ни ID, ни названия), вместо поиска по нему.
+- Исправлено: на части моделей со старым Android (например, Android 9) не работал поиск по названию: LazyMedia и SeasonHit сообщали, что у карточки нет названия, а VoKino (для карточки без IMDb ID) и ALPAC (без TMDB ID) — что у неё нет ни ID, ни названия.
 
 ## 0.12.0
 - Nuvio, Stremio, NUM, Lampa, BYLAMPA, LAMPA ATV, Prisma: неверный TMDB ID в карточке (0, с ведущими нулями; у Nuvio и Stremio ещё десять цифр) больше не передаётся в приложение. Nuvio и Stremio открывают фильм по IMDb ID, а без него Дюна сообщает, что у карточки нет ID; NUM, Lampa, BYLAMPA, LAMPA ATV и Prisma сообщают об этом сразу.

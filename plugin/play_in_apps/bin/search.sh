@@ -54,6 +54,8 @@ utf8() {
 # Only the first 600 bytes are used: 100 Cyrillic letters as \u escapes.
 # od -b, not -An -tx1: BusyBox 1.22 without CONFIG_DESKTOP (older Android) has
 # no -A or -t. Its words are 3-digit octal bytes and 7-digit offsets.
+# A state machine, not a look-ahead at the next words: an escape may span two
+# od lines, with an offset between them (one every 16 bytes).
 # $esc: the last byte was a backslash; $left: hex digits of \uXXXX still due.
 percent_encode() {
     fmt=
@@ -67,13 +69,14 @@ percent_encode() {
             [0-3][0-7][0-7]) ;;
             *) continue ;;
         esac
+        # Not $((0$w)): mksh reads a leading 0 as decimal.
         b=${w#?}
         b=$((${w%??} * 64 + ${b%?} * 8 + ${w#??}))
         if [ "$left" -gt 0 ]; then
             case "$b" in
-                4[89] | 5[0-7]) u=$((u * 16 + b - 48)) ;;
-                6[5-9] | 70) u=$((u * 16 + b - 55)) ;;
-                9[7-9] | 10[0-2]) u=$((u * 16 + b - 87)) ;;
+                4[89] | 5[0-7]) u=$((u * 16 + b - 48)) ;;    # 0-9
+                6[5-9] | 70) u=$((u * 16 + b - 55)) ;;       # A-F
+                9[7-9] | 10[0-2]) u=$((u * 16 + b - 87)) ;;  # a-f
                 # Not a hex digit: the escape is dropped, the byte read as usual.
                 *) left=0 ;;
             esac
@@ -86,11 +89,11 @@ percent_encode() {
         if [ "$esc" = 1 ]; then
             esc=0
             case "$b" in
-                34 | 47 | 92) put "$b" ;;
-                98 | 102 | 110 | 114 | 116) put 32 ;;
-                117) left=4 u=0 ;;
+                34 | 47 | 92) put "$b" ;;             # " / \
+                98 | 102 | 110 | 114 | 116) put 32 ;; # \b \f \n \r \t -> space
+                117) left=4 u=0 ;;                    # \u
             esac
-        elif [ "$b" = 92 ]; then
+        elif [ "$b" = 92 ]; then # backslash
             esc=1
         else
             put "$b"

@@ -12,8 +12,9 @@
 # PATH: BusyBox 1.22 without CONFIG_DESKTOP, as on older Android Dune models
 # (od knows no -A/-t, only -aBbcDdeFfHhIiLlOovXx), and without
 # CONFIG_EXTRA_COMPAT (no grep -z). Built static from the busybox.net tarball
-# (its MD5 and SHA1 are in the signed .sign file next to it), defconfig minus
-# these two and what does not build with today's gcc and glibc: inetd RPC
+# (its MD5 and SHA1 are in the signed .sign file next to it; a Wayback Machine
+# copy, same sha256, is the fallback), defconfig minus these two and what
+# does not build with today's gcc and glibc: inetd RPC
 # (no rpc/rpc.h) and rdate (no stime()); date gets the upstream stime() fix.
 # Debian's busybox package and the busybox image do not fit: full builds.
 FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251 AS busybox
@@ -24,9 +25,16 @@ ARG BUSYBOX_SHA256=ae0b029d0a9e4dd71a077a790840e496dd838998e4571b87b60fed7462b66
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl bzip2 gcc make libc6-dev \
- && curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 --connect-timeout 30 \
-      -o /tmp/busybox.tar.bz2 "https://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2" \
- && echo "$BUSYBOX_SHA256  /tmp/busybox.tar.bz2" | sha256sum -c - \
+ && for url in "https://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2" \
+      "https://web.archive.org/web/20161120220242id_/http://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2"; \
+    do \
+      curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 --connect-timeout 30 \
+        -o /tmp/busybox.tar.bz2 "$url" \
+      && echo "$BUSYBOX_SHA256  /tmp/busybox.tar.bz2" | sha256sum -c - \
+      && break; \
+      rm -f /tmp/busybox.tar.bz2; \
+    done \
+ && test -f /tmp/busybox.tar.bz2 \
  && mkdir /src \
  && tar -xjf /tmp/busybox.tar.bz2 -C /src --strip-components=1 \
  && cd /src \
