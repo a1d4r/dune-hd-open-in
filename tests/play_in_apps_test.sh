@@ -188,6 +188,9 @@ blk() {
 }
 on() { [ -n "$blk_on" ]; }
 
+# timeout of the test itself, found before BusyBox goes first in PATH: that of
+# BusyBox 1.22 takes only -t SECS.
+timeout_bin=$(command -v timeout)
 # BusyBox of old Android (tv175, r24): its applets, all but the shells, go
 # first in PATH for the whole run; there sh is bash (TEST_SH=bash).
 if [ -n "${BUSYBOX-}" ]; then
@@ -200,9 +203,11 @@ if [ -n "${BUSYBOX-}" ]; then
     done
     PATH="$work/busybox:$PATH"
     export PATH
-    # Else the run proves nothing: the Dune's BusyBox has no grep -z.
-    check "busybox: first in PATH, a build without grep -z" sh -c \
-        '[ "$(command -v grep)" = "$1/grep" ] && ! printf "a\0b\n" | grep -qzF a' _ "$work/busybox"
+    # Else the run proves nothing: the Dune's BusyBox 1.22 has no grep -z and
+    # no od -A or -t.
+    check "busybox: first in PATH, a build without grep -z and od -A" sh -c \
+        '[ "$(command -v grep)" = "$1/grep" ] && ! printf "a\0b\n" | grep -qzF a &&
+            ! printf a | od -An -tx1 >/dev/null 2>&1' _ "$work/busybox"
 fi
 
 o="$work/out"
@@ -811,35 +816,11 @@ check "vokino.sh, lazymedia.sh, alpac.sh and seasonhit.sh source search.sh and c
     for s in vokino lazymedia alpac seasonhit; do
         grep -qx "\. \"\${0%/\*}/search\.sh\"" "$1/$s.sh" && grep -q "q=\$(search_query \"\$input\")" "$1/$s.sh" || exit 1
     done' _ "$src/bin"
-# od of BusyBox 1.22 without CONFIG_DESKTOP (older Android): only the flags
-# of its usage "od [-aBbcDdeFfHhIiLlOovXx] [FILE]", no -A, -t, -N or -j;
-# the rest goes to the real od (-b prints the same there).
-mkdir -p "$work/old_od"
-cat >"$work/old_od/od" <<EOF
-#!/bin/sh
-for a in "\$@"; do
-    case "\$a" in
-        -*)
-            bad=\$(printf '%s\n' "\${a#-}" | sed 's/[aBbcDdeFfHhIiLlOovXx]//g' | cut -c1)
-            if [ -n "\$bad" ] || [ "\$a" = - ]; then
-                echo "od: invalid option -- \${bad:--}" >&2
-                exit 1
-            fi
-            ;;
-    esac
-done
-exec '$(command -v od)' "\$@"
-EOF
-chmod +x "$work/old_od/od"
-check "old od stand-in: no -A or -t" sh -c \
-    'PATH="$1:$PATH"; ! printf a | od -An -tx1 && [ "$(printf a | od -v -b)" = "$(printf "0000000 141\n0000001")" ]' _ "$work/old_od"
-# Search by a Cyrillic title, raw UTF-8 and \u escapes, with that od.
+# Search by a Cyrillic title, raw UTF-8 and \u escapes: in the BusyBox run
+# with the od of BusyBox 1.22 (no -A or -t).
 id=lazymedia
-path_before=$PATH
-PATH="$work/old_od:$PATH"
 hostile '{"movieInfo":{"title":{"ru":"Дом Дракона"}}}' search_is 'Дом Дракона'
 hostile '{"movieInfo":{"title":{"ru":"\u0414\u043e\u043C \"Ж\" \\ \/ \u00e9"}}}' search_is 'Дом "Ж" \ / é'
-PATH=$path_before
 fi
 
 # --- log, fail, value and ext_id: a copy in each item script that needs them,
@@ -2714,7 +2695,7 @@ why_lines_are() {
     [ "$(grep -F -- "$vs_r" "$o.rest" | LC_ALL=C sort)" = "$(printf '%s\n' "$1" | LC_ALL=C sort)" ] &&
         [ "$(cat "$o.rest")" = "$(grep -vF -- "$vs_r" "$o.rest"; grep -F -- "$vs_r" "$o.rest")" ]
 }
-PATH="$sbin:$PATH" timeout 60 "$sh_bin" "$bin/diag.sh" english brief >"$o" 2>"$o.err"
+PATH="$sbin:$PATH" "$timeout_bin" 60 "$sh_bin" "$bin/diag.sh" english brief >"$o" 2>"$o.err"
 echo "$?" >"$o.rc"
 check "diag brief vod_search turned down: exit 0 (no hang on a FIFO), no stderr" sh -c '[ "$(cat "$1.rc")" = 0 ] && [ ! -s "$1.err" ]' _ "$o"
 # Verdicts only: the caption of vs_nulline depends on the grep (GNU grep -o
