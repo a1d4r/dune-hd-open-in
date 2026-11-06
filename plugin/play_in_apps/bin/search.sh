@@ -52,36 +52,49 @@ utf8() {
 # percent_encode: JSON string body on stdin (raw UTF-8 and/or \u escapes) ->
 # query value.
 # Only the first 600 bytes are used: 100 Cyrillic letters as \u escapes.
+# od -b, not -An -tx1: BusyBox 1.22 without CONFIG_DESKTOP (older Android) has
+# no -A or -t. Its words are 3-digit octal bytes and 7-digit offsets.
+# $esc: the last byte was a backslash; $left: hex digits of \uXXXX still due.
 percent_encode() {
     fmt=
     args=
-    # shellcheck disable=SC2046 # one word per byte, od prints only hex
-    set -- $(head -c 600 | od -An -v -tx1)
-    while [ $# -gt 0 ]; do
-        b=$1
-        shift
-        if [ "$b" != 5c ]; then
-            put $((0x$b))
-            continue
-        fi
-        e=${1-}
-        [ $# -eq 0 ] || shift
-        case "$e" in
-            22 | 2f | 5c) put $((0x$e)) ;;
-            62 | 66 | 6e | 72 | 74) put 32 ;;
-            75)
-                u=0
-                for _ in 1 2 3 4; do
-                    case "${1-}" in
-                        3[0-9]) u=$((u * 16 + ${1#3})) ;;
-                        4[1-6] | 6[1-6]) u=$((u * 16 + ${1#?} + 9)) ;;
-                        *) u=-1 && break ;;
-                    esac
-                    shift
-                done
-                [ "$u" -lt 0 ] || utf8 "$u"
-                ;;
+    esc=0
+    left=0
+    # shellcheck disable=SC2046 # one word per byte or offset, digits only
+    set -- $(head -c 600 | od -v -b)
+    for w in "$@"; do
+        case "$w" in
+            [0-3][0-7][0-7]) ;;
+            *) continue ;;
         esac
+        b=${w#?}
+        b=$((${w%??} * 64 + ${b%?} * 8 + ${w#??}))
+        if [ "$left" -gt 0 ]; then
+            case "$b" in
+                4[89] | 5[0-7]) u=$((u * 16 + b - 48)) ;;
+                6[5-9] | 70) u=$((u * 16 + b - 55)) ;;
+                9[7-9] | 10[0-2]) u=$((u * 16 + b - 87)) ;;
+                # Not a hex digit: the escape is dropped, the byte read as usual.
+                *) left=0 ;;
+            esac
+            if [ "$left" -gt 0 ]; then
+                left=$((left - 1))
+                [ "$left" -gt 0 ] || utf8 "$u"
+                continue
+            fi
+        fi
+        if [ "$esc" = 1 ]; then
+            esc=0
+            case "$b" in
+                34 | 47 | 92) put "$b" ;;
+                98 | 102 | 110 | 114 | 116) put 32 ;;
+                117) left=4 u=0 ;;
+            esac
+        elif [ "$b" = 92 ]; then
+            esc=1
+        else
+            put "$b"
+        fi
     done
     # shellcheck disable=SC2059,SC2086 # format built above, args are numbers
     printf "$fmt" $args
